@@ -1,8 +1,10 @@
+//! A compact board representation that is efficient for simulation
+// you almost certainly want to use the `convert_from_game` method to
+// cast from a json represention to a `CellBoard`
 use crate::types::{
     RandomReasonableMovesGame, SnakeIDGettableGame, SnakeIDMap, SnakeId, VictorDeterminableGame,
     YouDeterminableGame,
 };
-/// A compact board representation that is efficient for simulation
 use crate::wire_representation::Game;
 use fxhash::FxHashSet;
 use itertools::Itertools;
@@ -20,10 +22,13 @@ use crate::{
 };
 const HAZARD_DAMAGE: i32 = 15;
 
+/// Wrapper type for numbers to allow for shrinking board sizes
 pub trait CellNum:
     std::fmt::Debug + Copy + Clone + PartialEq + Eq + std::hash::Hash + Ord + Display
 {
+    /// converts this cellnum to a usize
     fn as_usize(&self) -> usize;
+    /// makes a cellnum from an i32
     fn from_i32(i: i32) -> Self;
 }
 
@@ -48,7 +53,7 @@ impl CellNum for u16 {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[repr(transparent)]
-pub struct CellIndex<T: CellNum>(pub T);
+struct CellIndex<T: CellNum>(pub T);
 
 impl<T: CellNum> CellIndex<T> {
     fn new(pos: Position, width: u8) -> Self {
@@ -85,8 +90,8 @@ const KIND_MASK: u8 = 0x07;
 
 const IS_HAZARD: u8 = 0x10;
 
-pub const TRIPLE_STACK: usize = 3;
-pub const DOUBLE_STACK: usize = 2;
+const TRIPLE_STACK: usize = 3;
+const DOUBLE_STACK: usize = 2;
 
 impl<T: CellNum> Cell<T> {
     pub fn get_tail_position(&self, ci: CellIndex<T>) -> Option<CellIndex<T>> {
@@ -164,10 +169,6 @@ impl<T: CellNum> Cell<T> {
         Cell { flags: EMPTY, id: SnakeId(0), idx: CellIndex(T::from_i32(0)) }
     }
 
-    fn food() -> Self {
-        Cell { flags: FOOD, id: SnakeId(0), idx: CellIndex(T::from_i32(0)) }
-    }
-
     fn make_snake_head(sid: SnakeId, tail_index: CellIndex<T>) -> Self {
         Cell { flags: SNAKE_HEAD, id: sid, idx: tail_index }
     }
@@ -223,6 +224,8 @@ impl<T: CellNum> Cell<T> {
     }
 }
 
+/// A compact board representation that is significantly faster for simulation than
+/// `battlesnake_game_types::wire_representation::Game`.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct CellBoard<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> {
     cells: [Cell<T>; BOARD_SIZE],
@@ -231,6 +234,7 @@ pub struct CellBoard<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usiz
     lengths: [u16; MAX_SNAKES],
 }
 
+/// Used to represent the standard 11x11 game with up to 4 snakes.
 pub type CellBoard4Snakes11x11 = CellBoard<u8, { 11 * 11 }, 4>;
 
 impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> Display
@@ -257,7 +261,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> Display
                 } else if self.cell_is_hazard(cell_idx) {
                     write!(f, "x")?
                 } else {
-                    assert!(self.cells[cell_idx.0.as_usize()].flags == EMPTY);
+                    debug_assert!(self.cells[cell_idx.0.as_usize()].is_empty());
                     write!(f, ".")?
                 }
                 write!(f, " ")?;
@@ -304,6 +308,9 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
         self.heads[sid.0 as usize] = CellIndex::from_i32(0);
         self.lengths[sid.0 as usize] = 0;
     }
+    /// Builds a cellboard from a given game, will return an error if the game doesn't match
+    /// the provided BOARD_SIZE or MAX_SNAKES. You are encouraged to use `CellBoard4Snakes11x11`
+    /// for the common game layout
     pub fn convert_from_game(game: Game, snake_ids: &SnakeIDMap) -> Result<Self, Box<dyn Error>> {
         if game.board.width * game.board.height != BOARD_SIZE as u32 {
             return Err("game size doesn't match".into());
@@ -497,11 +504,11 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
         })
     }
 
-    pub(crate) fn cell_is_snake_body_piece(&self, current_index: CellIndex<T>) -> bool {
+    fn cell_is_snake_body_piece(&self, current_index: CellIndex<T>) -> bool {
         self.get_cell(current_index).is_snake_body_piece()
     }
 
-    pub(crate) fn cell_is_double_stacked_piece(&self, current_index: CellIndex<T>) -> bool {
+    fn cell_is_double_stacked_piece(&self, current_index: CellIndex<T>) -> bool {
         self.get_cell(current_index).is_double_stacked_piece()
     }
 
@@ -509,19 +516,19 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
         self.get_cell(current_index).is_triple_stacked_piece()
     }
 
-    pub(crate) fn cell_is_hazard(&self, cell_idx: CellIndex<T>) -> bool {
+    fn cell_is_hazard(&self, cell_idx: CellIndex<T>) -> bool {
         self.get_cell(cell_idx).is_hazard()
     }
 
-    pub(crate) fn cell_is_snake_head(&self, cell_idx: CellIndex<T>) -> bool {
+    fn cell_is_snake_head(&self, cell_idx: CellIndex<T>) -> bool {
         self.get_cell(cell_idx).is_head()
     }
 
-    pub(crate) fn cell_is_food(&self, cell_idx: CellIndex<T>) -> bool {
+    fn cell_is_food(&self, cell_idx: CellIndex<T>) -> bool {
         self.get_cell(cell_idx).is_food()
     }
 
-    pub(crate) fn cell_is_body(&self, cell_idx: CellIndex<T>) -> bool {
+    fn cell_is_body(&self, cell_idx: CellIndex<T>) -> bool {
         self.get_cell(cell_idx).is_body()
     }
 }
@@ -883,7 +890,8 @@ mod test {
 
     #[test]
     fn test_set_hazard() {
-        let mut c: Cell<u8> = Cell::food();
+        let mut c: Cell<u8> = Cell::empty();
+        c.set_food();
         assert!(c.is_food());
         c.set_hazard();
         eprintln!("{:#08b}", c.flags);
@@ -905,7 +913,7 @@ mod test {
     }
     #[test]
     fn test_set_food() {
-        let mut c: Cell<u8> = Cell::food();
+        let mut c: Cell<u8> = Cell::empty();
         c.set_food();
         c.set_hazard();
         eprintln!("{:#08b}", c.flags);

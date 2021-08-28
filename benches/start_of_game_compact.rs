@@ -70,7 +70,6 @@ fn late_stage_vec_repr(c: &mut Criterion) {
     let game_fixture = include_str!("../fixtures/late_stage.json");
     let g: Result<DEGame, _> = serde_json::from_slice(game_fixture.as_bytes());
     let g = g.expect("the json literal is valid");
-    let snake_id_mapping = build_snake_id_map(&g);
     let instruments = Instruments {};
     c.bench_function("vec late stage", |b| {
         b.iter(|| bench_non_compact_full(black_box(&g), &instruments))
@@ -80,9 +79,7 @@ fn bench_vec_repr_start_of_game(c: &mut Criterion) {
     let game_fixture = include_str!("../fixtures/start_of_game.json");
     let g: Result<DEGame, _> = serde_json::from_slice(game_fixture.as_bytes());
     let g = g.expect("the json literal is valid");
-    let snake_id_mapping = build_snake_id_map(&g);
     let instruments = Instruments {};
-    let keys = snake_id_mapping.keys().cloned().collect::<Vec<_>>();
     c.bench_function("vec game start of game", |b| {
         b.iter(|| bench_this_2(black_box(&g), &instruments))
     });

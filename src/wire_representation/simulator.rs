@@ -31,18 +31,21 @@ impl BattleSnakeResult {
         }
     }
 
-    pub(crate) fn is_dead(&self) -> bool {
+    #[allow(dead_code)]
+    pub fn is_dead(&self) -> bool {
         matches!(self, BattleSnakeResult::Dead(_, _))
     }
 
-    pub(crate) fn body(&self) -> &VecDeque<Position> {
+    #[allow(dead_code)]
+    pub fn body(&self) -> &VecDeque<Position> {
         match self {
             &BattleSnakeResult::Ok(ref x) => &x.body,
             &BattleSnakeResult::Dead(_, ref x) => &x.body,
         }
     }
 
-    pub(crate) fn head(&self) -> Position {
+    #[allow(dead_code)]
+    pub fn head(&self) -> Position {
         match self {
             &BattleSnakeResult::Ok(ref x) => x.head,
             &BattleSnakeResult::Dead(_, ref x) => x.head,

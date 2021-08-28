@@ -1,4 +1,7 @@
+#![allow(missing_docs)]
+/// types to match the battlesnake wire representation
 mod simulator;
+
 
 use crate::compact_representation::{CellBoard, CellNum};
 use crate::types::{
@@ -12,6 +15,7 @@ use std::collections::VecDeque;
 use std::error::Error;
 use std::fmt;
 
+/// Struct that matches the `battlesnake` object from the wire representation
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct BattleSnake {
     pub id: String,
@@ -23,6 +27,7 @@ pub struct BattleSnake {
     pub actual_length: Option<i32>,
 }
 
+/// Struct that matches the `position` object from the wire representation
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Position {
     pub x: i32,
