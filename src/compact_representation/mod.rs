@@ -51,9 +51,10 @@ impl CellNum for u16 {
     }
 }
 
+/// wrapper type for an index in to the board
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[repr(transparent)]
-struct CellIndex<T: CellNum>(pub T);
+pub struct CellIndex<T: CellNum>(pub T);
 
 impl<T: CellNum> CellIndex<T> {
     fn new(pos: Position, width: u8) -> Self {
@@ -504,31 +505,38 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
         })
     }
 
-    fn cell_is_snake_body_piece(&self, current_index: CellIndex<T>) -> bool {
+    /// Determines if this cell contains exactly a snake's body piece, ignoring heads, double stacks and triple stacks
+    pub fn cell_is_snake_body_piece(&self, current_index: CellIndex<T>) -> bool {
         self.get_cell(current_index).is_snake_body_piece()
     }
 
-    fn cell_is_double_stacked_piece(&self, current_index: CellIndex<T>) -> bool {
+    /// determines if this cell is double stacked (e.g. a tail that has hit a food)
+    pub fn cell_is_double_stacked_piece(&self, current_index: CellIndex<T>) -> bool {
         self.get_cell(current_index).is_double_stacked_piece()
     }
 
-    fn cell_is_triple_stacked_piece(&self, current_index: CellIndex<T>) -> bool {
+    /// determines if this cell is triple stacked (the snake at the start of the game)
+    pub fn cell_is_triple_stacked_piece(&self, current_index: CellIndex<T>) -> bool {
         self.get_cell(current_index).is_triple_stacked_piece()
     }
 
-    fn cell_is_hazard(&self, cell_idx: CellIndex<T>) -> bool {
+    /// determines if this cell is a hazard
+    pub fn cell_is_hazard(&self, cell_idx: CellIndex<T>) -> bool {
         self.get_cell(cell_idx).is_hazard()
     }
 
-    fn cell_is_snake_head(&self, cell_idx: CellIndex<T>) -> bool {
+    /// determines if this cell is a snake head (including triple stacked)
+    pub fn cell_is_snake_head(&self, cell_idx: CellIndex<T>) -> bool {
         self.get_cell(cell_idx).is_head()
     }
 
-    fn cell_is_food(&self, cell_idx: CellIndex<T>) -> bool {
+    /// determines if this cell is a food
+    pub fn cell_is_food(&self, cell_idx: CellIndex<T>) -> bool {
         self.get_cell(cell_idx).is_food()
     }
 
-    fn cell_is_body(&self, cell_idx: CellIndex<T>) -> bool {
+    /// determines if this cell is a snake body piece (including double stacked)
+    pub fn cell_is_body(&self, cell_idx: CellIndex<T>) -> bool {
         self.get_cell(cell_idx).is_body()
     }
 }
