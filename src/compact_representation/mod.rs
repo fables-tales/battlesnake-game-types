@@ -1,6 +1,6 @@
 //! A compact board representation that is efficient for simulation
-// you almost certainly want to use the `convert_from_game` method to
-// cast from a json represention to a `CellBoard`
+/// you almost certainly want to use the `convert_from_game` method to
+/// cast from a json represention to a `CellBoard`
 use crate::types::{
     RandomReasonableMovesGame, SnakeIDGettableGame, SnakeIDMap, SnakeId, VictorDeterminableGame,
     YouDeterminableGame,

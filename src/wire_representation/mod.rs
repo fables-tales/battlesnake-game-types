@@ -1,5 +1,5 @@
 #![allow(missing_docs)]
-/// types to match the battlesnake wire representation
+//! types to match the battlesnake wire representation
 mod simulator;
 
 
