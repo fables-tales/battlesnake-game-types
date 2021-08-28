@@ -1,10 +1,7 @@
 //! A compact board representation that is efficient for simulation
 /// you almost certainly want to use the `convert_from_game` method to
 /// cast from a json represention to a `CellBoard`
-use crate::types::{
-    RandomReasonableMovesGame, SnakeIDGettableGame, SnakeIDMap, SnakeId, VictorDeterminableGame,
-    YouDeterminableGame,
-};
+use crate::types::{HeadGettableGame, RandomReasonableMovesGame, SnakeIDGettableGame, SnakeIDMap, SnakeId, VictorDeterminableGame, YouDeterminableGame};
 use crate::wire_representation::Game;
 use fxhash::FxHashSet;
 use itertools::Itertools;
@@ -57,15 +54,18 @@ impl CellNum for u16 {
 pub struct CellIndex<T: CellNum>(pub T);
 
 impl<T: CellNum> CellIndex<T> {
-    fn new(pos: Position, width: u8) -> Self {
+    /// makes a new cell index from a position, needs to know the width of the board
+    pub fn new(pos: Position, width: u8) -> Self {
         Self(T::from_i32(pos.y * width as i32 + pos.x))
     }
 
-    fn from_i32(i: i32) -> Self {
+    /// makes a cellindex from an i32
+    pub fn from_i32(i: i32) -> Self {
         Self(T::from_i32(i))
     }
 
-    fn into_position(self, width: u8) -> Position {
+    /// converts a cellindex to a position
+    pub fn into_position(self, width: u8) -> Position {
         let y = (self.0.as_usize() as i32 / width as i32) as i32;
         let x = (self.0.as_usize() as i32 % width as i32) as i32;
         Position { x, y }
@@ -557,6 +557,20 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> SnakeIDGettab
     }
 }
 
+impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> HeadGettableGame for CellBoard<T, BOARD_SIZE, MAX_SNAKES> {
+    type NativePositionType = CellIndex<T>;
+
+    fn get_head_as_position(&self, snake_id: &Self::SnakeIDType) -> crate::wire_representation::Position {
+        let idx = self.heads[snake_id.0.as_usize()];
+        let width = (BOARD_SIZE as f32).sqrt() as u8;
+        idx.into_position(width)
+    }
+
+    fn get_head_as_native_position(&self, snake_id: &Self::SnakeIDType) -> Self::NativePositionType {
+        self.heads[snake_id.0.as_usize()]
+    }
+}
+
 impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> YouDeterminableGame
     for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
@@ -849,6 +863,17 @@ mod test {
         let g: Result<DEGame, _> = serde_json::from_slice(game_fixture.as_bytes());
         let g = g.expect("the json literal is valid");
         test_simulation_equivalents(g);
+    }
+
+    #[test]
+    fn test_head_gettable() {
+        let game_fixture = include_str!("../../fixtures/late_stage.json");
+        let g: Result<DEGame, _> = serde_json::from_slice(game_fixture.as_bytes());
+        let g = g.expect("the json literal is valid");
+        let snake_id_mapping = build_snake_id_map(&g);
+        let compact: CellBoard4Snakes11x11 = g.as_cell_board(&snake_id_mapping).unwrap();
+        assert_eq!(compact.get_head_as_position(&SnakeId(0)), Position {x: 4, y: 6});
+        assert_eq!(compact.get_head_as_native_position(&SnakeId(0)), CellIndex(6*11+4));
     }
 
     #[test]

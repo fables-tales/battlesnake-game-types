@@ -168,6 +168,18 @@ pub trait SimulableGame<T: SimulatorInstruments>: std::fmt::Debug + Sized {
     ) -> Vec<(Vec<(Self::SnakeIDType, Move)>, Self)>;
 }
 
+/// A game for which the head of the current snake can be got.
+pub trait HeadGettableGame: SnakeIDGettableGame {
+    /// the native position type for this board
+    type NativePositionType;
+
+    /// get the head position for a given snake id, as a position struct (slow for simulation)
+    fn get_head_as_position(&self, snake_id: &Self::SnakeIDType) -> crate::wire_representation::Position;
+    
+    /// get the head position for a given snake as some "native" type for this game
+    fn get_head_as_native_position(&self, snake_id: &Self::SnakeIDType) -> Self::NativePositionType;
+}
+
 /// a game for which random reasonable moves for a given snake can be determined. e.g. do not collide with yourself
 pub trait RandomReasonableMovesGame {
     #[allow(missing_docs)]
