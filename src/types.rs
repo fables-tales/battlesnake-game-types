@@ -84,6 +84,13 @@ impl Move {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct SnakeId(pub u8);
 
+impl SnakeId {
+    /// convert this snake ID to a usize
+    pub fn as_usize(&self) -> usize {
+        self.0 as usize
+    }
+}
+
 /// builds a snake ID map for a given game, mapping snakes to
 /// integers. The snake in "you" is always ID 0. Instead of
 /// calling this on every game you are given, you should call

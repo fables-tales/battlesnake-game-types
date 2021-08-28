@@ -223,6 +223,14 @@ impl<T: CellNum> Cell<T> {
         self.id = sid;
         self.idx = next_pos;
     }
+
+    fn get_snake_id(&self) -> Option<SnakeId> {
+        if self.is_body_segment() || self.is_head() {
+            Some(self.id)
+        } else {
+            None
+        }
+    }
 }
 
 /// A compact board representation that is significantly faster for simulation than
@@ -400,7 +408,8 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
         self.cells[cell_index.0.as_usize()]
     }
 
-    fn off_board(&self, position: Position, width: u8) -> bool {
+    /// determines if a given position is not on the board
+    pub fn off_board(&self, position: Position, width: u8) -> bool {
         position.x < 0 || position.x >= width as i32 || position.y < 0 || position.y >= width as i32
     }
 
@@ -503,6 +512,12 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
         } else {
             BattleSnakeResult::Dead(new_positions)
         })
+    }
+
+
+    /// gets the snake ID at a given index, returns None if the provided index is not a snake cell
+    pub fn get_snake_id_at(&self, index: CellIndex<T>) -> Option<SnakeId> {
+        self.get_cell(index).get_snake_id()
     }
 
     /// Determines if this cell contains exactly a snake's body piece, ignoring heads, double stacks and triple stacks
