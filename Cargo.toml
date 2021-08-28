@@ -5,6 +5,8 @@ authors = ["Penelope Phippen <penelope@hey.com>"]
 edition = "2018"
 description = "game types for play.battlesnake.com"
 license = "Apache-2.0"
+repository = "https://github.com/penelopezone/battlesnake-game-types"
+documentation = "https://docs.rs/battlesnake-game-types"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
