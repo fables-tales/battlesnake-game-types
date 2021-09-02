@@ -67,6 +67,17 @@ impl Move {
         }
     }
 
+    /// converts a usize index to a move
+    pub fn from_index(index: usize) -> Move {
+        match index {
+            0 => Move::Up,
+            1 => Move::Down,
+            2 => Move::Left,
+            3 => Move::Right,
+            _ => panic!("invalid index"),
+        }
+    }
+
     #[allow(dead_code)]
     /// checks if a given move is not opposibe this move. e.g. Up is not opposite to Left, but is opposite to Down
     pub fn is_not_opposite(&self, other: &Move) -> bool {

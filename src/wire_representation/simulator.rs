@@ -4,8 +4,6 @@ use super::{BattleSnake, Game, Move, Position, SimulatorInstruments};
 use std::collections::{HashMap, VecDeque};
 use std::time::Instant;
 
-const HAZARD_DAMAGE: i32 = 15;
-
 pub struct Simulator<'a> {
     g: &'a Game,
 }
@@ -181,6 +179,9 @@ impl<'a> Simulator<'a> {
         new_snake.body.pop_back();
         if !self.g.board.food.contains(&new_head) {
             new_snake.health -= 1;
+            if self.g.board.hazards.contains(&new_head) {
+                new_snake.health -= self.g.game.ruleset.settings.as_ref().map(|o| o.hazard_damage_per_turn).unwrap_or(15);
+            }
         } else {
             let last = *new_snake.body.back().expect("it's nonempty");
             new_snake.body.push_back(last);
@@ -193,9 +194,6 @@ impl<'a> Simulator<'a> {
             return Some(BattleSnakeResult::Dead(s.id.clone(), new_snake));
         }
         new_snake.body.push_front(new_head);
-        if self.g.board.hazards.contains(&new_head) {
-            new_snake.health -= HAZARD_DAMAGE;
-        }
         if new_snake.health <= 0 {
             return Some(BattleSnakeResult::Dead(s.id.clone(), new_snake));
         }

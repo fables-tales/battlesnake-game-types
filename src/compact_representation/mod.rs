@@ -17,7 +17,6 @@ use crate::{
     types::{Move, SimulableGame, SimulatorInstruments},
     wire_representation::Position,
 };
-const HAZARD_DAMAGE: i32 = 15;
 
 /// Wrapper type for numbers to allow for shrinking board sizes
 pub trait CellNum:
@@ -237,6 +236,7 @@ impl<T: CellNum> Cell<T> {
 /// `battlesnake_game_types::wire_representation::Game`.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct CellBoard<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> {
+    hazard_damage: u8,
     cells: [Cell<T>; BOARD_SIZE],
     healths: [u8; MAX_SNAKES],
     heads: [CellIndex<T>; MAX_SNAKES],
@@ -402,6 +402,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
             heads,
             healths,
             lengths,
+            hazard_damage: game.game.ruleset.settings.as_ref().map(|s| s.hazard_damage_per_turn).unwrap_or(15) as u8,
         })
     }
     fn get_cell(&self, cell_index: CellIndex<T>) -> Cell<T> {
@@ -411,6 +412,16 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
     /// determines if a given position is not on the board
     pub fn off_board(&self, position: Position, width: u8) -> bool {
         position.x < 0 || position.x >= width as i32 || position.y < 0 || position.y >= width as i32
+    }
+
+    /// Get the health for a given snake
+    pub fn get_health(&self, snake_id: SnakeId) -> u8 {
+        self.healths[snake_id.0 as usize]
+    }
+
+    /// Get the length for a given snake
+    pub fn get_length(&self, snake_id: SnakeId) -> u16 {
+        self.lengths[snake_id.0 as usize]
     }
 
     fn forward_simulate(&self, width: u8, sid: SnakeId, mv: Move) -> Option<BattleSnakeResult<T>> {
@@ -781,10 +792,10 @@ impl<T: SimulatorInstruments, N: CellNum, const BOARD_SIZE: usize, const MAX_SNA
                             } else {
                                 new_game.healths[sid.0 as usize] =
                                     new_game.healths[sid.0 as usize].saturating_sub(1);
-                            }
-                            if new_game.cell_is_hazard(head_pos) {
-                                new_game.healths[sid.0 as usize] = new_game.healths[sid.0 as usize]
-                                    .saturating_sub(HAZARD_DAMAGE as u8);
+                                if new_game.cell_is_hazard(head_pos) {
+                                    new_game.healths[sid.0 as usize] = new_game.healths[sid.0 as usize]
+                                        .saturating_sub(self.hazard_damage);
+                                }
                             }
                             if new_game.healths[sid.0 as usize] == 0 {
                                 new_game.kill(*sid);

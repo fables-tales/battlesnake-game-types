@@ -1,7 +1,12 @@
 
 {
     "game": {
-        "id": "bees"
+        "id": "bees",
+        "ruleset": {
+            "name": "standard",
+            "version": "bees"
+
+        }
     },
     "you": {
                 "id": "bees",

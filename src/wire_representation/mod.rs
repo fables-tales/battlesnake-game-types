@@ -104,6 +104,31 @@ impl fmt::Display for Board {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct NestedGame {
     pub id: String,
+    pub ruleset: Ruleset,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct Ruleset {
+    pub name: String,
+    pub version: String, 
+    pub settings: Option<Settings>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Settings {
+    #[serde(rename="foodSpawnChance")]
+    pub food_spawn_chance: i32,
+    #[serde(rename="minimumFood")]
+    pub minimum_food: i32,
+    #[serde(rename="hazardDamagePerTurn")]
+    pub hazard_damage_per_turn: i32,
+    pub royale: Option<RoyaleSettings>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RoyaleSettings {
+    #[serde(rename="shrinkEveryNTurns")]
+    pub shrink_every_n_turns: i32,
 }
 
 /// Root object from the battlesnake server in start, move, and end requests, you
@@ -116,6 +141,7 @@ pub struct NestedGame {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Game {
     pub you: BattleSnake,
+    /// optional, so as to not break backwards compatibility
     pub board: Board,
     pub turn: i32,
     pub game: NestedGame,
