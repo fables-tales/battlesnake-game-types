@@ -4,8 +4,9 @@ mod simulator;
 
 use crate::compact_representation::{CellBoard, CellNum};
 use crate::types::{
-    Move, RandomReasonableMovesGame, SimulableGame, SimulatorInstruments, SnakeIDGettableGame,
-    SnakeIDMap, SnakeMove, Vector, VictorDeterminableGame, YouDeterminableGame,
+    LengthGettableGame, Move, RandomReasonableMovesGame, SimulableGame, SimulatorInstruments,
+    SnakeIDGettableGame, SnakeIDMap, SnakeMove, Vector, VictorDeterminableGame,
+    YouDeterminableGame,
 };
 use rand::prelude::IteratorRandom;
 use rand::thread_rng;
@@ -238,6 +239,20 @@ impl YouDeterminableGame for Game {
     /// get the id for you for a given game
     fn you_id(&self) -> &Self::SnakeIDType {
         &self.you.id
+    }
+}
+
+impl LengthGettableGame for Game {
+    type LengthType = usize;
+
+    fn get_length(&self, snake_id: &Self::SnakeIDType) -> Self::LengthType {
+        self.board
+            .snakes
+            .iter()
+            .find(|s| &s.id == snake_id)
+            .unwrap()
+            .body
+            .len()
     }
 }
 

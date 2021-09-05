@@ -2,8 +2,9 @@
 /// you almost certainly want to use the `convert_from_game` method to
 /// cast from a json represention to a `CellBoard`
 use crate::types::{
-    HeadGettableGame, RandomReasonableMovesGame, SnakeIDGettableGame, SnakeIDMap, SnakeId,
-    VictorDeterminableGame, YouDeterminableGame,
+    FoodGettableGame, HeadGettableGame, HealthGettabkeGame, LengthGettableGame,
+    RandomReasonableMovesGame, SnakeIDGettableGame, SnakeIDMap, SnakeId, VictorDeterminableGame,
+    YouDeterminableGame,
 };
 use crate::wire_representation::Game;
 use fxhash::FxHashSet;
@@ -272,7 +273,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> Display
     for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let width = (BOARD_SIZE as f32).sqrt() as u8;
+        let width = Self::width();
         let height = width;
         writeln!(f)?;
         for y in 0..height {
@@ -592,6 +593,11 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
     pub fn cell_is_body(&self, cell_idx: CellIndex<T>) -> bool {
         self.get_cell(cell_idx).is_body()
     }
+
+    /// determin the width of the CellBoard
+    fn width() -> u8 {
+        (BOARD_SIZE as f32).sqrt() as u8
+    }
 }
 
 impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> SnakeIDGettableGame
@@ -620,7 +626,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> HeadGettableG
         snake_id: &Self::SnakeIDType,
     ) -> crate::wire_representation::Position {
         let idx = self.heads[snake_id.0.as_usize()];
-        let width = (BOARD_SIZE as f32).sqrt() as u8;
+        let width = Self::width();
         idx.into_position(width)
     }
 
@@ -629,6 +635,28 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> HeadGettableG
         snake_id: &Self::SnakeIDType,
     ) -> Self::NativePositionType {
         self.heads[snake_id.0.as_usize()]
+    }
+}
+
+impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> FoodGettableGame
+    for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
+{
+    type NativePositionType = CellIndex<T>;
+
+    fn get_all_food_as_positions(&self) -> Vec<crate::wire_representation::Position> {
+        self.cells
+            .iter()
+            .filter(|c| c.is_food())
+            .map(|c| c.idx.into_position(Self::width()))
+            .collect()
+    }
+
+    fn get_all_food_as_native_positions(&self) -> Vec<Self::NativePositionType> {
+        self.cells
+            .iter()
+            .filter(|c| c.is_food())
+            .map(|c| c.idx)
+            .collect()
     }
 }
 
@@ -643,6 +671,26 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> YouDeterminab
 
     fn you_id(&self) -> &Self::SnakeIDType {
         &SnakeId(0)
+    }
+}
+
+impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> LengthGettableGame
+    for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
+{
+    type LengthType = u16;
+
+    fn get_length(&self, snake_id: &Self::SnakeIDType) -> Self::LengthType {
+        self.lengths[snake_id.0.as_usize()]
+    }
+}
+
+impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> HealthGettabkeGame
+    for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
+{
+    type HealthType = u8;
+
+    fn get_health(&self, snake_id: &Self::SnakeIDType) -> Self::HealthType {
+        self.healths[snake_id.0.as_usize()]
     }
 }
 
@@ -685,7 +733,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> RandomReasona
     type SnakeIDType = SnakeId;
 
     fn random_reasonable_move_for_each_snake(&self) -> Vec<(Self::SnakeIDType, Move)> {
-        let width = (BOARD_SIZE as f32).sqrt() as u8;
+        let width = Self::width();
         self.healths
             .iter()
             .enumerate()
@@ -724,7 +772,7 @@ impl<T: SimulatorInstruments, N: CellNum, const BOARD_SIZE: usize, const MAX_SNA
         snake_ids_and_moves: Vec<(Self::SnakeIDType, Vec<crate::types::Move>)>,
     ) -> Vec<(Vec<(Self::SnakeIDType, crate::types::Move)>, Self)> {
         let start = Instant::now();
-        let width = (BOARD_SIZE as f32).sqrt() as u8;
+        let width = Self::width();
         let mut new_snake_bodies = (0..MAX_SNAKES)
             .into_iter()
             .map(|_| [None, None, None, None])
