@@ -37,16 +37,16 @@ impl BattleSnakeResult {
     #[allow(dead_code)]
     pub fn body(&self) -> &VecDeque<Position> {
         match self {
-            &BattleSnakeResult::Ok(ref x) => &x.body,
-            &BattleSnakeResult::Dead(_, ref x) => &x.body,
+            BattleSnakeResult::Ok(ref x) => &x.body,
+            BattleSnakeResult::Dead(_, ref x) => &x.body,
         }
     }
 
     #[allow(dead_code)]
     pub fn head(&self) -> Position {
         match self {
-            &BattleSnakeResult::Ok(ref x) => x.head,
-            &BattleSnakeResult::Dead(_, ref x) => x.head,
+            BattleSnakeResult::Ok(ref x) => x.head,
+            BattleSnakeResult::Dead(_, ref x) => x.head,
         }
     }
 }
@@ -146,12 +146,7 @@ impl<'a> Simulator<'a> {
                 .filter(|s| !kill_snakes.contains(&s.id))
                 .collect();
             if kill_snakes.contains(&self.g.you.id)
-                || new_game
-                    .board
-                    .snakes
-                    .iter()
-                    .find(|s| s.id == self.g.you.id)
-                    .is_none()
+                || !new_game.board.snakes.iter().any(|s| s.id == self.g.you.id)
             {
                 new_game.you.health = 0;
             }
@@ -180,7 +175,14 @@ impl<'a> Simulator<'a> {
         if !self.g.board.food.contains(&new_head) {
             new_snake.health -= 1;
             if self.g.board.hazards.contains(&new_head) {
-                new_snake.health -= self.g.game.ruleset.settings.as_ref().map(|o| o.hazard_damage_per_turn).unwrap_or(15);
+                new_snake.health -= self
+                    .g
+                    .game
+                    .ruleset
+                    .settings
+                    .as_ref()
+                    .map(|o| o.hazard_damage_per_turn)
+                    .unwrap_or(15);
             }
         } else {
             let last = *new_snake.body.back().expect("it's nonempty");

@@ -2,11 +2,10 @@
 //! types to match the battlesnake wire representation
 mod simulator;
 
-
 use crate::compact_representation::{CellBoard, CellNum};
 use crate::types::{
     Move, RandomReasonableMovesGame, SimulableGame, SimulatorInstruments, SnakeIDGettableGame,
-    SnakeIDMap, Vector, VictorDeterminableGame, YouDeterminableGame,
+    SnakeIDMap, SnakeMove, Vector, VictorDeterminableGame, YouDeterminableGame,
 };
 use rand::prelude::IteratorRandom;
 use rand::thread_rng;
@@ -110,24 +109,24 @@ pub struct NestedGame {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Ruleset {
     pub name: String,
-    pub version: String, 
+    pub version: String,
     pub settings: Option<Settings>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Settings {
-    #[serde(rename="foodSpawnChance")]
+    #[serde(rename = "foodSpawnChance")]
     pub food_spawn_chance: i32,
-    #[serde(rename="minimumFood")]
+    #[serde(rename = "minimumFood")]
     pub minimum_food: i32,
-    #[serde(rename="hazardDamagePerTurn")]
+    #[serde(rename = "hazardDamagePerTurn")]
     pub hazard_damage_per_turn: i32,
     pub royale: Option<RoyaleSettings>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RoyaleSettings {
-    #[serde(rename="shrinkEveryNTurns")]
+    #[serde(rename = "shrinkEveryNTurns")]
     pub shrink_every_n_turns: i32,
 }
 
@@ -150,11 +149,9 @@ pub struct Game {
 impl Game {
     pub fn you_are_winner(&self) -> bool {
         if self.you.health == 0 {
-            return false;
-        } else if self.board.snakes.len() == 1 && self.board.snakes[0].id == self.you.id {
-            return true;
+            false
         } else {
-            return false;
+            self.board.snakes.len() == 1 && self.board.snakes[0].id == self.you.id
         }
     }
 
@@ -192,7 +189,7 @@ impl Game {
                 });
                 (
                     s.id.clone(),
-                    moves.choose(&mut thread_rng()).unwrap_or(
+                    moves.choose(&mut thread_rng()).unwrap_or_else(|| {
                         Move::all()
                             .into_iter()
                             .filter(|mv| {
@@ -200,8 +197,8 @@ impl Game {
                                 new_head != s.body[1]
                             })
                             .choose(&mut thread_rng())
-                            .unwrap(),
-                    ),
+                            .unwrap()
+                    }),
                 )
             })
             .collect()
@@ -220,9 +217,8 @@ impl VictorDeterminableGame for Game {
             Some(
                 self.snake_ids()
                     .iter()
-                    .filter(|s| s != &self.you_id())
-                    .next()
-                    .unwrap_or(self.you_id())
+                    .find(|s| s != &self.you_id())
+                    .unwrap_or_else(|| self.you_id())
                     .clone(),
             )
         } else {
@@ -258,7 +254,7 @@ impl<T: SimulatorInstruments> SimulableGame<T> for Game {
         &self,
         instruments: &T,
         snake_ids_and_moves: Vec<(Self::SnakeIDType, Vec<Move>)>,
-    ) -> Vec<(Vec<(Self::SnakeIDType, Move)>, Game)> {
+    ) -> Vec<(Vec<SnakeMove<Self::SnakeIDType>>, Game)> {
         simulator::Simulator::new(self).simulate_with_moves(instruments, snake_ids_and_moves)
     }
 }

@@ -1,7 +1,10 @@
 //! A compact board representation that is efficient for simulation
 /// you almost certainly want to use the `convert_from_game` method to
 /// cast from a json represention to a `CellBoard`
-use crate::types::{HeadGettableGame, RandomReasonableMovesGame, SnakeIDGettableGame, SnakeIDMap, SnakeId, VictorDeterminableGame, YouDeterminableGame};
+use crate::types::{
+    HeadGettableGame, RandomReasonableMovesGame, SnakeIDGettableGame, SnakeIDMap, SnakeId,
+    VictorDeterminableGame, YouDeterminableGame,
+};
 use crate::wire_representation::Game;
 use fxhash::FxHashSet;
 use itertools::Itertools;
@@ -71,8 +74,6 @@ impl<T: CellNum> CellIndex<T> {
     }
 }
 
-
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 struct Cell<T: CellNum> {
     flags: u8,
@@ -123,7 +124,7 @@ impl<T: CellNum> Cell<T> {
     }
 
     fn set_hazard(&mut self) {
-        self.flags = self.flags | IS_HAZARD
+        self.flags |= IS_HAZARD
     }
 
     fn is_hazard(&self) -> bool {
@@ -131,7 +132,9 @@ impl<T: CellNum> Cell<T> {
     }
 
     fn is_body_segment(&self) -> bool {
-        self.is_snake_body_piece() || self.is_double_stacked_piece() || self.is_triple_stacked_piece()
+        self.is_snake_body_piece()
+            || self.is_double_stacked_piece()
+            || self.is_triple_stacked_piece()
     }
 
     fn is_head(&self) -> bool {
@@ -139,14 +142,14 @@ impl<T: CellNum> Cell<T> {
     }
 
     fn remove_snake(&mut self) {
-        if self.is_head() || self.is_body_segment() { 
+        if self.is_head() || self.is_body_segment() {
             self.remove();
         }
     }
 
     /// resets a cell to empty preserving the cell's hazard status
     fn remove(&mut self) {
-        let reset_to_empty = (self.flags & 0xff & !KIND_MASK) | EMPTY;
+        let reset_to_empty = (self.flags & !KIND_MASK) | EMPTY;
         self.flags = reset_to_empty;
         self.id = SnakeId(0);
         self.idx = CellIndex(T::from_i32(0));
@@ -164,25 +167,44 @@ impl<T: CellNum> Cell<T> {
         self.is_double_stacked_piece() || self.is_triple_stacked_piece()
     }
 
-
     fn empty() -> Self {
-        Cell { flags: EMPTY, id: SnakeId(0), idx: CellIndex(T::from_i32(0)) }
+        Cell {
+            flags: EMPTY,
+            id: SnakeId(0),
+            idx: CellIndex(T::from_i32(0)),
+        }
     }
 
     fn make_snake_head(sid: SnakeId, tail_index: CellIndex<T>) -> Self {
-        Cell { flags: SNAKE_HEAD, id: sid, idx: tail_index }
+        Cell {
+            flags: SNAKE_HEAD,
+            id: sid,
+            idx: tail_index,
+        }
     }
 
     fn make_body_piece(sid: SnakeId, next_index: CellIndex<T>) -> Self {
-        Cell { flags: SNAKE_BODY_PIECE, id: sid, idx: next_index }
+        Cell {
+            flags: SNAKE_BODY_PIECE,
+            id: sid,
+            idx: next_index,
+        }
     }
 
     fn make_double_stacked_piece(sid: SnakeId, next_index: CellIndex<T>) -> Self {
-        Cell { flags: DOUBLE_STACKED_PIECE, id: sid, idx: next_index }
+        Cell {
+            flags: DOUBLE_STACKED_PIECE,
+            id: sid,
+            idx: next_index,
+        }
     }
 
     fn make_triple_stacked_piece(sid: SnakeId) -> Self {
-        Cell { flags: TRIPLE_STACKED_PIECE, id: sid, idx: CellIndex(T::from_i32(0)) }
+        Cell {
+            flags: TRIPLE_STACKED_PIECE,
+            id: sid,
+            idx: CellIndex(T::from_i32(0)),
+        }
     }
 
     fn is_snake_body_piece(&self) -> bool {
@@ -201,7 +223,7 @@ impl<T: CellNum> Cell<T> {
         self.flags & KIND_MASK == SNAKE_BODY_PIECE || self.flags & KIND_MASK == DOUBLE_STACKED_PIECE
     }
 
-    fn set_food(&mut self) -> () {
+    fn set_food(&mut self) {
         self.flags = (self.flags & !KIND_MASK) | FOOD;
     }
 
@@ -402,7 +424,13 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
             heads,
             healths,
             lengths,
-            hazard_damage: game.game.ruleset.settings.as_ref().map(|s| s.hazard_damage_per_turn).unwrap_or(15) as u8,
+            hazard_damage: game
+                .game
+                .ruleset
+                .settings
+                .as_ref()
+                .map(|s| s.hazard_damage_per_turn)
+                .unwrap_or(15) as u8,
         })
     }
     fn get_cell(&self, cell_index: CellIndex<T>) -> Cell<T> {
@@ -481,8 +509,8 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
                 new_positions.push((next_index, 1));
                 current_index = next_index
             } else if self.cell_is_triple_stacked_piece(current_index) {
-                    new_positions.push((current_index, 2));
-                    break;
+                new_positions.push((current_index, 2));
+                break;
             } else {
                 panic!("wrong body segment type")
             }
@@ -491,7 +519,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
             new_positions.push((new_head_index, 1));
         }
 
-        if new_positions.len() < 1 {
+        if new_positions.is_empty() {
             let mut yolo_map = [vec![], vec![], vec![], vec![], vec![]];
             for (index, _) in &new_positions {
                 let key = index.0.as_usize() % yolo_map.len();
@@ -524,7 +552,6 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
             BattleSnakeResult::Dead(new_positions)
         })
     }
-
 
     /// gets the snake ID at a given index, returns None if the provided index is not a snake cell
     pub fn get_snake_id_at(&self, index: CellIndex<T>) -> Option<SnakeId> {
@@ -583,16 +610,24 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> SnakeIDGettab
     }
 }
 
-impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> HeadGettableGame for CellBoard<T, BOARD_SIZE, MAX_SNAKES> {
+impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> HeadGettableGame
+    for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
+{
     type NativePositionType = CellIndex<T>;
 
-    fn get_head_as_position(&self, snake_id: &Self::SnakeIDType) -> crate::wire_representation::Position {
+    fn get_head_as_position(
+        &self,
+        snake_id: &Self::SnakeIDType,
+    ) -> crate::wire_representation::Position {
         let idx = self.heads[snake_id.0.as_usize()];
         let width = (BOARD_SIZE as f32).sqrt() as u8;
         idx.into_position(width)
     }
 
-    fn get_head_as_native_position(&self, snake_id: &Self::SnakeIDType) -> Self::NativePositionType {
+    fn get_head_as_native_position(
+        &self,
+        snake_id: &Self::SnakeIDType,
+    ) -> Self::NativePositionType {
         self.heads[snake_id.0.as_usize()]
     }
 }
@@ -793,7 +828,8 @@ impl<T: SimulatorInstruments, N: CellNum, const BOARD_SIZE: usize, const MAX_SNA
                                 new_game.healths[sid.0 as usize] =
                                     new_game.healths[sid.0 as usize].saturating_sub(1);
                                 if new_game.cell_is_hazard(head_pos) {
-                                    new_game.healths[sid.0 as usize] = new_game.healths[sid.0 as usize]
+                                    new_game.healths[sid.0 as usize] = new_game.healths
+                                        [sid.0 as usize]
                                         .saturating_sub(self.hazard_damage);
                                 }
                             }
@@ -802,17 +838,20 @@ impl<T: SimulatorInstruments, N: CellNum, const BOARD_SIZE: usize, const MAX_SNA
                                 continue;
                             }
                             new_game.heads[sid.0 as usize] = head_pos;
-                            new_game.cells[head_pos.0.as_usize()].set_head(*sid, body[body.len() - 1].0);
+                            new_game.cells[head_pos.0.as_usize()]
+                                .set_head(*sid, body[body.len() - 1].0);
                             for i in 1..body.len() {
                                 let (pos, count) = body[i];
                                 // e.g. the head is element 0 and the first body piece is element 1;
                                 let (next_pos, _) = body[i - 1];
                                 match count {
                                     1 => {
-                                        new_game.cells[pos.0.as_usize()].set_body_piece(*sid, next_pos);
+                                        new_game.cells[pos.0.as_usize()]
+                                            .set_body_piece(*sid, next_pos);
                                     }
                                     2 => {
-                                        new_game.cells[pos.0.as_usize()].set_double_stacked(*sid, next_pos);
+                                        new_game.cells[pos.0.as_usize()]
+                                            .set_double_stacked(*sid, next_pos);
                                     }
                                     _ => panic!("invalid count: {}", count),
                                 }
@@ -898,8 +937,14 @@ mod test {
         let g = g.expect("the json literal is valid");
         let snake_id_mapping = build_snake_id_map(&g);
         let compact: CellBoard4Snakes11x11 = g.as_cell_board(&snake_id_mapping).unwrap();
-        assert_eq!(compact.get_head_as_position(&SnakeId(0)), Position {x: 4, y: 6});
-        assert_eq!(compact.get_head_as_native_position(&SnakeId(0)), CellIndex(6*11+4));
+        assert_eq!(
+            compact.get_head_as_position(&SnakeId(0)),
+            Position { x: 4, y: 6 }
+        );
+        assert_eq!(
+            compact.get_head_as_native_position(&SnakeId(0)),
+            CellIndex(6 * 11 + 4)
+        );
     }
 
     #[test]
