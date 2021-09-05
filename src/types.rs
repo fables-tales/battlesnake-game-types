@@ -167,17 +167,21 @@ pub trait VictorDeterminableGame: std::fmt::Debug {
     fn get_winner(&self) -> Option<Self::SnakeIDType>;
 }
 
+/// This represents a single move for a single snake
+pub type SnakeMove<T> = (T, Move);
+
 /// a game for which future states can be simulated
 pub trait SimulableGame<T: SimulatorInstruments>: std::fmt::Debug + Sized {
     #[allow(missing_docs)]
     type SnakeIDType;
+
     /// simulates all possible future games for a given game returning the snake ids, moves that
     /// got to a given state, plus that state
     fn simulate(
         &self,
         instruments: &T,
         snake_ids: Vec<Self::SnakeIDType>,
-    ) -> Vec<(Vec<(Self::SnakeIDType, Move)>, Self)> {
+    ) -> Vec<(Vec<SnakeMove<Self::SnakeIDType>>, Self)> {
         let moves_to_simulate = Move::all();
         let build = snake_ids
             .into_iter()
@@ -191,7 +195,7 @@ pub trait SimulableGame<T: SimulatorInstruments>: std::fmt::Debug + Sized {
         &self,
         instruments: &T,
         snake_ids_and_moves: Vec<(Self::SnakeIDType, Vec<Move>)>,
-    ) -> Vec<(Vec<(Self::SnakeIDType, Move)>, Self)>;
+    ) -> Vec<(Vec<SnakeMove<Self::SnakeIDType>>, Self)>;
 }
 
 /// A game for which the head of the current snake can be got.
@@ -200,10 +204,14 @@ pub trait HeadGettableGame: SnakeIDGettableGame {
     type NativePositionType;
 
     /// get the head position for a given snake id, as a position struct (slow for simulation)
-    fn get_head_as_position(&self, snake_id: &Self::SnakeIDType) -> crate::wire_representation::Position;
-    
+    fn get_head_as_position(
+        &self,
+        snake_id: &Self::SnakeIDType,
+    ) -> crate::wire_representation::Position;
+
     /// get the head position for a given snake as some "native" type for this game
-    fn get_head_as_native_position(&self, snake_id: &Self::SnakeIDType) -> Self::NativePositionType;
+    fn get_head_as_native_position(&self, snake_id: &Self::SnakeIDType)
+        -> Self::NativePositionType;
 }
 
 /// a game for which random reasonable moves for a given snake can be determined. e.g. do not collide with yourself
