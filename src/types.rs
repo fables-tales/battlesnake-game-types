@@ -1,9 +1,10 @@
 //! various types that are useful for working with battlesnake
 use crate::wire_representation::Game;
+use serde::Serialize;
+use serde::{Serialize, Serializer};
 use std::collections::HashMap;
 use std::fmt;
 use std::time::Duration;
-use serde::{Serialize, Serializer};
 
 /// Represents the snake IDs for a given game. This should be established once on the `/start` request and then
 /// stored, so that `SnakeIds` are stable throughout the game.
@@ -19,7 +20,7 @@ pub struct Vector {
 }
 
 /// Represents a move
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 pub enum Move {
     #[allow(missing_docs)]
     Left,
@@ -212,6 +213,36 @@ pub trait HeadGettableGame: SnakeIDGettableGame {
     /// get the head position for a given snake as some "native" type for this game
     fn get_head_as_native_position(&self, snake_id: &Self::SnakeIDType)
         -> Self::NativePositionType;
+}
+
+/// A game for which the food on the board can be queries
+pub trait FoodGettableGame: SnakeIDGettableGame {
+    /// the native position type for this board
+    type NativePositionType;
+
+    /// get the head position for a given snake id, as a position struct (slow for simulation)
+    fn get_all_food_as_positions(&self) -> Vec<crate::wire_representation::Position>;
+
+    /// get the head position for a given snake as some "native" type for this game
+    fn get_all_food_as_native_positions(&self) -> Vec<Self::NativePositionType>;
+}
+
+/// A game for which the length of the current snake can be got.
+pub trait LengthGettableGame: SnakeIDGettableGame {
+    /// the length type for this game
+    type LengthType;
+
+    /// get the length for a given snake
+    fn get_length(&self, snake_id: &Self::SnakeIDType) -> Self::LengthType;
+}
+
+/// A game for which the length of the current snake can be got.
+pub trait HealthGettabkeGame: SnakeIDGettableGame {
+    /// the length type for this game
+    type HealthType;
+
+    /// get the length for a given snake
+    fn get_health(&self, snake_id: &Self::SnakeIDType) -> Self::HealthType;
 }
 
 /// a game for which random reasonable moves for a given snake can be determined. e.g. do not collide with yourself
