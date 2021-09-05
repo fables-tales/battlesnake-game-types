@@ -4,9 +4,9 @@ mod simulator;
 
 use crate::compact_representation::{CellBoard, CellNum};
 use crate::types::{
-    LengthGettableGame, Move, RandomReasonableMovesGame, SimulableGame, SimulatorInstruments,
-    SnakeIDGettableGame, SnakeIDMap, SnakeMove, Vector, VictorDeterminableGame,
-    YouDeterminableGame,
+    FoodGettableGame, HealthGettabkeGame, LengthGettableGame, Move, RandomReasonableMovesGame,
+    SimulableGame, SimulatorInstruments, SnakeIDGettableGame, SnakeIDMap, SnakeMove, Vector,
+    VictorDeterminableGame, YouDeterminableGame,
 };
 use rand::prelude::IteratorRandom;
 use rand::thread_rng;
@@ -253,6 +253,31 @@ impl LengthGettableGame for Game {
             .unwrap()
             .body
             .len()
+    }
+}
+
+impl FoodGettableGame for Game {
+    type NativePositionType = Position;
+
+    fn get_all_food_as_positions(&self) -> Vec<crate::wire_representation::Position> {
+        self.board.food.clone()
+    }
+
+    fn get_all_food_as_native_positions(&self) -> Vec<Self::NativePositionType> {
+        self.get_all_food_as_positions()
+    }
+}
+
+impl HealthGettabkeGame for Game {
+    type HealthType = i32;
+
+    fn get_health(&self, snake_id: &Self::SnakeIDType) -> Self::HealthType {
+        self.board
+            .snakes
+            .iter()
+            .find(|s| &s.id == snake_id)
+            .unwrap()
+            .health
     }
 }
 

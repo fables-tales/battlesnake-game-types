@@ -255,12 +255,12 @@ pub trait LengthGettableGame: SnakeIDGettableGame {
     fn get_length(&self, snake_id: &Self::SnakeIDType) -> Self::LengthType;
 }
 
-/// A game for which the length of the current snake can be got.
+/// A game for which the health of the current snake can be got.
 pub trait HealthGettabkeGame: SnakeIDGettableGame {
-    /// the length type for this game
+    /// the health type for this game
     type HealthType;
 
-    /// get the length for a given snake
+    /// get the health for a given snake
     fn get_health(&self, snake_id: &Self::SnakeIDType) -> Self::HealthType;
 }
 
