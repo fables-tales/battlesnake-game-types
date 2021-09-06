@@ -3,6 +3,7 @@ use crate::wire_representation::Game;
 use std::collections::HashMap;
 use std::fmt;
 use std::time::Duration;
+use serde::{Serialize, Serializer};
 
 /// Represents the snake IDs for a given game. This should be established once on the `/start` request and then
 /// stored, so that `SnakeIds` are stable throughout the game.
@@ -93,12 +94,19 @@ impl Move {
 
 /// token to represent a snake id
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[repr(transparent)]
 pub struct SnakeId(pub u8);
 
 impl SnakeId {
     /// convert this snake ID to a usize
     pub fn as_usize(&self) -> usize {
         self.0 as usize
+    }
+}
+
+impl Serialize for SnakeId {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_u8(self.0)
     }
 }
 
