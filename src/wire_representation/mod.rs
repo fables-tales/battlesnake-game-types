@@ -28,7 +28,7 @@ pub struct BattleSnake {
 }
 
 /// Struct that matches the `position` object from the wire representation
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct Position {
     pub x: i32,
     pub y: i32,
