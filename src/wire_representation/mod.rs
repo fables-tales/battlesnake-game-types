@@ -4,9 +4,9 @@ mod simulator;
 
 use crate::compact_representation::{CellBoard, CellNum};
 use crate::types::{
-    FoodGettableGame, HealthGettabkeGame, LengthGettableGame, Move, RandomReasonableMovesGame,
-    SimulableGame, SimulatorInstruments, SnakeIDGettableGame, SnakeIDMap, SnakeMove, Vector,
-    VictorDeterminableGame, YouDeterminableGame,
+    FoodGettableGame, HealthGettabkeGame, LengthGettableGame, Move, PositionGettableGame,
+    RandomReasonableMovesGame, SimulableGame, SimulatorInstruments, SnakeIDGettableGame,
+    SnakeIDMap, SnakeMove, Vector, VictorDeterminableGame, YouDeterminableGame,
 };
 use rand::prelude::IteratorRandom;
 use rand::thread_rng;
@@ -256,9 +256,11 @@ impl LengthGettableGame for Game {
     }
 }
 
-impl FoodGettableGame for Game {
+impl PositionGettableGame for Game {
     type NativePositionType = Position;
+}
 
+impl FoodGettableGame for Game {
     fn get_all_food_as_positions(&self) -> Vec<crate::wire_representation::Position> {
         self.board.food.clone()
     }

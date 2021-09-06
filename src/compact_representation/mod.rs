@@ -3,8 +3,8 @@
 /// cast from a json represention to a `CellBoard`
 use crate::types::{
     FoodGettableGame, HeadGettableGame, HealthGettabkeGame, LengthGettableGame,
-    RandomReasonableMovesGame, SnakeIDGettableGame, SnakeIDMap, SnakeId, VictorDeterminableGame,
-    YouDeterminableGame,
+    PositionGettableGame, RandomReasonableMovesGame, SnakeIDGettableGame, SnakeIDMap, SnakeId,
+    VictorDeterminableGame, YouDeterminableGame,
 };
 use crate::wire_representation::Game;
 use fxhash::FxHashSet;
@@ -52,7 +52,7 @@ impl CellNum for u16 {
 }
 
 /// wrapper type for an index in to the board
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
 #[repr(transparent)]
 pub struct CellIndex<T: CellNum>(pub T);
 
@@ -616,11 +616,15 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> SnakeIDGettab
     }
 }
 
-impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> HeadGettableGame
+impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> PositionGettableGame
     for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
     type NativePositionType = CellIndex<T>;
+}
 
+impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> HeadGettableGame
+    for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
+{
     fn get_head_as_position(
         &self,
         snake_id: &Self::SnakeIDType,
@@ -641,8 +645,6 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> HeadGettableG
 impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> FoodGettableGame
     for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
-    type NativePositionType = CellIndex<T>;
-
     fn get_all_food_as_positions(&self) -> Vec<crate::wire_representation::Position> {
         self.cells
             .iter()

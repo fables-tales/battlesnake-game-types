@@ -4,6 +4,7 @@ use serde::Serialize;
 use serde::{Serialize, Serializer};
 use std::collections::HashMap;
 use std::fmt;
+use std::hash::Hash;
 use std::time::Duration;
 
 /// Represents the snake IDs for a given game. This should be established once on the `/start` request and then
@@ -199,11 +200,14 @@ pub trait SimulableGame<T: SimulatorInstruments>: std::fmt::Debug + Sized {
     ) -> Vec<(Vec<SnakeMove<Self::SnakeIDType>>, Self)>;
 }
 
-/// A game for which the head of the current snake can be got.
-pub trait HeadGettableGame: SnakeIDGettableGame {
+/// A game for which board positions can be identified and returned
+pub trait PositionGettableGame {
     /// the native position type for this board
-    type NativePositionType;
+    type NativePositionType: Eq + Hash;
+}
 
+/// A game for which the head of the current snake can be got.
+pub trait HeadGettableGame: PositionGettableGame + SnakeIDGettableGame {
     /// get the head position for a given snake id, as a position struct (slow for simulation)
     fn get_head_as_position(
         &self,
@@ -216,10 +220,7 @@ pub trait HeadGettableGame: SnakeIDGettableGame {
 }
 
 /// A game for which the food on the board can be queries
-pub trait FoodGettableGame: SnakeIDGettableGame {
-    /// the native position type for this board
-    type NativePositionType;
-
+pub trait FoodGettableGame: PositionGettableGame + SnakeIDGettableGame {
     /// get the head position for a given snake id, as a position struct (slow for simulation)
     fn get_all_food_as_positions(&self) -> Vec<crate::wire_representation::Position>;
 
