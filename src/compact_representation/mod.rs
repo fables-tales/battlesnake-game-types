@@ -595,7 +595,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
     }
 
     /// determin the width of the CellBoard
-    fn width() -> u8 {
+    pub fn width() -> u8 {
         (BOARD_SIZE as f32).sqrt() as u8
     }
 }
