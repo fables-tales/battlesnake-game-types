@@ -54,6 +54,17 @@ impl Move {
         }
     }
 
+    /// create a Move from the given vector
+    pub fn from_vector(vector: Vector) -> Self {
+        match vector {
+            Vector { x: -1, y: 0 } => Self::Left,
+            Vector { x: 1, y: 0 } => Self::Right,
+            Vector { x: 0, y: 1 } => Self::Up,
+            Vector { x: 0, y: -1 } => Self::Down,
+            _ => panic!(),
+        }
+    }
+
     /// returns a vec of all possible moves
     pub fn all() -> Vec<Move> {
         vec![Move::Up, Move::Down, Move::Left, Move::Right]
@@ -146,10 +157,7 @@ pub trait SimulatorInstruments: std::fmt::Debug {
 }
 
 /// A game for which "you" is determinable
-pub trait YouDeterminableGame: std::fmt::Debug {
-    #[allow(missing_docs)]
-    type SnakeIDType;
-
+pub trait YouDeterminableGame: std::fmt::Debug + SnakeIDGettableGame {
     /// determines for a given game if a given snake id is you.
     fn is_you(&self, snake_id: &Self::SnakeIDType) -> bool;
 
@@ -237,12 +245,20 @@ pub trait LengthGettableGame: SnakeIDGettableGame {
 }
 
 /// A game for which the health of the current snake can be got.
-pub trait HealthGettabkeGame: SnakeIDGettableGame {
+pub trait HealthGettableGame: SnakeIDGettableGame {
     /// the health type for this game
-    type HealthType;
+    type HealthType: PartialEq;
+
+    /// A constant that defines what zero health means for the given game
+    const ZERO: Self::HealthType;
 
     /// get the health for a given snake
     fn get_health(&self, snake_id: &Self::SnakeIDType) -> Self::HealthType;
+
+    /// check wheterh a given snake is alive
+    fn is_alive(&self, snake_id: &Self::SnakeIDType) -> bool {
+        self.get_health(snake_id) == Self::ZERO
+    }
 }
 
 /// a game for which random reasonable moves for a given snake can be determined. e.g. do not collide with yourself

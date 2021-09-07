@@ -4,7 +4,7 @@ mod simulator;
 
 use crate::compact_representation::{CellBoard, CellNum};
 use crate::types::{
-    FoodGettableGame, HealthGettabkeGame, LengthGettableGame, Move, PositionGettableGame,
+    FoodGettableGame, HealthGettableGame, LengthGettableGame, Move, PositionGettableGame,
     RandomReasonableMovesGame, SimulableGame, SimulatorInstruments, SnakeIDGettableGame,
     SnakeIDMap, SnakeMove, Vector, VictorDeterminableGame, YouDeterminableGame,
 };
@@ -23,6 +23,7 @@ pub struct BattleSnake {
     pub head: Position,
     pub body: VecDeque<Position>,
     pub health: i32,
+    pub shout: Option<String>,
     #[serde(skip)]
     pub actual_length: Option<i32>,
 }
@@ -229,8 +230,6 @@ impl VictorDeterminableGame for Game {
 }
 
 impl YouDeterminableGame for Game {
-    type SnakeIDType = String;
-
     /// determines for a given game if a given snake id is you.
     fn is_you(&self, snake_id: &Self::SnakeIDType) -> bool {
         snake_id == &self.you.id
@@ -270,8 +269,9 @@ impl FoodGettableGame for Game {
     }
 }
 
-impl HealthGettabkeGame for Game {
+impl HealthGettableGame for Game {
     type HealthType = i32;
+    const ZERO: Self::HealthType = 0;
 
     fn get_health(&self, snake_id: &Self::SnakeIDType) -> Self::HealthType {
         self.board

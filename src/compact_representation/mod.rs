@@ -2,7 +2,7 @@
 /// you almost certainly want to use the `convert_from_game` method to
 /// cast from a json represention to a `CellBoard`
 use crate::types::{
-    FoodGettableGame, HeadGettableGame, HealthGettabkeGame, LengthGettableGame,
+    FoodGettableGame, HeadGettableGame, HealthGettableGame, LengthGettableGame,
     PositionGettableGame, RandomReasonableMovesGame, SnakeIDGettableGame, SnakeIDMap, SnakeId,
     VictorDeterminableGame, YouDeterminableGame,
 };
@@ -665,8 +665,6 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> FoodGettableG
 impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> YouDeterminableGame
     for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
-    type SnakeIDType = SnakeId;
-
     fn is_you(&self, snake_id: &Self::SnakeIDType) -> bool {
         snake_id.0 == 0
     }
@@ -686,10 +684,11 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> LengthGettabl
     }
 }
 
-impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> HealthGettabkeGame
+impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> HealthGettableGame
     for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
     type HealthType = u8;
+    const ZERO: Self::HealthType = 0;
 
     fn get_health(&self, snake_id: &Self::SnakeIDType) -> Self::HealthType {
         self.healths[snake_id.0.as_usize()]
