@@ -4,9 +4,10 @@ mod simulator;
 
 use crate::compact_representation::{CellBoard, CellNum};
 use crate::types::{
-    FoodGettableGame, HealthGettableGame, LengthGettableGame, Move, PositionGettableGame,
-    RandomReasonableMovesGame, SimulableGame, SimulatorInstruments, SnakeIDGettableGame,
-    SnakeIDMap, SnakeMove, Vector, VictorDeterminableGame, YouDeterminableGame,
+    FoodGettableGame, HeadGettableGame, HealthGettableGame, LengthGettableGame, Move,
+    PositionGettableGame, RandomReasonableMovesGame, SimulableGame, SimulatorInstruments,
+    SnakeIDGettableGame, SnakeIDMap, SnakeMove, Vector, VictorDeterminableGame,
+    YouDeterminableGame,
 };
 use rand::prelude::IteratorRandom;
 use rand::thread_rng;
@@ -208,8 +209,6 @@ impl Game {
 }
 
 impl VictorDeterminableGame for Game {
-    type SnakeIDType = String;
-
     fn is_over(&self) -> bool {
         self.you.health == 0 || self.board.snakes.len() == 1
     }
@@ -253,10 +252,26 @@ impl LengthGettableGame for Game {
             .body
             .len()
     }
+
+    fn get_length_i64(&self, snake_id: &Self::SnakeIDType) -> i64 {
+        self.get_length(snake_id) as i64
+    }
 }
 
 impl PositionGettableGame for Game {
     type NativePositionType = Position;
+
+    fn position_is_snake_body(&self, pos: Self::NativePositionType) -> bool {
+        self.board.snakes.iter().any(|s| s.body.contains(&pos))
+    }
+
+    fn position_from_native(&self, native: Self::NativePositionType) -> Position {
+        native
+    }
+
+    fn native_from_position(&self, pos: Position) -> Self::NativePositionType {
+        pos
+    }
 }
 
 impl FoodGettableGame for Game {
@@ -281,6 +296,10 @@ impl HealthGettableGame for Game {
             .unwrap()
             .health
     }
+
+    fn get_health_i64(&self, snake_id: &Self::SnakeIDType) -> i64 {
+        self.get_health(snake_id) as i64
+    }
 }
 
 impl SnakeIDGettableGame for Game {
@@ -290,8 +309,28 @@ impl SnakeIDGettableGame for Game {
     }
 }
 
+impl HeadGettableGame for Game {
+    fn get_head_as_position(
+        &self,
+        snake_id: &Self::SnakeIDType,
+    ) -> crate::wire_representation::Position {
+        self.get_head_as_native_position(snake_id)
+    }
+
+    fn get_head_as_native_position(
+        &self,
+        snake_id: &Self::SnakeIDType,
+    ) -> Self::NativePositionType {
+        self.board
+            .snakes
+            .iter()
+            .find(|s| &s.id == snake_id)
+            .unwrap()
+            .head
+    }
+}
+
 impl<T: SimulatorInstruments> SimulableGame<T> for Game {
-    type SnakeIDType = String;
     fn simulate_with_moves(
         &self,
         instruments: &T,
@@ -302,8 +341,6 @@ impl<T: SimulatorInstruments> SimulableGame<T> for Game {
 }
 
 impl RandomReasonableMovesGame for Game {
-    type SnakeIDType = String;
-
     fn random_reasonable_move_for_each_snake(&self) -> Vec<(String, Move)> {
         self.board
             .snakes

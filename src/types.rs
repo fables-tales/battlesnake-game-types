@@ -1,8 +1,8 @@
 //! various types that are useful for working with battlesnake
-use crate::wire_representation::Game;
+use crate::wire_representation::{Game, Position};
 use serde::{Serialize, Serializer};
 use std::collections::HashMap;
-use std::fmt;
+use std::fmt::{self, Debug};
 use std::hash::Hash;
 use std::time::Duration;
 
@@ -164,7 +164,8 @@ pub fn build_snake_id_map(g: &Game) -> SnakeIDMap {
 /// A game for which one can get the snake ids
 pub trait SnakeIDGettableGame {
     #[allow(missing_docs)]
-    type SnakeIDType;
+    type SnakeIDType: PartialEq + Debug + Serialize + Eq + Hash + Clone + Send;
+
     #[allow(missing_docs)]
     fn get_snake_ids(&self) -> Vec<Self::SnakeIDType>;
 }
@@ -185,9 +186,7 @@ pub trait YouDeterminableGame: std::fmt::Debug + SnakeIDGettableGame {
 }
 
 /// A game which can have it's winner determined
-pub trait VictorDeterminableGame: std::fmt::Debug {
-    #[allow(missing_docs)]
-    type SnakeIDType;
+pub trait VictorDeterminableGame: std::fmt::Debug + SnakeIDGettableGame {
     #[allow(missing_docs)]
     fn is_over(&self) -> bool;
 
@@ -199,10 +198,9 @@ pub trait VictorDeterminableGame: std::fmt::Debug {
 pub type SnakeMove<T> = (T, Move);
 
 /// a game for which future states can be simulated
-pub trait SimulableGame<T: SimulatorInstruments>: std::fmt::Debug + Sized {
-    #[allow(missing_docs)]
-    type SnakeIDType;
-
+pub trait SimulableGame<T: SimulatorInstruments>:
+    std::fmt::Debug + Sized + SnakeIDGettableGame
+{
     /// simulates all possible future games for a given game returning the snake ids, moves that
     /// got to a given state, plus that state
     fn simulate(
@@ -229,7 +227,16 @@ pub trait SimulableGame<T: SimulatorInstruments>: std::fmt::Debug + Sized {
 /// A game for which board positions can be identified and returned
 pub trait PositionGettableGame {
     /// the native position type for this board
-    type NativePositionType: Eq + Hash;
+    type NativePositionType: Eq + Hash + Clone + Ord + PartialOrd + Debug;
+
+    /// Check if the given position is a snake body
+    fn position_is_snake_body(&self, pos: Self::NativePositionType) -> bool;
+
+    /// Convert a position to the native type
+    fn position_from_native(&self, native: Self::NativePositionType) -> Position;
+
+    /// Convert a position to the native type
+    fn native_from_position(&self, pos: Position) -> Self::NativePositionType;
 }
 
 /// A game for which the head of the current snake can be got.
@@ -257,10 +264,13 @@ pub trait FoodGettableGame: PositionGettableGame + SnakeIDGettableGame {
 /// A game for which the length of the current snake can be got.
 pub trait LengthGettableGame: SnakeIDGettableGame {
     /// the length type for this game
-    type LengthType;
+    type LengthType: Ord + PartialOrd;
 
     /// get the length for a given snake
     fn get_length(&self, snake_id: &Self::SnakeIDType) -> Self::LengthType;
+
+    /// get the length for a given snake
+    fn get_length_i64(&self, snake_id: &Self::SnakeIDType) -> i64;
 }
 
 /// A game for which the health of the current snake can be got.
@@ -274,16 +284,17 @@ pub trait HealthGettableGame: SnakeIDGettableGame {
     /// get the health for a given snake
     fn get_health(&self, snake_id: &Self::SnakeIDType) -> Self::HealthType;
 
+    /// get the health for a given snake as an i64
+    fn get_health_i64(&self, snake_id: &Self::SnakeIDType) -> i64;
+
     /// check wheterh a given snake is alive
     fn is_alive(&self, snake_id: &Self::SnakeIDType) -> bool {
-        self.get_health(snake_id) == Self::ZERO
+        self.get_health(snake_id) != Self::ZERO
     }
 }
 
 /// a game for which random reasonable moves for a given snake can be determined. e.g. do not collide with yourself
-pub trait RandomReasonableMovesGame {
-    #[allow(missing_docs)]
-    type SnakeIDType;
+pub trait RandomReasonableMovesGame: SnakeIDGettableGame {
     #[allow(missing_docs)]
     fn random_reasonable_move_for_each_snake(&self) -> Vec<(Self::SnakeIDType, Move)>;
 }

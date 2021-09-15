@@ -620,6 +620,22 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> PositionGetta
     for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
     type NativePositionType = CellIndex<T>;
+
+    fn position_is_snake_body(&self, pos: Self::NativePositionType) -> bool {
+        let cell = self.get_cell(pos);
+
+        cell.is_body_segment()
+    }
+
+    fn position_from_native(&self, pos: Self::NativePositionType) -> Position {
+        let width = Self::width();
+
+        pos.into_position(width)
+    }
+
+    fn native_from_position(&self, pos: Position) -> Self::NativePositionType {
+        Self::NativePositionType::new(pos, Self::width())
+    }
 }
 
 impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> HeadGettableGame
@@ -682,6 +698,10 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> LengthGettabl
     fn get_length(&self, snake_id: &Self::SnakeIDType) -> Self::LengthType {
         self.lengths[snake_id.0.as_usize()]
     }
+
+    fn get_length_i64(&self, snake_id: &Self::SnakeIDType) -> i64 {
+        self.get_length(*snake_id) as i64
+    }
 }
 
 impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> HealthGettableGame
@@ -693,13 +713,15 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> HealthGettabl
     fn get_health(&self, snake_id: &Self::SnakeIDType) -> Self::HealthType {
         self.healths[snake_id.0.as_usize()]
     }
+
+    fn get_health_i64(&self, snake_id: &Self::SnakeIDType) -> i64 {
+        self.get_health(*snake_id) as i64
+    }
 }
 
 impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> VictorDeterminableGame
     for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
-    type SnakeIDType = SnakeId;
-
     fn is_over(&self) -> bool {
         self.healths[0] == 0 || self.healths.iter().filter(|h| **h != 0).count() <= 1
     }
@@ -731,8 +753,6 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> VictorDetermi
 impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> RandomReasonableMovesGame
     for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
-    type SnakeIDType = SnakeId;
-
     fn random_reasonable_move_for_each_snake(&self) -> Vec<(Self::SnakeIDType, Move)> {
         let width = Self::width();
         self.healths
@@ -764,8 +784,6 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> RandomReasona
 impl<T: SimulatorInstruments, N: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
     SimulableGame<T> for CellBoard<N, BOARD_SIZE, MAX_SNAKES>
 {
-    type SnakeIDType = SnakeId;
-
     #[allow(clippy::type_complexity)]
     fn simulate_with_moves(
         &self,
