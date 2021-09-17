@@ -1,6 +1,7 @@
 //! A compact board representation that is efficient for simulation
 /// you almost certainly want to use the `convert_from_game` method to
 /// cast from a json represention to a `CellBoard`
+use crate::types::NeighborDeterminableGame;
 use crate::types::{
     FoodGettableGame, HeadGettableGame, HealthGettableGame, LengthGettableGame,
     PositionGettableGame, RandomReasonableMovesGame, SnakeIDGettableGame, SnakeIDMap, SnakeId,
@@ -946,6 +947,47 @@ impl<T: SimulatorInstruments, N: CellNum, const BOARD_SIZE: usize, const MAX_SNA
         instruments.observe_simulation(start.elapsed());
 
         res
+    }
+}
+
+impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> NeighborDeterminableGame
+    for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
+{
+    fn possible_moves(
+        &self,
+        pos: &Self::NativePositionType,
+    ) -> Vec<(Move, Self::NativePositionType)> {
+        let width = ((11 * 11) as f32).sqrt() as u8;
+
+        Move::all()
+            .into_iter()
+            .map(|mv| {
+                let head_pos = pos.into_position(width);
+                let new_head = head_pos.add_vec(mv.to_vector());
+                let ci = CellIndex::new(new_head, width);
+
+                (mv, new_head, ci)
+            })
+            .filter(|(_mv, new_head, _)| !self.off_board(*new_head, width))
+            .map(|(mv, _, ci)| (mv, ci))
+            .collect()
+    }
+
+    fn neighbors(&self, pos: &Self::NativePositionType) -> std::vec::Vec<Self::NativePositionType> {
+        let width = ((11 * 11) as f32).sqrt() as u8;
+
+        Move::all()
+            .into_iter()
+            .map(|mv| {
+                let head_pos = pos.into_position(width);
+                let new_head = head_pos.add_vec(mv.to_vector());
+                let ci = CellIndex::new(new_head, width);
+
+                (new_head, ci)
+            })
+            .filter(|(new_head, _)| !self.off_board(*new_head, width))
+            .map(|(_, ci)| ci)
+            .collect()
     }
 }
 
