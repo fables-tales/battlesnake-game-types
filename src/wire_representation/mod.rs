@@ -5,14 +5,16 @@ mod simulator;
 use crate::compact_representation::{CellBoard, CellNum};
 use crate::types::{
     FoodGettableGame, HeadGettableGame, HealthGettableGame, LengthGettableGame, Move,
-    PositionGettableGame, RandomReasonableMovesGame, SimulableGame, SimulatorInstruments,
-    SnakeIDGettableGame, SnakeIDMap, SnakeMove, Vector, VictorDeterminableGame,
-    YouDeterminableGame,
+    NeighborDeterminableGame, PositionGettableGame, RandomReasonableMovesGame, ShoutGettableGame,
+    SimulableGame, SimulatorInstruments, SizeDeterminableGame, SnakeBodyGettableGame,
+    SnakeIDGettableGame, SnakeIDMap, SnakeMove, TurnDeterminableGame, Vector,
+    VictorDeterminableGame, YouDeterminableGame,
 };
 use rand::prelude::IteratorRandom;
 use rand::thread_rng;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
+use std::convert::TryInto;
 use std::error::Error;
 use std::fmt;
 
@@ -357,6 +359,69 @@ impl RandomReasonableMovesGame for Game {
                     moves.choose(&mut thread_rng()).unwrap_or(Move::Up),
                 )
             })
+            .collect()
+    }
+}
+
+impl NeighborDeterminableGame for Game {
+    fn neighbors(&self, pos: &Self::NativePositionType) -> Vec<Self::NativePositionType> {
+        Move::all()
+            .into_iter()
+            .map(|mv| pos.add_vec(mv.to_vector()))
+            .filter(|new_head| !self.off_board(*new_head))
+            .collect()
+    }
+
+    fn possible_moves(
+        &self,
+        pos: &Self::NativePositionType,
+    ) -> Vec<(Move, Self::NativePositionType)> {
+        Move::all()
+            .into_iter()
+            .map(|mv| (mv, pos.add_vec(mv.to_vector())))
+            .filter(|(_mv, new_head)| !self.off_board(*new_head))
+            .collect()
+    }
+}
+
+impl ShoutGettableGame for Game {
+    fn get_shout(&self, snake_id: &Self::SnakeIDType) -> Option<String> {
+        self.board
+            .snakes
+            .iter()
+            .find(|s| &s.id == snake_id)
+            .unwrap()
+            .shout
+            .clone()
+    }
+}
+
+impl SizeDeterminableGame for Game {
+    fn get_width(&self) -> u32 {
+        self.board.width
+    }
+
+    fn get_height(&self) -> u32 {
+        self.board.height
+    }
+}
+
+impl TurnDeterminableGame for Game {
+    fn turn(&self) -> u64 {
+        self.turn.try_into().unwrap()
+    }
+}
+
+impl SnakeBodyGettableGame for Game {
+    fn get_snake_body_vec(&self, snake_id: &Self::SnakeIDType) -> Vec<Self::NativePositionType> {
+        self.board
+            .snakes
+            .iter()
+            .find(|s| &s.id == snake_id)
+            .unwrap()
+            .body
+            .clone()
+            .into_iter()
             .collect()
     }
 }

@@ -299,6 +299,43 @@ pub trait RandomReasonableMovesGame: SnakeIDGettableGame {
     fn random_reasonable_move_for_each_snake(&self) -> Vec<(Self::SnakeIDType, Move)>;
 }
 
+/// a game for which the neighbors of a given Position can be determined
+pub trait NeighborDeterminableGame: PositionGettableGame {
+    /// returns the neighboring positions
+    fn neighbors(&self, pos: &Self::NativePositionType) -> Vec<Self::NativePositionType>;
+
+    /// returns the neighboring positions, and the Move required to get to each
+    fn possible_moves(
+        &self,
+        pos: &Self::NativePositionType,
+    ) -> Vec<(Move, Self::NativePositionType)>;
+}
+
+/// a game for which each snakes shout can be determined
+pub trait ShoutGettableGame: SnakeIDGettableGame {
+    /// get the shout for a given snake, if they shouted this turn
+    fn get_shout(&self, snake_id: &Self::SnakeIDType) -> Option<String>;
+}
+
+/// a game for which the size of the game board can be determined
+pub trait SizeDeterminableGame {
+    #[allow(missing_docs)]
+    fn get_width(&self) -> u32;
+    #[allow(missing_docs)]
+    fn get_height(&self) -> u32;
+}
+
+/// a game for which the current turn is determinable
+pub trait TurnDeterminableGame {
+    #[allow(missing_docs)]
+    fn turn(&self) -> u64;
+}
+
+/// A game where an entire snake body is gettable
+pub trait SnakeBodyGettableGame: PositionGettableGame + SnakeIDGettableGame {
+    /// return a Vec of the positions for a given snake body, in order from head to tail
+    fn get_snake_body_vec(&self, snake_id: &Self::SnakeIDType) -> Vec<Self::NativePositionType>;
+}
 
 #[cfg(test)]
 mod tests {
