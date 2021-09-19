@@ -1,12 +1,12 @@
 //! A compact board representation that is efficient for simulation
-/// you almost certainly want to use the `convert_from_game` method to
-/// cast from a json represention to a `CellBoard`
-use crate::types::NeighborDeterminableGame;
 use crate::types::{
     FoodGettableGame, HeadGettableGame, HealthGettableGame, LengthGettableGame,
     PositionGettableGame, RandomReasonableMovesGame, SnakeIDGettableGame, SnakeIDMap, SnakeId,
     VictorDeterminableGame, YouDeterminableGame,
 };
+/// you almost certainly want to use the `convert_from_game` method to
+/// cast from a json represention to a `CellBoard`
+use crate::types::{NeighborDeterminableGame, SnakeBodyGettableGame};
 use crate::wire_representation::Game;
 use fxhash::FxHashSet;
 use itertools::Itertools;
@@ -988,6 +988,23 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> NeighborDeter
             .filter(|(new_head, _)| !self.off_board(*new_head, width))
             .map(|(_, ci)| ci)
             .collect()
+    }
+}
+
+impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> SnakeBodyGettableGame
+    for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
+{
+    fn get_snake_body_vec(&self, snake_id: &Self::SnakeIDType) -> Vec<Self::NativePositionType> {
+        let mut body = vec![];
+        body.reserve(self.get_length(*snake_id).into());
+        let mut cur = Some(self.get_head_as_native_position(snake_id));
+
+        while let Some(c) = cur {
+            body.push(c);
+            cur = self.get_cell(c).get_next_index();
+        }
+
+        body
     }
 }
 
