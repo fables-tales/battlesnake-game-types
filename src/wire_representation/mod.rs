@@ -295,8 +295,8 @@ impl HealthGettableGame for Game {
             .snakes
             .iter()
             .find(|s| &s.id == snake_id)
-            .unwrap()
-            .health
+            .map(|s| s.health)
+            .unwrap_or(Self::ZERO)
     }
 
     fn get_health_i64(&self, snake_id: &Self::SnakeIDType) -> i64 {

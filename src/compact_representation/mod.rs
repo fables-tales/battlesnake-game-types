@@ -31,6 +31,8 @@ pub trait CellNum:
     fn as_usize(&self) -> usize;
     /// makes a cellnum from an i32
     fn from_i32(i: i32) -> Self;
+    /// makes a cellnum from an usize
+    fn from_usize(i: usize) -> Self;
 }
 
 impl CellNum for u8 {
@@ -41,6 +43,10 @@ impl CellNum for u8 {
     fn from_i32(i: i32) -> Self {
         i as u8
     }
+
+    fn from_usize(i: usize) -> Self {
+        i as u8
+    }
 }
 impl CellNum for u16 {
     fn as_usize(&self) -> usize {
@@ -48,6 +54,10 @@ impl CellNum for u16 {
     }
 
     fn from_i32(i: i32) -> Self {
+        i as u16
+    }
+
+    fn from_usize(i: usize) -> Self {
         i as u16
     }
 }
@@ -665,16 +675,18 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> FoodGettableG
     fn get_all_food_as_positions(&self) -> Vec<crate::wire_representation::Position> {
         self.cells
             .iter()
-            .filter(|c| c.is_food())
-            .map(|c| c.idx.into_position(Self::width()))
+            .enumerate()
+            .filter(|(_, c)| c.is_food())
+            .map(|(i, _)| CellIndex(T::from_usize(i)).into_position(Self::width()))
             .collect()
     }
 
     fn get_all_food_as_native_positions(&self) -> Vec<Self::NativePositionType> {
         self.cells
             .iter()
-            .filter(|c| c.is_food())
-            .map(|c| c.idx)
+            .enumerate()
+            .filter(|(_, c)| c.is_food())
+            .map(|(i, _)| CellIndex(T::from_usize(i)))
             .collect()
     }
 }
