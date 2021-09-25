@@ -1,8 +1,8 @@
 //! A compact board representation that is efficient for simulation
 use crate::types::{
-    FoodGettableGame, HeadGettableGame, HealthGettableGame, LengthGettableGame,
-    PositionGettableGame, RandomReasonableMovesGame, SnakeIDGettableGame, SnakeIDMap, SnakeId,
-    VictorDeterminableGame, YouDeterminableGame,
+    FoodGettableGame, HazardQueryableGame, HazardSettableGame, HeadGettableGame,
+    HealthGettableGame, LengthGettableGame, PositionGettableGame, RandomReasonableMovesGame,
+    SnakeIDGettableGame, SnakeIDMap, SnakeId, VictorDeterminableGame, YouDeterminableGame,
 };
 /// you almost certainly want to use the `convert_from_game` method to
 /// cast from a json represention to a `CellBoard`
@@ -137,6 +137,10 @@ impl<T: CellNum> Cell<T> {
 
     fn set_hazard(&mut self) {
         self.flags |= IS_HAZARD
+    }
+
+    fn clear_hazard(&mut self) {
+        self.flags &= !IS_HAZARD
     }
 
     fn is_hazard(&self) -> bool {
@@ -649,6 +653,29 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> PositionGetta
     }
 }
 
+impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> HazardQueryableGame
+    for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
+{
+    type NativePositionType = CellIndex<T>;
+    fn is_hazard(&self, pos: &Self::NativePositionType) -> bool {
+        self.cell_is_hazard(*pos)
+    }
+}
+
+impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> HazardSettableGame
+    for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
+{
+    type NativePositionType = CellIndex<T>;
+
+    fn set_hazard(&mut self, pos: Self::NativePositionType) {
+        self.cells[pos.0.as_usize()].set_hazard();
+    }
+
+    fn clear_hazard(&mut self, pos: Self::NativePositionType) {
+        self.cells[pos.0.as_usize()].clear_hazard();
+    }
+}
+
 impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> HeadGettableGame
     for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
@@ -1142,6 +1169,25 @@ mod test {
         assert!(!c.is_head());
         assert!(!c.is_body());
     }
+
+    #[test]
+    fn test_clear_hazard() {
+        let mut c: Cell<u8> = Cell::empty();
+        c.set_food();
+        assert!(c.is_food());
+        c.set_hazard();
+        c.clear_hazard();
+        assert!(c.is_food());
+        assert!(!c.is_hazard());
+        assert!(!c.is_head());
+        assert!(!c.is_body());
+        let mut c: Cell<u8> = Cell::make_double_stacked_piece(SnakeId(0), CellIndex(0));
+        c.set_hazard();
+        c.clear_hazard();
+        assert!(c.is_body());
+        assert!(!c.is_hazard());
+    }
+
     #[test]
     fn test_remove() {
         let mut c: Cell<u8> = Cell::make_body_piece(SnakeId(3), CellIndex(17));

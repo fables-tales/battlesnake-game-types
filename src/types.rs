@@ -205,6 +205,27 @@ pub trait SimulableGame<T: SimulatorInstruments>:
     ) -> Vec<(Vec<SnakeMove<Self::SnakeIDType>>, Self)>;
 }
 
+/// A game where positions can be checked for hazards
+pub trait HazardQueryableGame: std::fmt::Debug {
+    /// the native position type for this board
+    type NativePositionType;
+
+    /// Is this position a hazard?
+    fn is_hazard(&self, pos: &Self::NativePositionType) -> bool;
+}
+
+/// A game where positions can have their hazards set and cleared
+pub trait HazardSettableGame: std::fmt::Debug {
+    /// the native position type for this board
+    type NativePositionType;
+
+    /// make this position a hazard
+    fn set_hazard(&mut self, pos: Self::NativePositionType);
+
+    /// clear this position of being a hazard
+    fn clear_hazard(&mut self, pos: Self::NativePositionType);
+}
+
 /// A game for which board positions can be identified and returned
 pub trait PositionGettableGame {
     /// the native position type for this board
@@ -332,7 +353,7 @@ mod tests {
     }
 
     #[derive(Debug)]
-    struct Instruments{}
+    struct Instruments {}
 
     impl SimulatorInstruments for Instruments {
         fn observe_simulation(&self, _duration: Duration) {}
@@ -342,7 +363,7 @@ mod tests {
     fn test_move_from_vector() {
         let g = fixture();
         let you_id = g.you.id.clone();
-        let mut s_result = g.simulate_with_moves(&Instruments{}, vec![(you_id, vec![Move::Down])]);
+        let mut s_result = g.simulate_with_moves(&Instruments {}, vec![(you_id, vec![Move::Down])]);
         let new_g = s_result.pop().unwrap().1;
         let new_head = new_g.you.head;
         let offset = new_head.sub_vec(g.you.head.to_vector()).to_vector();

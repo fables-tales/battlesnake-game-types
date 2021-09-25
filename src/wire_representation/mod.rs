@@ -4,11 +4,11 @@ mod simulator;
 
 use crate::compact_representation::{CellBoard, CellNum};
 use crate::types::{
-    FoodGettableGame, HeadGettableGame, HealthGettableGame, LengthGettableGame, Move,
-    NeighborDeterminableGame, PositionGettableGame, RandomReasonableMovesGame, ShoutGettableGame,
-    SimulableGame, SimulatorInstruments, SizeDeterminableGame, SnakeBodyGettableGame,
-    SnakeIDGettableGame, SnakeIDMap, SnakeMove, TurnDeterminableGame, Vector,
-    VictorDeterminableGame, YouDeterminableGame,
+    FoodGettableGame, HazardQueryableGame, HazardSettableGame, HeadGettableGame,
+    HealthGettableGame, LengthGettableGame, Move, NeighborDeterminableGame, PositionGettableGame,
+    RandomReasonableMovesGame, ShoutGettableGame, SimulableGame, SimulatorInstruments,
+    SizeDeterminableGame, SnakeBodyGettableGame, SnakeIDGettableGame, SnakeIDMap, SnakeMove,
+    TurnDeterminableGame, Vector, VictorDeterminableGame, YouDeterminableGame,
 };
 use rand::prelude::IteratorRandom;
 use rand::thread_rng;
@@ -423,6 +423,25 @@ impl SnakeBodyGettableGame for Game {
             .clone()
             .into_iter()
             .collect()
+    }
+}
+
+impl HazardQueryableGame for Game {
+    type NativePositionType = Position;
+    fn is_hazard(&self, pos: &Self::NativePositionType) -> bool {
+        self.board.hazards.contains(pos)
+    }
+}
+
+impl HazardSettableGame for Game {
+    type NativePositionType = Position;
+
+    fn set_hazard(&mut self, pos: Self::NativePositionType) {
+        self.board.hazards.push(pos);
+    }
+
+    fn clear_hazard(&mut self, pos: Self::NativePositionType) {
+        self.board.hazards.retain(|p| p != &pos);
     }
 }
 
