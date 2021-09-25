@@ -90,6 +90,25 @@ impl Move {
                 | (Move::Right, Move::Left)
         )
     }
+
+    /// determines which move was made for a given vector
+    pub fn from_vector(vector: Vector) -> Move {
+        if vector.x == 1 {
+            assert!(vector.y == 0);
+            Move::Right
+        } else if vector.x == -1 {
+            assert!(vector.y == 0);
+            Move::Left
+        } else if vector.y == 1 {
+            assert!(vector.x == 0);
+            Move::Up
+        } else if vector.y == -1 {
+            assert!(vector.x == 0);
+            Move::Down
+        } else {
+            panic!("invalid vector");
+        }
+    }
 }
 
 /// token to represent a snake id
@@ -212,4 +231,38 @@ pub trait RandomReasonableMovesGame {
     type SnakeIDType;
     #[allow(missing_docs)]
     fn random_reasonable_move_for_each_snake(&self) -> Vec<(Self::SnakeIDType, Move)>;
+}
+
+
+#[cfg(test)]
+mod tests {
+    use std::vec;
+
+    use super::*;
+
+    fn fixture() -> Game {
+        let game_fixture = include_str!("../fixtures/4_snake_game.json");
+        let g: Result<Game, _> = serde_json::from_slice(game_fixture.as_bytes());
+        let g = g.expect("the json literal is valid");
+        g
+    }
+
+    #[derive(Debug)]
+    struct Instruments{}
+
+    impl SimulatorInstruments for Instruments {
+        fn observe_simulation(&self, _duration: Duration) {}
+    }
+
+    #[test]
+    fn test_move_from_vector() {
+        let g = fixture();
+        let you_id = g.you.id.clone();
+        let mut s_result = g.simulate_with_moves(&Instruments{}, vec![(you_id, vec![Move::Down])]);
+        let new_g = s_result.pop().unwrap().1;
+        let new_head = new_g.you.head;
+        let offset = new_head.sub_vec(g.you.head.to_vector()).to_vector();
+        let mv = Move::from_vector(offset);
+        assert_eq!(mv, Move::Down);
+    }
 }
