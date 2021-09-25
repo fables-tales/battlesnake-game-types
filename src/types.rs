@@ -206,19 +206,13 @@ pub trait SimulableGame<T: SimulatorInstruments>:
 }
 
 /// A game where positions can be checked for hazards
-pub trait HazardQueryableGame: std::fmt::Debug {
-    /// the native position type for this board
-    type NativePositionType;
-
+pub trait HazardQueryableGame: PositionGettableGame {
     /// Is this position a hazard?
     fn is_hazard(&self, pos: &Self::NativePositionType) -> bool;
 }
 
 /// A game where positions can have their hazards set and cleared
-pub trait HazardSettableGame: std::fmt::Debug {
-    /// the native position type for this board
-    type NativePositionType;
-
+pub trait HazardSettableGame: PositionGettableGame {
     /// make this position a hazard
     fn set_hazard(&mut self, pos: Self::NativePositionType);
 

@@ -39,6 +39,10 @@ pub struct Position {
 }
 
 impl Position {
+    pub fn new(x: i32, y: i32) -> Self {
+        Self { x, y }
+    }
+
     pub fn add_vec(&self, v: Vector) -> Position {
         Position {
             x: (self.x as i64 + v.x) as i32,
@@ -427,15 +431,12 @@ impl SnakeBodyGettableGame for Game {
 }
 
 impl HazardQueryableGame for Game {
-    type NativePositionType = Position;
     fn is_hazard(&self, pos: &Self::NativePositionType) -> bool {
         self.board.hazards.contains(pos)
     }
 }
 
 impl HazardSettableGame for Game {
-    type NativePositionType = Position;
-
     fn set_hazard(&mut self, pos: Self::NativePositionType) {
         self.board.hazards.push(pos);
     }

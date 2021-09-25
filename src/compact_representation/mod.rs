@@ -2,7 +2,8 @@
 use crate::types::{
     FoodGettableGame, HazardQueryableGame, HazardSettableGame, HeadGettableGame,
     HealthGettableGame, LengthGettableGame, PositionGettableGame, RandomReasonableMovesGame,
-    SnakeIDGettableGame, SnakeIDMap, SnakeId, VictorDeterminableGame, YouDeterminableGame,
+    SizeDeterminableGame, SnakeIDGettableGame, SnakeIDMap, SnakeId, VictorDeterminableGame,
+    YouDeterminableGame,
 };
 /// you almost certainly want to use the `convert_from_game` method to
 /// cast from a json represention to a `CellBoard`
@@ -656,7 +657,6 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> PositionGetta
 impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> HazardQueryableGame
     for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
-    type NativePositionType = CellIndex<T>;
     fn is_hazard(&self, pos: &Self::NativePositionType) -> bool {
         self.cell_is_hazard(*pos)
     }
@@ -665,8 +665,6 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> HazardQueryab
 impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> HazardSettableGame
     for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
-    type NativePositionType = CellIndex<T>;
-
     fn set_hazard(&mut self, pos: Self::NativePositionType) {
         self.cells[pos.0.as_usize()].set_hazard();
     }
@@ -1044,6 +1042,18 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> SnakeBodyGett
         }
 
         body
+    }
+}
+
+impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> SizeDeterminableGame
+    for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
+{
+    fn get_width(&self) -> u32 {
+        (BOARD_SIZE as f32).sqrt() as u32
+    }
+
+    fn get_height(&self) -> u32 {
+        (BOARD_SIZE as f32).sqrt() as u32
     }
 }
 
