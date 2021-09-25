@@ -102,25 +102,6 @@ impl Move {
                 | (Move::Right, Move::Left)
         )
     }
-
-    /// determines which move was made for a given vector
-    pub fn from_vector(vector: Vector) -> Move {
-        if vector.x == 1 {
-            assert!(vector.y == 0);
-            Move::Right
-        } else if vector.x == -1 {
-            assert!(vector.y == 0);
-            Move::Left
-        } else if vector.y == 1 {
-            assert!(vector.x == 0);
-            Move::Up
-        } else if vector.y == -1 {
-            assert!(vector.x == 0);
-            Move::Down
-        } else {
-            panic!("invalid vector");
-        }
-    }
 }
 
 /// token to represent a snake id
