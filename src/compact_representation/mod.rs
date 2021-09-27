@@ -281,6 +281,7 @@ pub struct CellBoard<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usiz
     heads: [CellIndex<T>; MAX_SNAKES],
     lengths: [u16; MAX_SNAKES],
     actual_width: u8,
+    actual_height: u8,
 }
 
 /// Used to represent the standard 11x11 game with up to 4 snakes.
@@ -291,7 +292,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> Display
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let width = self.actual_width;
-        let height = width;
+        let height = self.actual_height;
         writeln!(f)?;
         for y in 0..height {
             for x in 0..width {
@@ -443,6 +444,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
             healths,
             lengths,
             actual_width: game.board.width as u8,
+            actual_height: game.board.height as u8,
             hazard_damage: game
                 .game
                 .ruleset
@@ -457,8 +459,11 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
     }
 
     /// determines if a given position is not on the board
-    pub fn off_board(&self, position: Position, width: u8) -> bool {
-        position.x < 0 || position.x >= width as i32 || position.y < 0 || position.y >= width as i32
+    pub fn off_board(&self, position: Position) -> bool {
+        position.x < 0
+            || position.x >= self.actual_width as i32
+            || position.y < 0
+            || position.y >= self.actual_height as i32
     }
 
     /// Get the health for a given snake
@@ -487,7 +492,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
         let new_head = cell_index.into_position(width).add_vec(mv.to_vector());
         let new_head_index = CellIndex::new(new_head, width);
         let head_collides_with_tail = new_head_index == old_tail_index && tail_stacked;
-        if self.off_board(new_head, width) {
+        if self.off_board(new_head) {
             alive = false;
         } else if (self.get_cell(new_head_index).matches_snake_id(sid)
             && new_head_index != old_tail_index)
@@ -813,7 +818,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> RandomReasona
                         let new_head = head_pos.add_vec(mv.to_vector());
                         let ci = CellIndex::new(head_pos.add_vec(mv.to_vector()), width);
 
-                        !self.off_board(new_head, width)
+                        !self.off_board(new_head)
                             && !self.get_cell(ci).is_body_segment()
                             && !self.get_cell(ci).is_head()
                     })
@@ -1000,7 +1005,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> NeighborDeter
         &self,
         pos: &Self::NativePositionType,
     ) -> Vec<(Move, Self::NativePositionType)> {
-        let width = ((11 * 11) as f32).sqrt() as u8;
+        let width = self.actual_width;
 
         Move::all()
             .into_iter()
@@ -1011,13 +1016,13 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> NeighborDeter
 
                 (mv, new_head, ci)
             })
-            .filter(|(_mv, new_head, _)| !self.off_board(*new_head, width))
+            .filter(|(_mv, new_head, _)| !self.off_board(*new_head))
             .map(|(mv, _, ci)| (mv, ci))
             .collect()
     }
 
     fn neighbors(&self, pos: &Self::NativePositionType) -> std::vec::Vec<Self::NativePositionType> {
-        let width = ((11 * 11) as f32).sqrt() as u8;
+        let width = self.actual_width;
 
         Move::all()
             .into_iter()
@@ -1028,7 +1033,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> NeighborDeter
 
                 (new_head, ci)
             })
-            .filter(|(new_head, _)| !self.off_board(*new_head, width))
+            .filter(|(new_head, _)| !self.off_board(*new_head))
             .map(|(_, ci)| ci)
             .collect()
     }
