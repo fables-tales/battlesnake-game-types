@@ -310,7 +310,10 @@ pub enum BestCellBoard {
     Silly(Box<CellBoard16Snakes50x50>),
 }
 
-/// Trait to get the best sized cellboard for the given game
+/// Trait to get the best sized cellboard for the given game. It returns the smallest Compact board
+/// that has enough room to fit the given Wire game. If the game can't fit in any of our Compact
+/// boards we panic. However the largest board available is MUCH larger than the biggest selectable
+/// board in the Battlesnake UI
 pub trait ToBestCellBoard {
     #[allow(missing_docs)]
     fn to_best_cell_board(self) -> Result<BestCellBoard, Box<dyn Error>>;
