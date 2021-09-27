@@ -280,6 +280,7 @@ pub struct CellBoard<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usiz
     healths: [u8; MAX_SNAKES],
     heads: [CellIndex<T>; MAX_SNAKES],
     lengths: [u16; MAX_SNAKES],
+    actual_width: u8,
 }
 
 /// Used to represent the standard 11x11 game with up to 4 snakes.
@@ -289,7 +290,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> Display
     for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let width = Self::width();
+        let width = self.actual_width;
         let height = width;
         writeln!(f)?;
         for y in 0..height {
@@ -360,8 +361,8 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
     /// the provided BOARD_SIZE or MAX_SNAKES. You are encouraged to use `CellBoard4Snakes11x11`
     /// for the common game layout
     pub fn convert_from_game(game: Game, snake_ids: &SnakeIDMap) -> Result<Self, Box<dyn Error>> {
-        if game.board.width * game.board.height != BOARD_SIZE as u32 {
-            return Err("game size doesn't match".into());
+        if game.board.width * game.board.height > BOARD_SIZE as u32 {
+            return Err("game size doesn't fit in the given board size".into());
         }
 
         if game.board.snakes.len() > MAX_SNAKES {
@@ -441,6 +442,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
             heads,
             healths,
             lengths,
+            actual_width: game.board.width as u8,
             hazard_damage: game
                 .game
                 .ruleset
@@ -644,13 +646,13 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> PositionGetta
     }
 
     fn position_from_native(&self, pos: Self::NativePositionType) -> Position {
-        let width = Self::width();
+        let width = self.actual_width;
 
         pos.into_position(width)
     }
 
     fn native_from_position(&self, pos: Position) -> Self::NativePositionType {
-        Self::NativePositionType::new(pos, Self::width())
+        Self::NativePositionType::new(pos, self.actual_width)
     }
 }
 
@@ -682,7 +684,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> HeadGettableG
         snake_id: &Self::SnakeIDType,
     ) -> crate::wire_representation::Position {
         let idx = self.heads[snake_id.0.as_usize()];
-        let width = Self::width();
+        let width = self.actual_width;
         idx.into_position(width)
     }
 
@@ -702,7 +704,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> FoodGettableG
             .iter()
             .enumerate()
             .filter(|(_, c)| c.is_food())
-            .map(|(i, _)| CellIndex(T::from_usize(i)).into_position(Self::width()))
+            .map(|(i, _)| CellIndex(T::from_usize(i)).into_position(self.actual_width))
             .collect()
     }
 
@@ -796,7 +798,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> RandomReasona
     for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
     fn random_reasonable_move_for_each_snake(&self) -> Vec<(Self::SnakeIDType, Move)> {
-        let width = Self::width();
+        let width = self.actual_width;
         self.healths
             .iter()
             .enumerate()
@@ -833,7 +835,7 @@ impl<T: SimulatorInstruments, N: CellNum, const BOARD_SIZE: usize, const MAX_SNA
         snake_ids_and_moves: Vec<(Self::SnakeIDType, Vec<crate::types::Move>)>,
     ) -> Vec<(Vec<(Self::SnakeIDType, crate::types::Move)>, Self)> {
         let start = Instant::now();
-        let width = Self::width();
+        let width = self.actual_width;
         let mut new_snake_bodies = (0..MAX_SNAKES)
             .into_iter()
             .map(|_| [None, None, None, None])
@@ -842,7 +844,7 @@ impl<T: SimulatorInstruments, N: CellNum, const BOARD_SIZE: usize, const MAX_SNA
         for (sid, moves) in snake_ids_and_moves {
             let mut pick_mv = None;
             for mv in moves {
-                let new_body_positions = self.forward_simulate(width, sid, mv);
+                let new_body_positions = self.forward_simulate(width as u8, sid, mv);
                 if let Some(new_body_positions) = new_body_positions {
                     new_snake_bodies[sid.0 as usize][mv.as_index()] = Some(new_body_positions);
                     snake_moves[sid.0 as usize].push(mv);
