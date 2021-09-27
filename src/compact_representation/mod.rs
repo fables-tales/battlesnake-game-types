@@ -287,17 +287,23 @@ pub struct CellBoard<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usiz
 /// Used to represent the standard 11x11 game with up to 4 snakes.
 pub type CellBoard4Snakes11x11 = CellBoard<u8, { 11 * 11 }, 4>;
 
+/// Used to represent the a 15x15 board with up to 4 snakes. This is the biggest board size that
+/// can still use u8s
+pub type CellBoard8Snakes15x15 = CellBoard<u8, { 15 * 15 }, 8>;
+
 /// Used to represent the largest UI Selectable board with 8 snakes.
-pub type CellBoard8Snakes25x25 = CellBoard<u8, { 25 * 25 }, 8>;
+pub type CellBoard8Snakes25x25 = CellBoard<u16, { 25 * 25 }, 8>;
 
 /// Used to represent an absolutely silly game board
-pub type CellBoard16Snakes50x50 = CellBoard<u8, { 50 * 50 }, 16>;
+pub type CellBoard16Snakes50x50 = CellBoard<u16, { 50 * 50 }, 16>;
 
 /// Enum that holds a Cell Board sized right for the given game
 #[derive(Debug)]
 pub enum BestCellBoard {
     #[allow(missing_docs)]
     Standard(Box<CellBoard4Snakes11x11>),
+    #[allow(missing_docs)]
+    LargestU8(Box<CellBoard8Snakes15x15>),
     #[allow(missing_docs)]
     Large(Box<CellBoard8Snakes25x25>),
     #[allow(missing_docs)]
@@ -318,6 +324,10 @@ impl ToBestCellBoard for Game {
 
         let best_board = if required_board_size <= (11 * 11) && num_snakes <= 4 {
             BestCellBoard::Standard(Box::new(CellBoard4Snakes11x11::convert_from_game(
+                self, &id_map,
+            )?))
+        } else if required_board_size <= (15 * 15) && num_snakes <= 8 {
+            BestCellBoard::LargestU8(Box::new(CellBoard8Snakes15x15::convert_from_game(
                 self, &id_map,
             )?))
         } else if required_board_size <= (25 * 25) && num_snakes <= 8 {
