@@ -1,9 +1,9 @@
 //! A compact board representation that is efficient for simulation
 use crate::types::{
-    FoodGettableGame, HazardQueryableGame, HazardSettableGame, HeadGettableGame,
-    HealthGettableGame, LengthGettableGame, PositionGettableGame, RandomReasonableMovesGame,
-    SizeDeterminableGame, SnakeIDGettableGame, SnakeIDMap, SnakeId, VictorDeterminableGame,
-    YouDeterminableGame,
+    build_snake_id_map, FoodGettableGame, HazardQueryableGame, HazardSettableGame,
+    HeadGettableGame, HealthGettableGame, LengthGettableGame, PositionGettableGame,
+    RandomReasonableMovesGame, SizeDeterminableGame, SnakeIDGettableGame, SnakeIDMap, SnakeId,
+    VictorDeterminableGame, YouDeterminableGame,
 };
 /// you almost certainly want to use the `convert_from_game` method to
 /// cast from a json represention to a `CellBoard`
@@ -286,6 +286,55 @@ pub struct CellBoard<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usiz
 
 /// Used to represent the standard 11x11 game with up to 4 snakes.
 pub type CellBoard4Snakes11x11 = CellBoard<u8, { 11 * 11 }, 4>;
+
+/// Used to represent the largest UI Selectable board with 8 snakes.
+pub type CellBoard8Snakes25x25 = CellBoard<u8, { 25 * 25 }, 8>;
+
+/// Used to represent an absolutely silly game board
+pub type CellBoard16Snakes50x50 = CellBoard<u8, { 50 * 50 }, 16>;
+
+/// Enum that holds a Cell Board sized right for the given game
+#[derive(Debug)]
+pub enum BestCellBoard {
+    #[allow(missing_docs)]
+    Standard(Box<CellBoard4Snakes11x11>),
+    #[allow(missing_docs)]
+    Large(Box<CellBoard8Snakes25x25>),
+    #[allow(missing_docs)]
+    Silly(Box<CellBoard16Snakes50x50>),
+}
+
+/// Trait to get the best sized cellboard for the given game
+pub trait ToBestCellBoard {
+    #[allow(missing_docs)]
+    fn to_best_cell_board(self) -> Result<BestCellBoard, Box<dyn Error>>;
+}
+
+impl ToBestCellBoard for Game {
+    fn to_best_cell_board(self) -> Result<BestCellBoard, Box<dyn Error>> {
+        let required_board_size = self.board.width * self.board.height;
+        let num_snakes = self.board.snakes.len();
+        let id_map = build_snake_id_map(&self);
+
+        let best_board = if required_board_size <= (11 * 11) && num_snakes <= 4 {
+            BestCellBoard::Standard(Box::new(CellBoard4Snakes11x11::convert_from_game(
+                self, &id_map,
+            )?))
+        } else if required_board_size <= (25 * 25) && num_snakes <= 8 {
+            BestCellBoard::Large(Box::new(CellBoard8Snakes25x25::convert_from_game(
+                self, &id_map,
+            )?))
+        } else if required_board_size <= (50 * 50) && num_snakes <= 16 {
+            BestCellBoard::Silly(Box::new(CellBoard16Snakes50x50::convert_from_game(
+                self, &id_map,
+            )?))
+        } else {
+            panic!("No board was big enough")
+        };
+
+        Ok(best_board)
+    }
+}
 
 impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> Display
     for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
