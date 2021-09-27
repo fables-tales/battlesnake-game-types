@@ -6,7 +6,8 @@
             "name": "standard",
             "version": "bees"
 
-        }
+        },
+        "timeout": 500
     },
     "you": {
                 "id": "bees",
