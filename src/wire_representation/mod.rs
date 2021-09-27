@@ -113,6 +113,7 @@ impl fmt::Display for Board {
 pub struct NestedGame {
     pub id: String,
     pub ruleset: Ruleset,
+    pub timeout: i64,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
