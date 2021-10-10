@@ -858,6 +858,161 @@ impl<T: SimulatorInstruments, N: CellNum, const BOARD_SIZE: usize, const MAX_SNA
     }
 }
 
+impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatableWithStateGame
+    for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
+{
+    type PreparedState = CellBoardMoveEvalPreparedState<T>;
+
+    fn generate_state(
+        &self,
+        snake_ids_and_moves: Vec<(Self::SnakeIDType, Vec<crate::types::Move>)>,
+    ) -> Self::PreparedState {
+        let width = Self::width();
+
+        let mut new_snake_bodies = (0..MAX_SNAKES)
+            .into_iter()
+            .map(|_| [None, None, None, None])
+            .collect_vec();
+        let mut snake_moves = (0..MAX_SNAKES).map(|_| vec![]).collect_vec();
+        for (sid, moves) in snake_ids_and_moves {
+            let mut pick_mv = None;
+            for mv in moves {
+                let new_body_positions = self.forward_simulate(width, sid, mv);
+                if let Some(new_body_positions) = new_body_positions {
+                    new_snake_bodies[sid.0 as usize][mv.as_index()] = Some(new_body_positions);
+                    snake_moves[sid.0 as usize].push(mv);
+                }
+                pick_mv = Some(mv);
+            }
+            if snake_moves[sid.0 as usize].is_empty() {
+                let mv = pick_mv.unwrap();
+                snake_moves[sid.0 as usize].push(mv);
+                new_snake_bodies[sid.0 as usize][mv.as_index()] =
+                    Some(BattleSnakeResult::Dead(vec![]));
+            }
+        }
+
+        Self::PreparedState {
+            new_snake_bodies,
+            snake_moves,
+        }
+    }
+
+    fn evaluate_moves_with_state(
+        &self,
+        new_snakes: &[(Self::SnakeIDType, Move)],
+        state: &Self::PreparedState,
+    ) -> Self {
+        let new_snake_bodies = &state.new_snake_bodies;
+        let mut new_game = *self;
+        let mut dead_snakes = vec![];
+        let mut seen_snakes = vec![];
+
+        // remove snakes from new cells
+        for (_, head) in new_game.heads.iter().enumerate() {
+            let mut current_idx = new_game.get_cell(*head).get_tail_position(*head);
+            new_game.cells[head.0.as_usize()].remove_snake();
+            while let Some(inner_idx) = current_idx {
+                let next_current_idx = new_game.get_cell(inner_idx).get_next_index();
+                new_game.cells[inner_idx.0.as_usize()].remove_snake();
+                current_idx = next_current_idx;
+            }
+        }
+        for (sid, mv) in new_snakes {
+            let body = new_snake_bodies[sid.0 as usize][mv.as_index()]
+                .as_ref()
+                .expect("we put it there");
+            if body.is_empty() {
+                new_game.kill(*sid);
+                continue;
+            }
+            // check collision
+            if let BattleSnakeResult::Alive(segs) = body {
+                let new_head = segs[0];
+                for (other_sid, other_mv) in new_snakes {
+                    let other_body = new_snake_bodies[other_sid.0 as usize][other_mv.as_index()]
+                        .as_ref()
+                        .expect("we put it there");
+                    if other_body.is_empty() {
+                        continue;
+                    }
+                    if other_sid != sid {
+                        let other_head = other_body[0];
+                        if other_head == new_head {
+                            if body.len() <= other_body.len() {
+                                dead_snakes.push(sid);
+                                if body.len() == other_body.len()
+                                    && new_game.get_cell(new_head.0).is_food()
+                                {
+                                    new_game.cells[new_head.0 .0.as_usize()].remove();
+                                }
+                            }
+                        } else if other_body[1..].iter().any(|(idx, _)| idx == &new_head.0) {
+                            dead_snakes.push(sid);
+                        }
+                    }
+                }
+            }
+        }
+
+        //put the new body down
+        for (sid, mv) in new_snakes {
+            let body = new_snake_bodies[sid.0 as usize][mv.as_index()]
+                .as_ref()
+                .expect("we put it there");
+            seen_snakes.push(sid.0);
+            if let BattleSnakeResult::Alive(_) = body {
+                if !dead_snakes.contains(&sid) {
+                    let head_pos = body[0].0;
+                    if new_game.get_cell(head_pos).is_food() {
+                        new_game.healths[sid.0 as usize] = 100;
+                        new_game.lengths[sid.0 as usize] += 1;
+                    } else {
+                        new_game.healths[sid.0 as usize] =
+                            new_game.healths[sid.0 as usize].saturating_sub(1);
+                        if new_game.cell_is_hazard(head_pos) {
+                            new_game.healths[sid.0 as usize] =
+                                new_game.healths[sid.0 as usize].saturating_sub(self.hazard_damage);
+                        }
+                    }
+                    if new_game.healths[sid.0 as usize] == 0 {
+                        new_game.kill(*sid);
+                        continue;
+                    }
+                    new_game.heads[sid.0 as usize] = head_pos;
+                    new_game.cells[head_pos.0.as_usize()].set_head(*sid, body[body.len() - 1].0);
+                    for i in 1..body.len() {
+                        let (pos, count) = body[i];
+                        // e.g. the head is element 0 and the first body piece is element 1;
+                        let (next_pos, _) = body[i - 1];
+                        match count {
+                            1 => {
+                                new_game.cells[pos.0.as_usize()].set_body_piece(*sid, next_pos);
+                            }
+                            2 => {
+                                new_game.cells[pos.0.as_usize()].set_double_stacked(*sid, next_pos);
+                            }
+                            _ => panic!("invalid count: {}", count),
+                        }
+                    }
+                } else {
+                    new_game.kill(*sid)
+                }
+            } else {
+                new_game.kill(*sid)
+            }
+        }
+
+        for idx in 0..MAX_SNAKES {
+            if !seen_snakes.contains(&(idx as u8)) {
+                new_game.kill(SnakeId(idx as u8));
+            }
+        }
+
+        new_game
+    }
+}
+
 impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> NeighborDeterminableGame
     for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
@@ -1301,159 +1456,4 @@ impl<T: MoveEvaluatableWithStateGame> MoveEvaluatableGame for T {
 struct CellBoardMoveEvalPreparedState<T: CellNum> {
     new_snake_bodies: Vec<[Option<BattleSnakeResult<T>>; 4]>,
     snake_moves: Vec<Vec<Move>>,
-}
-
-impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatableWithStateGame
-    for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
-{
-    type PreparedState = CellBoardMoveEvalPreparedState<T>;
-
-    fn generate_state(
-        &self,
-        snake_ids_and_moves: Vec<(Self::SnakeIDType, Vec<crate::types::Move>)>,
-    ) -> Self::PreparedState {
-        let width = Self::width();
-
-        let mut new_snake_bodies = (0..MAX_SNAKES)
-            .into_iter()
-            .map(|_| [None, None, None, None])
-            .collect_vec();
-        let mut snake_moves = (0..MAX_SNAKES).map(|_| vec![]).collect_vec();
-        for (sid, moves) in snake_ids_and_moves {
-            let mut pick_mv = None;
-            for mv in moves {
-                let new_body_positions = self.forward_simulate(width, sid, mv);
-                if let Some(new_body_positions) = new_body_positions {
-                    new_snake_bodies[sid.0 as usize][mv.as_index()] = Some(new_body_positions);
-                    snake_moves[sid.0 as usize].push(mv);
-                }
-                pick_mv = Some(mv);
-            }
-            if snake_moves[sid.0 as usize].is_empty() {
-                let mv = pick_mv.unwrap();
-                snake_moves[sid.0 as usize].push(mv);
-                new_snake_bodies[sid.0 as usize][mv.as_index()] =
-                    Some(BattleSnakeResult::Dead(vec![]));
-            }
-        }
-
-        Self::PreparedState {
-            new_snake_bodies,
-            snake_moves,
-        }
-    }
-
-    fn evaluate_moves_with_state(
-        &self,
-        new_snakes: &[(Self::SnakeIDType, Move)],
-        state: &Self::PreparedState,
-    ) -> Self {
-        let new_snake_bodies = &state.new_snake_bodies;
-        let mut new_game = *self;
-        let mut dead_snakes = vec![];
-        let mut seen_snakes = vec![];
-
-        // remove snakes from new cells
-        for (_, head) in new_game.heads.iter().enumerate() {
-            let mut current_idx = new_game.get_cell(*head).get_tail_position(*head);
-            new_game.cells[head.0.as_usize()].remove_snake();
-            while let Some(inner_idx) = current_idx {
-                let next_current_idx = new_game.get_cell(inner_idx).get_next_index();
-                new_game.cells[inner_idx.0.as_usize()].remove_snake();
-                current_idx = next_current_idx;
-            }
-        }
-        for (sid, mv) in new_snakes {
-            let body = new_snake_bodies[sid.0 as usize][mv.as_index()]
-                .as_ref()
-                .expect("we put it there");
-            if body.is_empty() {
-                new_game.kill(*sid);
-                continue;
-            }
-            // check collision
-            if let BattleSnakeResult::Alive(segs) = body {
-                let new_head = segs[0];
-                for (other_sid, other_mv) in new_snakes {
-                    let other_body = new_snake_bodies[other_sid.0 as usize][other_mv.as_index()]
-                        .as_ref()
-                        .expect("we put it there");
-                    if other_body.is_empty() {
-                        continue;
-                    }
-                    if other_sid != sid {
-                        let other_head = other_body[0];
-                        if other_head == new_head {
-                            if body.len() <= other_body.len() {
-                                dead_snakes.push(sid);
-                                if body.len() == other_body.len()
-                                    && new_game.get_cell(new_head.0).is_food()
-                                {
-                                    new_game.cells[new_head.0 .0.as_usize()].remove();
-                                }
-                            }
-                        } else if other_body[1..].iter().any(|(idx, _)| idx == &new_head.0) {
-                            dead_snakes.push(sid);
-                        }
-                    }
-                }
-            }
-        }
-
-        //put the new body down
-        for (sid, mv) in new_snakes {
-            let body = new_snake_bodies[sid.0 as usize][mv.as_index()]
-                .as_ref()
-                .expect("we put it there");
-            seen_snakes.push(sid.0);
-            if let BattleSnakeResult::Alive(_) = body {
-                if !dead_snakes.contains(&sid) {
-                    let head_pos = body[0].0;
-                    if new_game.get_cell(head_pos).is_food() {
-                        new_game.healths[sid.0 as usize] = 100;
-                        new_game.lengths[sid.0 as usize] += 1;
-                    } else {
-                        new_game.healths[sid.0 as usize] =
-                            new_game.healths[sid.0 as usize].saturating_sub(1);
-                        if new_game.cell_is_hazard(head_pos) {
-                            new_game.healths[sid.0 as usize] =
-                                new_game.healths[sid.0 as usize].saturating_sub(self.hazard_damage);
-                        }
-                    }
-                    if new_game.healths[sid.0 as usize] == 0 {
-                        new_game.kill(*sid);
-                        continue;
-                    }
-                    new_game.heads[sid.0 as usize] = head_pos;
-                    new_game.cells[head_pos.0.as_usize()].set_head(*sid, body[body.len() - 1].0);
-                    for i in 1..body.len() {
-                        let (pos, count) = body[i];
-                        // e.g. the head is element 0 and the first body piece is element 1;
-                        let (next_pos, _) = body[i - 1];
-                        match count {
-                            1 => {
-                                new_game.cells[pos.0.as_usize()].set_body_piece(*sid, next_pos);
-                            }
-                            2 => {
-                                new_game.cells[pos.0.as_usize()].set_double_stacked(*sid, next_pos);
-                            }
-                            _ => panic!("invalid count: {}", count),
-                        }
-                    }
-                } else {
-                    new_game.kill(*sid)
-                }
-            } else {
-                new_game.kill(*sid)
-            }
-        }
-
-        for idx in 0..MAX_SNAKES {
-            if !seen_snakes.contains(&(idx as u8)) {
-                new_game.kill(SnakeId(idx as u8));
-            }
-        }
-
-        new_game
-    }
 }
