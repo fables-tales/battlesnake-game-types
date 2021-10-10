@@ -831,42 +831,23 @@ impl<T: SimulatorInstruments, N: CellNum, const BOARD_SIZE: usize, const MAX_SNA
         snake_ids_and_moves: Vec<(Self::SnakeIDType, Vec<crate::types::Move>)>,
     ) -> Vec<(Vec<(Self::SnakeIDType, crate::types::Move)>, Self)> {
         let start = Instant::now();
-        let width = Self::width();
-        let mut new_snake_bodies = (0..MAX_SNAKES)
-            .into_iter()
-            .map(|_| [None, None, None, None])
-            .collect_vec();
-        let mut snake_moves = (0..MAX_SNAKES).map(|_| vec![]).collect_vec();
-        for (sid, moves) in snake_ids_and_moves {
-            let mut pick_mv = None;
-            for mv in moves {
-                let new_body_positions = self.forward_simulate(width, sid, mv);
-                if let Some(new_body_positions) = new_body_positions {
-                    new_snake_bodies[sid.0 as usize][mv.as_index()] = Some(new_body_positions);
-                    snake_moves[sid.0 as usize].push(mv);
-                }
-                pick_mv = Some(mv);
-            }
-            if snake_moves[sid.0 as usize].is_empty() {
-                let mv = pick_mv.unwrap();
-                snake_moves[sid.0 as usize].push(mv);
-                new_snake_bodies[sid.0 as usize][mv.as_index()] =
-                    Some(BattleSnakeResult::Dead(vec![]));
-            }
-        }
-        let ids_and_moves = snake_moves
-            .into_iter()
+        let eval_state = self.generate_state(snake_ids_and_moves);
+        let ids_and_moves = eval_state
+            .snake_moves
+            .iter()
             .enumerate()
             .filter(|(_, moves)| !moves.is_empty())
             .map(|(sid, moves)| {
                 let sid = SnakeId(sid as u8);
-                std::iter::repeat(sid).zip(moves).map(|(sid, mv)| (sid, mv))
+                std::iter::repeat(sid)
+                    .zip(moves)
+                    .map(|(sid, mv)| (sid, *mv))
             });
         let possible_new_games = ids_and_moves.multi_cartesian_product();
         let res = possible_new_games
             .into_iter()
             .map(|new_snakes| {
-                let output = self.evaluate_moves(&new_snakes, &new_snake_bodies);
+                let output = self.evaluate_moves_with_state(&new_snakes, &eval_state);
 
                 (new_snakes, output)
             })
@@ -1288,26 +1269,86 @@ mod test {
     }
 }
 
-trait MoveEvaluatableGame: SnakeIDGettableGame + PositionGettableGame {
+trait MoveEvaluatableWithStateGame: SnakeIDGettableGame + PositionGettableGame + Sized {
     type PreparedState;
 
-    fn evaluate_moves(
+    fn generate_state(
+        &self,
+        snake_ids_and_moves: Vec<(Self::SnakeIDType, Vec<crate::types::Move>)>,
+    ) -> Self::PreparedState;
+
+    fn evaluate_moves_with_state(
         &self,
         moves: &[(Self::SnakeIDType, Move)],
         state: &Self::PreparedState,
     ) -> Self;
 }
 
-impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatableGame
+trait MoveEvaluatableGame: SnakeIDGettableGame + PositionGettableGame + Sized {
+    fn evaluate_moves(&self, moves: &[(Self::SnakeIDType, Move)]) -> Self;
+}
+
+impl<T: MoveEvaluatableWithStateGame> MoveEvaluatableGame for T {
+    fn evaluate_moves(&self, moves: &[(Self::SnakeIDType, Move)]) -> Self {
+        let simulate_ver = moves
+            .iter()
+            .map(|(sid, m)| (sid.clone(), vec![*m]))
+            .collect_vec();
+        self.evaluate_moves_with_state(moves, &self.generate_state(simulate_ver))
+    }
+}
+
+struct CellBoardMoveEvalPreparedState<T: CellNum> {
+    new_snake_bodies: Vec<[Option<BattleSnakeResult<T>>; 4]>,
+    snake_moves: Vec<Vec<Move>>,
+}
+
+impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatableWithStateGame
     for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
-    type PreparedState = Vec<[Option<BattleSnakeResult<T>>; 4]>;
+    type PreparedState = CellBoardMoveEvalPreparedState<T>;
 
-    fn evaluate_moves(
+    fn generate_state(
+        &self,
+        snake_ids_and_moves: Vec<(Self::SnakeIDType, Vec<crate::types::Move>)>,
+    ) -> Self::PreparedState {
+        let width = Self::width();
+
+        let mut new_snake_bodies = (0..MAX_SNAKES)
+            .into_iter()
+            .map(|_| [None, None, None, None])
+            .collect_vec();
+        let mut snake_moves = (0..MAX_SNAKES).map(|_| vec![]).collect_vec();
+        for (sid, moves) in snake_ids_and_moves {
+            let mut pick_mv = None;
+            for mv in moves {
+                let new_body_positions = self.forward_simulate(width, sid, mv);
+                if let Some(new_body_positions) = new_body_positions {
+                    new_snake_bodies[sid.0 as usize][mv.as_index()] = Some(new_body_positions);
+                    snake_moves[sid.0 as usize].push(mv);
+                }
+                pick_mv = Some(mv);
+            }
+            if snake_moves[sid.0 as usize].is_empty() {
+                let mv = pick_mv.unwrap();
+                snake_moves[sid.0 as usize].push(mv);
+                new_snake_bodies[sid.0 as usize][mv.as_index()] =
+                    Some(BattleSnakeResult::Dead(vec![]));
+            }
+        }
+
+        Self::PreparedState {
+            new_snake_bodies,
+            snake_moves,
+        }
+    }
+
+    fn evaluate_moves_with_state(
         &self,
         new_snakes: &[(Self::SnakeIDType, Move)],
-        new_snake_bodies: &Self::PreparedState,
+        state: &Self::PreparedState,
     ) -> Self {
+        let new_snake_bodies = &state.new_snake_bodies;
         let mut new_game = *self;
         let mut dead_snakes = vec![];
         let mut seen_snakes = vec![];
