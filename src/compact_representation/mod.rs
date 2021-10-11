@@ -986,7 +986,7 @@ impl<T: SimulatorInstruments, N: CellNum, const BOARD_SIZE: usize, const MAX_SNA
         snake_ids_and_moves: Vec<(Self::SnakeIDType, Vec<crate::types::Move>)>,
     ) -> Vec<(Vec<(Self::SnakeIDType, crate::types::Move)>, Self)> {
         let start = Instant::now();
-        let eval_state = ();
+        let eval_state = self.generate_state(snake_ids_and_moves.clone());
         let ids_and_moves = snake_ids_and_moves
             .into_iter()
             .filter(|(_, moves)| !moves.is_empty())
@@ -1009,26 +1009,24 @@ impl<T: SimulatorInstruments, N: CellNum, const BOARD_SIZE: usize, const MAX_SNA
 impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatableWithStateGame
     for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
-    type PreparedState = ();
+    type PreparedState = [std::option::Option<(
+        SnakeId,
+        CellIndex<T>,
+        std::option::Option<CellIndex<T>>,
+        CellIndex<T>,
+        CellIndex<T>,
+    )>; MAX_SNAKES];
 
     fn generate_state(
         &self,
-        _snake_ids_and_moves: Vec<(Self::SnakeIDType, Vec<crate::types::Move>)>,
+        moves: Vec<(Self::SnakeIDType, Vec<crate::types::Move>)>,
     ) -> Self::PreparedState {
-    }
-
-    fn evaluate_moves_with_state(
-        &self,
-        moves: &[(Self::SnakeIDType, Move)],
-        _state: &Self::PreparedState,
-    ) -> Self {
-        let mut new = *self;
-
         let mut new_heads = [None; MAX_SNAKES];
 
         for (id, m) in moves.iter() {
-            let old_head = new.get_head_as_native_position(id);
-            let old_tail = new
+            let m = m.first().unwrap(); // TODO: We need to support multiple moves per snake here eventually
+            let old_head = self.get_head_as_native_position(id);
+            let old_tail = self
                 .get_cell(old_head)
                 .get_tail_position(old_head)
                 .expect("We came from a head so we should have a tail");
@@ -1040,7 +1038,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
                 Some(CellIndex::<T>::new(new_head_position, Self::width()))
             };
 
-            let old_tail_cell = new.get_cell(old_tail);
+            let old_tail_cell = self.get_cell(old_tail);
             let new_tail = if old_tail_cell.is_stacked() {
                 old_tail
             } else {
@@ -1049,8 +1047,18 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
                     .expect("We specificly went to a tail so this shouldn't fail")
             };
 
-            new_heads[id.as_usize()] = Some((id, old_head, new_head, old_tail, new_tail));
+            new_heads[id.as_usize()] = Some((*id, old_head, new_head, old_tail, new_tail));
         }
+
+        new_heads
+    }
+
+    fn evaluate_moves_with_state(
+        &self,
+        moves: &[(Self::SnakeIDType, Move)],
+        new_heads: &Self::PreparedState,
+    ) -> Self {
+        let mut new = *self;
 
         for (id, old_head, new_head, old_tail, new_tail) in new_heads.iter().flatten() {
             // Step 1: Each Battlesnake will have its chosen move applied
@@ -1063,10 +1071,10 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
                 // Remove old tail
                 let old_tail_cell = new.get_cell(*old_tail);
                 if old_tail_cell.is_double_stacked_piece() {
-                    new.set_cell_body_piece(*old_tail, **id, old_tail_cell.idx);
+                    new.set_cell_body_piece(*old_tail, *id, old_tail_cell.idx);
                 } else {
                     new.cell_remove(*old_tail);
-                    new.set_cell_head(*old_head, **id, *new_tail)
+                    new.set_cell_head(*old_head, *id, *new_tail)
                 }
 
                 // Change health
@@ -1083,14 +1091,14 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
                     new.lengths[id.as_usize()] = new.lengths[id.as_usize()].saturating_add(1);
 
                     let new_tail_cell = new.get_cell(*new_tail);
-                    new.set_cell_double_stacked(*new_tail, **id, new_tail_cell.idx);
+                    new.set_cell_double_stacked(*new_tail, *id, new_tail_cell.idx);
 
                     // Food is removed naturally by overriding the Cell with the body, which will
                     // happen later
                 }
             } else {
                 // Step 4b: Moved out of bounds
-                new.kill_and_remove(**id);
+                new.kill_and_remove(*id);
             }
         }
 
@@ -1099,13 +1107,13 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
         // random
 
         for (id, _old_head, _new_head, _old_tail, _new_tail) in new_heads.iter().flatten() {
-            if !new.is_alive(*id) {
+            if !new.is_alive(id) {
                 continue;
             }
 
             // Step 4a: Out of health
-            if new.get_health(**id) == Self::ZERO {
-                new.kill_and_remove(**id);
+            if new.get_health(*id) == Self::ZERO {
+                new.kill_and_remove(*id);
             }
         }
 
@@ -1140,7 +1148,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
         let grouped_heads = new_heads
             .iter()
             .flatten()
-            .filter(|info| new.is_alive(info.0))
+            .filter(|info| new.is_alive(&info.0))
             .into_group_map_by(|t| t.2);
         let head_to_head_collistions = grouped_heads
             .iter()
@@ -1150,7 +1158,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
         for (_pos, snake_move_info) in head_to_head_collistions {
             let all_snakes_same_length = snake_move_info
                 .iter()
-                .map(|x| new.get_length(*x.0))
+                .map(|x| new.get_length(x.0))
                 .dedup()
                 .collect_vec()
                 .len()
@@ -1162,7 +1170,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
                 Some(
                     snake_move_info
                         .iter()
-                        .map(|i| (*i, new.get_length(*i.0)))
+                        .map(|i| (*i, new.get_length(i.0)))
                         .max_by_key(|x| x.1)
                         .unwrap()
                         .0,
@@ -1171,28 +1179,28 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
 
             for (loser, _, _, _, _) in snake_move_info
                 .iter()
-                .filter(|x| Some(*x.0) != winner.map(|x| *x.0))
+                .filter(|x| Some(x.0) != winner.map(|x| x.0))
             {
                 to_kill[loser.as_usize()] = true;
             }
         }
 
         for (id, old_head, new_head, _old_tail, new_tail) in new_heads.iter().flatten() {
-            if to_kill[id.as_usize()] || !new.is_alive(*id) {
+            if to_kill[id.as_usize()] || !new.is_alive(id) {
                 continue;
             }
 
             let new_head = new_head.unwrap();
 
             new.heads[id.as_usize()] = new_head;
-            new.set_cell_head(new_head, **id, *new_tail);
+            new.set_cell_head(new_head, *id, *new_tail);
 
             let old_head_cell = self.get_cell(*old_head);
 
             if old_head_cell.is_triple_stacked_piece() {
-                new.set_cell_double_stacked(*old_head, **id, new_head);
+                new.set_cell_double_stacked(*old_head, *id, new_head);
             } else {
-                new.set_cell_body_piece(*old_head, **id, new_head);
+                new.set_cell_body_piece(*old_head, *id, new_head);
             }
         }
 
