@@ -972,67 +972,69 @@ impl<T: CellNum> SinglePlayerMoveResult<T> {
 impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatableWithStateGame
     for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
-    type PreparedState = [SinglePlayerMoveResult<T>; MAX_SNAKES];
+    type PreparedState = [[SinglePlayerMoveResult<T>; MAX_SNAKES]; MAX_SNAKES];
 
     fn generate_state(
         &self,
         moves: Vec<(Self::SnakeIDType, Vec<crate::types::Move>)>,
     ) -> Self::PreparedState {
-        let mut new_heads = [SinglePlayerMoveResult::Dead; MAX_SNAKES];
+        let mut new_heads = [[SinglePlayerMoveResult::Dead; MAX_SNAKES]; MAX_SNAKES];
 
-        for (id, m) in moves.iter() {
-            let m = m.first().unwrap(); // TODO: We need to support multiple moves per snake here eventually
-            let old_head = self.get_head_as_native_position(id);
-            let old_tail = self
-                .get_cell(old_head)
-                .get_tail_position(old_head)
-                .expect("We came from a head so we should have a tail");
+        for (id, mvs) in moves.iter() {
+            for m in mvs {
+                let old_head = self.get_head_as_native_position(id);
+                let old_tail = self
+                    .get_cell(old_head)
+                    .get_tail_position(old_head)
+                    .expect("We came from a head so we should have a tail");
 
-            let new_head_position = old_head.into_position(Self::width()).add_vec(m.to_vector());
-            let new_head = if self.off_board(new_head_position, Self::width()) {
-                continue;
-            } else {
-                CellIndex::<T>::new(new_head_position, Self::width())
-            };
+                let new_head_position =
+                    old_head.into_position(Self::width()).add_vec(m.to_vector());
+                let new_head = if self.off_board(new_head_position, Self::width()) {
+                    continue;
+                } else {
+                    CellIndex::<T>::new(new_head_position, Self::width())
+                };
 
-            let old_tail_cell = self.get_cell(old_tail);
-            let new_tail = if old_tail_cell.is_stacked() {
-                old_tail
-            } else {
-                old_tail_cell
-                    .get_next_index()
-                    .expect("We specificly went to a tail so this shouldn't fail")
-            };
+                let old_tail_cell = self.get_cell(old_tail);
+                let new_tail = if old_tail_cell.is_stacked() {
+                    old_tail
+                } else {
+                    old_tail_cell
+                        .get_next_index()
+                        .expect("We specificly went to a tail so this shouldn't fail")
+                };
 
-            let mut new_health = self.healths[id.as_usize()];
-            new_health = new_health.saturating_sub(1);
-            if self.get_cell(new_head).is_hazard() {
-                new_health = new_health.saturating_sub(self.hazard_damage);
+                let mut new_health = self.healths[id.as_usize()];
+                new_health = new_health.saturating_sub(1);
+                if self.get_cell(new_head).is_hazard() {
+                    new_health = new_health.saturating_sub(self.hazard_damage);
+                }
+
+                let ate_food = self.get_cell(new_head).is_food();
+                let mut new_length = self.lengths[id.as_usize()];
+
+                if ate_food {
+                    new_health = 100;
+                } else {
+                    new_length = new_length.saturating_sub(1);
+                };
+
+                if new_health == Self::ZERO {
+                    continue;
+                };
+
+                new_heads[id.as_usize()][m.as_index()] = SinglePlayerMoveResult::Alive {
+                    id: *id,
+                    new_head,
+                    old_head,
+                    new_tail,
+                    old_tail,
+                    new_health,
+                    ate_food,
+                    new_length,
+                };
             }
-
-            let ate_food = self.get_cell(new_head).is_food();
-            let mut new_length = self.lengths[id.as_usize()];
-
-            if ate_food {
-                new_health = 100;
-            } else {
-                new_length = new_length.saturating_sub(1);
-            };
-
-            if new_health == Self::ZERO {
-                continue;
-            };
-
-            new_heads[id.as_usize()] = SinglePlayerMoveResult::Alive {
-                id: *id,
-                new_head,
-                old_head,
-                new_tail,
-                old_tail,
-                new_health,
-                ate_food,
-                new_length,
-            };
         }
 
         new_heads
@@ -1045,7 +1047,9 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
     ) -> Self {
         let mut new = *self;
 
-        for (id, result) in new_heads.iter().enumerate() {
+        for (id, m) in moves {
+            let result = new_heads[id.as_usize()][m.as_index()];
+
             match result {
                 SinglePlayerMoveResult::Alive {
                     id,
@@ -1062,29 +1066,29 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
                     // impoossible to correctly remove the tail if the snake dies.
 
                     // Remove old tail
-                    let old_tail_cell = new.get_cell(*old_tail);
+                    let old_tail_cell = new.get_cell(old_tail);
                     if old_tail_cell.is_double_stacked_piece() {
-                        new.set_cell_body_piece(*old_tail, *id, old_tail_cell.idx);
+                        new.set_cell_body_piece(old_tail, id, old_tail_cell.idx);
                     } else {
-                        new.cell_remove(*old_tail);
-                        new.set_cell_head(*old_head, *id, *new_tail)
+                        new.cell_remove(old_tail);
+                        new.set_cell_head(old_head, id, new_tail)
                     }
 
                     // Apply new health
-                    new.healths[id.as_usize()] = *new_health;
-                    new.lengths[id.as_usize()] = *new_length;
+                    new.healths[id.as_usize()] = new_health;
+                    new.lengths[id.as_usize()] = new_length;
 
                     // Step 2: Any Battlesnake that has found food will consume it
                     // Reset health to max if ate food
-                    if *ate_food {
-                        let new_tail_cell = new.get_cell(*new_tail);
-                        new.set_cell_double_stacked(*new_tail, *id, new_tail_cell.idx);
+                    if ate_food {
+                        let new_tail_cell = new.get_cell(new_tail);
+                        new.set_cell_double_stacked(new_tail, id, new_tail_cell.idx);
 
                         // Food is removed naturally by overriding the Cell with the body, which will
                         // happen later
                     }
                 }
-                SinglePlayerMoveResult::Dead => new.kill_and_remove(SnakeId(id as u8)),
+                SinglePlayerMoveResult::Dead => new.kill_and_remove(*id),
             }
         }
 
@@ -1094,9 +1098,11 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
         let mut to_kill = [false; MAX_SNAKES];
 
         // Step 4c-d: Collision besides head to head
-        for result in new_heads.iter() {
+        for (id, m) in moves {
+            let result = new_heads[id.as_usize()][m.as_index()];
+
             if let SinglePlayerMoveResult::Alive { id, new_head, .. } = result {
-                let new_head_cell = new.get_cell(*new_head);
+                let new_head_cell = new.get_cell(new_head);
 
                 if new_head_cell.is_body_segment() || new_head_cell.is_head() {
                     to_kill[id.as_usize()] = true;
@@ -1105,8 +1111,9 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
         }
 
         // Step 4e: Head to Head collisions
-        let grouped_heads = new_heads
+        let grouped_heads = moves
             .iter()
+            .map(|(id, m)| new_heads[id.as_usize()][m.as_index()])
             .filter_map(|result| result.to_tuple())
             .into_group_map_by(|t| t.2);
         let head_to_head_collistions = grouped_heads
@@ -1142,8 +1149,10 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
             }
         }
 
-        for (id, old_head, new_head, _old_tail, new_tail, _, _, _) in
-            new_heads.iter().flat_map(|result| result.to_tuple())
+        for (id, old_head, new_head, _old_tail, new_tail, _, _, _) in moves
+            .iter()
+            .map(|(id, m)| new_heads[id.as_usize()][m.as_index()])
+            .flat_map(|result| result.to_tuple())
         {
             if to_kill[id.as_usize()] {
                 // Kill any player killed via collisions
