@@ -1228,25 +1228,20 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
         for (id, old_head, new_head, _old_tail, new_tail, _, _, _) in
             new_heads.iter().flat_map(|result| result.to_tuple())
         {
-            if to_kill[id.as_usize()] || !new.is_alive(&id) {
-                continue;
-            }
-
-            new.heads[id.as_usize()] = new_head;
-            new.set_cell_head(new_head, id, new_tail);
-
-            let old_head_cell = self.get_cell(old_head);
-
-            if old_head_cell.is_triple_stacked_piece() {
-                new.set_cell_double_stacked(old_head, id, new_head);
+            if to_kill[id.as_usize()] {
+                // Kill any player killed via collisions
+                new.kill_and_remove(id);
             } else {
-                new.set_cell_body_piece(old_head, id, new_head);
-            }
-        }
+                // Move Head
+                new.heads[id.as_usize()] = new_head;
+                new.set_cell_head(new_head, id, new_tail);
 
-        for (i, kill) in to_kill.iter().enumerate() {
-            if *kill {
-                new.kill_and_remove(SnakeId(i as u8));
+                let old_head_cell = self.get_cell(old_head);
+                if old_head_cell.is_triple_stacked_piece() {
+                    new.set_cell_double_stacked(old_head, id, new_head);
+                } else {
+                    new.set_cell_body_piece(old_head, id, new_head);
+                }
             }
         }
 
