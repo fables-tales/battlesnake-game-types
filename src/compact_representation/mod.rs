@@ -1013,6 +1013,11 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
                     // Food is removed naturally by overriding the Cell with the body, which will
                     // happen later
                 }
+
+                // Step 4a: Out of health
+                if new.get_health(*id) == Self::ZERO {
+                    new.kill_and_remove(*id);
+                }
             } else {
                 // Step 4b: Moved out of bounds
                 new.kill_and_remove(*id);
@@ -1022,17 +1027,6 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
         // Step 3: Any new food spawning will be placed in empty squares on the board.
         // This step is ignored because we don't want to guess at food spawn locations as they are
         // random
-
-        for (id, _old_head, _new_head, _old_tail, _new_tail) in new_heads.iter().flatten() {
-            if !new.is_alive(id) {
-                continue;
-            }
-
-            // Step 4a: Out of health
-            if new.get_health(*id) == Self::ZERO {
-                new.kill_and_remove(*id);
-            }
-        }
 
         let mut to_kill = [false; MAX_SNAKES];
 
