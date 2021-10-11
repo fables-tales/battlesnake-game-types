@@ -923,22 +923,68 @@ impl<T: SimulatorInstruments, N: CellNum, const BOARD_SIZE: usize, const MAX_SNA
     }
 }
 
+#[derive(Copy, Clone)]
+pub enum SinglePlayerMoveResult<T: CellNum> {
+    Alive {
+        id: SnakeId,
+        old_head: CellIndex<T>,
+        new_head: CellIndex<T>,
+        old_tail: CellIndex<T>,
+        new_tail: CellIndex<T>,
+        new_health: u8,
+        ate_food: bool,
+    },
+    Dead,
+}
+
+impl<T: CellNum> SinglePlayerMoveResult<T> {
+    fn to_tuple(
+        &self,
+    ) -> Option<(
+        SnakeId,
+        CellIndex<T>,
+        CellIndex<T>,
+        CellIndex<T>,
+        CellIndex<T>,
+        u8,
+        bool,
+    )> {
+        match *self {
+            SinglePlayerMoveResult::Alive {
+                id,
+                new_head,
+                old_head,
+                new_tail,
+                old_tail,
+                new_health,
+                ate_food,
+            } => Some((
+                id, old_head, new_head, old_tail, new_tail, new_health, ate_food,
+            )),
+            _ => None,
+        }
+    }
+}
+
 impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatableWithStateGame
     for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
-    type PreparedState = [std::option::Option<(
-        SnakeId,
-        CellIndex<T>,
-        std::option::Option<CellIndex<T>>,
-        CellIndex<T>,
-        CellIndex<T>,
-    )>; MAX_SNAKES];
+    // type PreparedState = [std::option::Option<(
+    //     SnakeId,                           // id
+    //     CellIndex<T>,                      // old_head
+    //     std::option::Option<CellIndex<T>>, // new_head
+    //     CellIndex<T>,                      // old_tail
+    //     CellIndex<T>,                      // new_tail
+    //     Option<u8>,                        // new_health
+    //     bool,                              // at_food
+    // )>; MAX_SNAKES];
+    type PreparedState = [SinglePlayerMoveResult<T>; MAX_SNAKES];
 
     fn generate_state(
         &self,
         moves: Vec<(Self::SnakeIDType, Vec<crate::types::Move>)>,
     ) -> Self::PreparedState {
-        let mut new_heads = [None; MAX_SNAKES];
+        let mut new_heads = [SinglePlayerMoveResult::Dead; MAX_SNAKES];
 
         for (id, m) in moves.iter() {
             let m = m.first().unwrap(); // TODO: We need to support multiple moves per snake here eventually
@@ -950,9 +996,9 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
 
             let new_head_position = old_head.into_position(Self::width()).add_vec(m.to_vector());
             let new_head = if self.off_board(new_head_position, Self::width()) {
-                None
+                continue;
             } else {
-                Some(CellIndex::<T>::new(new_head_position, Self::width()))
+                CellIndex::<T>::new(new_head_position, Self::width())
             };
 
             let old_tail_cell = self.get_cell(old_tail);
@@ -964,7 +1010,31 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
                     .expect("We specificly went to a tail so this shouldn't fail")
             };
 
-            new_heads[id.as_usize()] = Some((*id, old_head, new_head, old_tail, new_tail));
+            let mut new_health = self.healths[id.as_usize()];
+            new_health = new_health.saturating_sub(1);
+            if self.get_cell(new_head).is_hazard() {
+                new_health = new_health.saturating_sub(self.hazard_damage);
+            }
+
+            let ate_food = self.get_cell(new_head).is_food();
+
+            if ate_food {
+                new_health = 100;
+            }
+
+            if new_health == Self::ZERO {
+                continue;
+            };
+
+            new_heads[id.as_usize()] = SinglePlayerMoveResult::Alive {
+                id: *id,
+                new_head,
+                old_head,
+                new_tail,
+                old_tail,
+                new_health,
+                ate_food,
+            };
         }
 
         new_heads
@@ -977,79 +1047,60 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
     ) -> Self {
         let mut new = *self;
 
-        for (id, old_head, new_head, old_tail, new_tail) in new_heads.iter().flatten() {
-            // Step 1: Each Battlesnake will have its chosen move applied
-            // Set new head on board and reset old head to normal body piece
-            if let Some(new_head) = new_head {
-                // Step 1a is delayed and done later. This is to not run into issues with
-                // overriding someone elses tail which would break the representation and make it
-                // impoossible to correctly remove the tail if the snake dies.
+        for (id, result) in new_heads.iter().enumerate() {
+            match result {
+                SinglePlayerMoveResult::Alive {
+                    id,
+                    new_head,
+                    old_head,
+                    new_tail,
+                    old_tail,
+                    new_health,
+                    ate_food,
+                } => {
+                    // Step 1a is delayed and done later. This is to not run into issues with
+                    // overriding someone elses tail which would break the representation and make it
+                    // impoossible to correctly remove the tail if the snake dies.
 
-                // Remove old tail
-                let old_tail_cell = new.get_cell(*old_tail);
-                if old_tail_cell.is_double_stacked_piece() {
-                    new.set_cell_body_piece(*old_tail, *id, old_tail_cell.idx);
-                } else {
-                    new.cell_remove(*old_tail);
-                    new.set_cell_head(*old_head, *id, *new_tail)
+                    // Remove old tail
+                    let old_tail_cell = new.get_cell(*old_tail);
+                    if old_tail_cell.is_double_stacked_piece() {
+                        new.set_cell_body_piece(*old_tail, *id, old_tail_cell.idx);
+                    } else {
+                        new.cell_remove(*old_tail);
+                        new.set_cell_head(*old_head, *id, *new_tail)
+                    }
+
+                    // Apply new health
+                    new.healths[id.as_usize()] = *new_health;
+
+                    // Step 2: Any Battlesnake that has found food will consume it
+                    // Reset health to max if ate food
+                    if *ate_food {
+                        new.lengths[id.as_usize()] = new.lengths[id.as_usize()].saturating_add(1);
+
+                        let new_tail_cell = new.get_cell(*new_tail);
+                        new.set_cell_double_stacked(*new_tail, *id, new_tail_cell.idx);
+
+                        // Food is removed naturally by overriding the Cell with the body, which will
+                        // happen later
+                    }
                 }
-
-                // Change health
-                new.healths[id.as_usize()] = new.healths[id.as_usize()].saturating_sub(1);
-                if new.get_cell(*new_head).is_hazard() {
-                    new.healths[id.as_usize()] =
-                        new.healths[id.as_usize()].saturating_sub(new.hazard_damage);
-                }
-
-                // Step 2: Any Battlesnake that has found food will consume it
-                // Reset health to max if ate food
-                if new.get_cell(*new_head).is_food() {
-                    new.healths[id.as_usize()] = 100;
-                    new.lengths[id.as_usize()] = new.lengths[id.as_usize()].saturating_add(1);
-
-                    let new_tail_cell = new.get_cell(*new_tail);
-                    new.set_cell_double_stacked(*new_tail, *id, new_tail_cell.idx);
-
-                    // Food is removed naturally by overriding the Cell with the body, which will
-                    // happen later
-                }
-
-                // Step 4a: Out of health
-                if new.get_health(*id) == Self::ZERO {
-                    new.kill_and_remove(*id);
-                }
-            } else {
-                // Step 4b: Moved out of bounds
-                new.kill_and_remove(*id);
+                SinglePlayerMoveResult::Dead => new.kill_and_remove(SnakeId(id as u8)),
             }
         }
 
         // Step 3: Any new food spawning will be placed in empty squares on the board.
         // This step is ignored because we don't want to guess at food spawn locations as they are
         // random
-
         let mut to_kill = [false; MAX_SNAKES];
 
         // Step 4c-d: Collision besides head to head
-        for (id, _old_head, new_head, _old_tail, _new_tail) in new_heads.iter().flatten() {
-            if !new.is_alive(id) {
-                continue;
-            }
-
-            if let Some(new_head) = new_head {
+        for result in new_heads.iter() {
+            if let SinglePlayerMoveResult::Alive { id, new_head, .. } = result {
                 let new_head_cell = new.get_cell(*new_head);
 
                 if new_head_cell.is_body_segment() || new_head_cell.is_head() {
-                    // let body_sid = new_head_cell
-                    //     .get_snake_id()
-                    //     .expect("We know this is a body segment so it will have a snake id");
-
-                    // let head = new.heads[body_sid.as_usize()];
-                    // let tail = new
-                    //     .get_cell(head)
-                    //     .get_tail_position(head)
-                    //     .expect("We know we have a head so we will always get a tail");
-
                     to_kill[id.as_usize()] = true;
                 }
             }
@@ -1058,21 +1109,18 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
         // Step 4e: Head to Head collisions
         let grouped_heads = new_heads
             .iter()
-            .flatten()
-            .filter(|info| new.is_alive(&info.0))
+            .filter_map(|result| result.to_tuple())
             .into_group_map_by(|t| t.2);
         let head_to_head_collistions = grouped_heads
             .iter()
-            .filter(|(_key, values)| values.len() >= 2)
-            .filter_map(|(key, values)| key.map(|key| (key, values)));
+            .filter(|(_key, values)| values.len() >= 2);
 
         for (_pos, snake_move_info) in head_to_head_collistions {
             let all_snakes_same_length = snake_move_info
                 .iter()
                 .map(|x| new.get_length(x.0))
                 .dedup()
-                .collect_vec()
-                .len()
+                .count()
                 == 1;
 
             let winner = if all_snakes_same_length {
@@ -1088,7 +1136,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
                 )
             };
 
-            for (loser, _, _, _, _) in snake_move_info
+            for (loser, _, _, _, _, _, _) in snake_move_info
                 .iter()
                 .filter(|x| Some(x.0) != winner.map(|x| x.0))
             {
@@ -1096,22 +1144,22 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
             }
         }
 
-        for (id, old_head, new_head, _old_tail, new_tail) in new_heads.iter().flatten() {
-            if to_kill[id.as_usize()] || !new.is_alive(id) {
+        for (id, old_head, new_head, _old_tail, new_tail, _, _) in
+            new_heads.iter().flat_map(|result| result.to_tuple())
+        {
+            if to_kill[id.as_usize()] || !new.is_alive(&id) {
                 continue;
             }
 
-            let new_head = new_head.unwrap();
-
             new.heads[id.as_usize()] = new_head;
-            new.set_cell_head(new_head, *id, *new_tail);
+            new.set_cell_head(new_head, id, new_tail);
 
-            let old_head_cell = self.get_cell(*old_head);
+            let old_head_cell = self.get_cell(old_head);
 
             if old_head_cell.is_triple_stacked_piece() {
-                new.set_cell_double_stacked(*old_head, *id, new_head);
+                new.set_cell_double_stacked(old_head, id, new_head);
             } else {
-                new.set_cell_body_piece(*old_head, *id, new_head);
+                new.set_cell_body_piece(old_head, id, new_head);
             }
         }
 
