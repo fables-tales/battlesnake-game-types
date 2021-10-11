@@ -441,7 +441,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
 
     fn kill_and_remove(&mut self, sid: SnakeId) {
         let head = self.heads[sid.as_usize()];
-        let mut current_index = Some(self.get_cell(head).get_tail_position(head).unwrap());
+        let mut current_index = self.get_cell(head).get_tail_position(head);
 
         while let Some(i) = current_index {
             current_index = self.get_cell(i).get_next_index();
