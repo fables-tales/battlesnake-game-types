@@ -1424,7 +1424,7 @@ mod test {
     }
 }
 
-trait MoveEvaluatableWithStateGame: SnakeIDGettableGame + PositionGettableGame + Sized {
+pub trait MoveEvaluatableWithStateGame: SnakeIDGettableGame + PositionGettableGame + Sized {
     type PreparedState;
 
     fn generate_state(
@@ -1439,7 +1439,7 @@ trait MoveEvaluatableWithStateGame: SnakeIDGettableGame + PositionGettableGame +
     ) -> Self;
 }
 
-trait MoveEvaluatableGame: SnakeIDGettableGame + PositionGettableGame + Sized {
+pub trait MoveEvaluatableGame: SnakeIDGettableGame + PositionGettableGame + Sized {
     fn evaluate_moves(&self, moves: &[(Self::SnakeIDType, Move)]) -> Self;
 }
 
@@ -1453,7 +1453,7 @@ impl<T: MoveEvaluatableWithStateGame> MoveEvaluatableGame for T {
     }
 }
 
-struct CellBoardMoveEvalPreparedState<T: CellNum> {
+pub struct CellBoardMoveEvalPreparedState<T: CellNum> {
     new_snake_bodies: Vec<[Option<BattleSnakeResult<T>>; 4]>,
     snake_moves: Vec<Vec<Move>>,
 }
