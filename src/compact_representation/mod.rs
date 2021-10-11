@@ -1016,6 +1016,7 @@ pub enum SinglePlayerMoveResult<T: CellNum> {
         new_tail: CellIndex<T>,
         new_health: u8,
         ate_food: bool,
+        new_length: u16,
     },
     Dead,
 }
@@ -1031,6 +1032,7 @@ impl<T: CellNum> SinglePlayerMoveResult<T> {
         CellIndex<T>,
         u8,
         bool,
+        u16,
     )> {
         match *self {
             SinglePlayerMoveResult::Alive {
@@ -1041,8 +1043,9 @@ impl<T: CellNum> SinglePlayerMoveResult<T> {
                 old_tail,
                 new_health,
                 ate_food,
+                new_length,
             } => Some((
-                id, old_head, new_head, old_tail, new_tail, new_health, ate_food,
+                id, old_head, new_head, old_tail, new_tail, new_health, ate_food, new_length,
             )),
             _ => None,
         }
@@ -1052,15 +1055,6 @@ impl<T: CellNum> SinglePlayerMoveResult<T> {
 impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatableWithStateGame
     for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
-    // type PreparedState = [std::option::Option<(
-    //     SnakeId,                           // id
-    //     CellIndex<T>,                      // old_head
-    //     std::option::Option<CellIndex<T>>, // new_head
-    //     CellIndex<T>,                      // old_tail
-    //     CellIndex<T>,                      // new_tail
-    //     Option<u8>,                        // new_health
-    //     bool,                              // at_food
-    // )>; MAX_SNAKES];
     type PreparedState = [SinglePlayerMoveResult<T>; MAX_SNAKES];
 
     fn generate_state(
@@ -1100,10 +1094,13 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
             }
 
             let ate_food = self.get_cell(new_head).is_food();
+            let mut new_length = self.lengths[id.as_usize()];
 
             if ate_food {
                 new_health = 100;
-            }
+            } else {
+                new_length = new_length.saturating_sub(1);
+            };
 
             if new_health == Self::ZERO {
                 continue;
@@ -1117,6 +1114,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
                 old_tail,
                 new_health,
                 ate_food,
+                new_length,
             };
         }
 
@@ -1140,6 +1138,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
                     old_tail,
                     new_health,
                     ate_food,
+                    new_length,
                 } => {
                     // Step 1a is delayed and done later. This is to not run into issues with
                     // overriding someone elses tail which would break the representation and make it
@@ -1156,12 +1155,11 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
 
                     // Apply new health
                     new.healths[id.as_usize()] = *new_health;
+                    new.lengths[id.as_usize()] = *new_length;
 
                     // Step 2: Any Battlesnake that has found food will consume it
                     // Reset health to max if ate food
                     if *ate_food {
-                        new.lengths[id.as_usize()] = new.lengths[id.as_usize()].saturating_add(1);
-
                         let new_tail_cell = new.get_cell(*new_tail);
                         new.set_cell_double_stacked(*new_tail, *id, new_tail_cell.idx);
 
@@ -1219,7 +1217,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
                 )
             };
 
-            for (loser, _, _, _, _, _, _) in snake_move_info
+            for (loser, _, _, _, _, _, _, _) in snake_move_info
                 .iter()
                 .filter(|x| Some(x.0) != winner.map(|x| x.0))
             {
@@ -1227,7 +1225,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
             }
         }
 
-        for (id, old_head, new_head, _old_tail, new_tail, _, _) in
+        for (id, old_head, new_head, _old_tail, new_tail, _, _, _) in
             new_heads.iter().flat_map(|result| result.to_tuple())
         {
             if to_kill[id.as_usize()] || !new.is_alive(&id) {
