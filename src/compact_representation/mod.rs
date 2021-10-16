@@ -9,14 +9,11 @@ use crate::types::{
 /// cast from a json represention to a `CellBoard`
 use crate::types::{NeighborDeterminableGame, SnakeBodyGettableGame};
 use crate::wire_representation::Game;
-use fxhash::FxHashSet;
 use itertools::Itertools;
 use rand::prelude::IteratorRandom;
 use rand::thread_rng;
-use std::collections::HashSet;
 use std::error::Error;
 use std::fmt::Display;
-use std::ops::Deref;
 use std::time::Instant;
 
 use crate::{
@@ -175,14 +172,6 @@ impl<T: CellNum> Cell<T> {
         self.flags = reset_to_empty;
         self.id = SnakeId(0);
         self.idx = CellIndex(T::from_i32(0));
-    }
-
-    fn matches_snake_id(&self, sid: SnakeId) -> bool {
-        if self.is_body_segment() {
-            self.id == sid
-        } else {
-            false
-        }
     }
 
     fn is_stacked(&self) -> bool {
@@ -408,23 +397,6 @@ fn get_snake_id(
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum BattleSnakeResult<T: CellNum> {
-    Alive(Vec<(CellIndex<T>, u8)>),
-    Dead(Vec<(CellIndex<T>, u8)>),
-}
-
-impl<T: CellNum> Deref for BattleSnakeResult<T> {
-    type Target = [(CellIndex<T>, u8)];
-
-    fn deref(&self) -> &Self::Target {
-        match self {
-            BattleSnakeResult::Alive(positions) => positions,
-            BattleSnakeResult::Dead(positions) => positions,
-        }
-    }
-}
-
 impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
     CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
@@ -610,107 +582,6 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
         let mut old_cell = self.get_cell(cell_index);
         old_cell.set_head(sid, next_id);
         self.cells[cell_index.0.as_usize()] = old_cell;
-    }
-
-    fn forward_simulate(&self, width: u8, sid: SnakeId, mv: Move) -> Option<BattleSnakeResult<T>> {
-        if self.healths[sid.0 as usize] == 0 {
-            return None;
-        }
-        let cell_index = self.heads[sid.0 as usize];
-        let mut alive = true;
-
-        let old_head_cell = self.get_cell(cell_index);
-
-        let old_tail_index = old_head_cell.get_tail_position(cell_index).unwrap();
-        let old_tail_cell = self.get_cell(old_tail_index);
-        let tail_stacked = old_tail_cell.is_stacked();
-
-        let new_head = cell_index.into_position(width).add_vec(mv.to_vector());
-        let new_head_index = CellIndex::new(new_head, width);
-        let head_collides_with_tail = new_head_index == old_tail_index && tail_stacked;
-        if self.off_board(new_head) {
-            alive = false;
-        } else if (self.get_cell(new_head_index).matches_snake_id(sid)
-            && new_head_index != old_tail_index)
-            || head_collides_with_tail
-        {
-            return None;
-        }
-
-        let tail_index = old_tail_index;
-
-        let mut new_positions = Vec::with_capacity(self.lengths[sid.0 as usize] as usize + 3);
-        let mut current_index = tail_index;
-        while self.get_cell(current_index).is_body_segment() {
-            if self.cell_is_snake_body_piece(current_index) {
-                let is_tail = current_index == tail_index;
-                current_index = self
-                    .get_cell(current_index)
-                    .get_next_index()
-                    .expect("couldn't get next index from cell");
-                if is_tail && alive && self.get_cell(new_head_index).is_food() {
-                    new_positions.push((current_index, 2));
-                } else {
-                    new_positions.push((current_index, 1));
-                }
-            } else if self.cell_is_double_stacked_piece(current_index) {
-                let is_tail = current_index == tail_index;
-                assert!(is_tail);
-                let next_index = self
-                    .get_cell(current_index)
-                    .get_next_index()
-                    .expect("couldn't get next index from cell");
-                // e.g. [(2,2)] -> [(2,2), (1,2)], because we'll get reversed
-                if is_tail && alive && self.get_cell(new_head_index).is_food() {
-                    new_positions.push((current_index, 2));
-                } else {
-                    new_positions.push((current_index, 1));
-                }
-                new_positions.push((next_index, 1));
-                current_index = next_index
-            } else if self.cell_is_triple_stacked_piece(current_index) {
-                new_positions.push((current_index, 2));
-                break;
-            } else {
-                panic!("wrong body segment type")
-            }
-        }
-        if alive {
-            new_positions.push((new_head_index, 1));
-        }
-
-        if new_positions.is_empty() {
-            let mut yolo_map = [vec![], vec![], vec![], vec![], vec![]];
-            for (index, _) in &new_positions {
-                let key = index.0.as_usize() % yolo_map.len();
-                if yolo_map[key].contains(&index.0) {
-                    alive = false;
-                    break;
-                }
-                yolo_map[key].push(index.0);
-            }
-        } else {
-            let mut set: FxHashSet<T> =
-                HashSet::with_capacity_and_hasher(new_positions.len(), Default::default());
-            for (index, _) in &new_positions {
-                let key = index.0;
-                if set.contains(&key) {
-                    alive = false;
-                    break;
-                }
-                set.insert(key);
-            }
-        }
-
-        //if new_positions.iter().map(|x| x.0).duplicates().count() != 0 {
-        //    alive = false;
-        //}
-        new_positions.reverse();
-        Some(if alive {
-            BattleSnakeResult::Alive(new_positions)
-        } else {
-            BattleSnakeResult::Dead(new_positions)
-        })
     }
 
     /// gets the snake ID at a given index, returns None if the provided index is not a snake cell
@@ -1006,24 +877,40 @@ impl<T: SimulatorInstruments, N: CellNum, const BOARD_SIZE: usize, const MAX_SNA
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
+/// This is the pre-captured state for the two-phase move evaluation
+/// For each alive snake we store some things for easy lookups later
+/// For dead snakes we don't need to record anything.
+/// Snakes can 'die' in the process phase, or in the actual evaluate function.
 pub enum SinglePlayerMoveResult<T: CellNum> {
+    /// Represents the given snake is alive after phase 1 of evaluation
     Alive {
+        /// This sid for this snake
         id: SnakeId,
+        /// CellIndex for where the head used to be
         old_head: CellIndex<T>,
+        /// CellIndex where the new head will be
         new_head: CellIndex<T>,
+        /// CellIndex where the tail was previously
         old_tail: CellIndex<T>,
+        /// CellIndex where the tail will be
         new_tail: CellIndex<T>,
+        /// The new health of the snake
         new_health: u8,
+        /// True if the snake ate food
         ate_food: bool,
+        /// The new length of the snake, after moving and potentially eating
         new_length: u16,
     },
+    /// Represents the snake died during phase 1. Cause it ran into a snake (including itself)
+    /// [excluding head to heads] or went out of bounds
     Dead,
 }
 
 impl<T: CellNum> SinglePlayerMoveResult<T> {
+    #[allow(clippy::type_complexity)]
     fn to_tuple(
-        &self,
+        self,
     ) -> Option<(
         SnakeId,
         CellIndex<T>,
@@ -1034,7 +921,7 @@ impl<T: CellNum> SinglePlayerMoveResult<T> {
         bool,
         u16,
     )> {
-        match *self {
+        match self {
             SinglePlayerMoveResult::Alive {
                 id,
                 new_head,
@@ -1136,13 +1023,13 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
             match result {
                 SinglePlayerMoveResult::Alive {
                     id,
-                    new_head,
                     old_head,
                     new_tail,
                     old_tail,
                     new_health,
                     ate_food,
                     new_length,
+                    ..
                 } => {
                     // Step 1a is delayed and done later. This is to not run into issues with
                     // overriding someone elses tail which would break the representation and make it
@@ -1713,14 +1600,21 @@ mod test {
     }
 }
 
+/// Specialized Trait for Move Evaluation in Simulation
+/// Some steps of eval can be precomputed for each snake move and don't rely on the cartersian
+/// product.
+/// This allows the algorithem to be significantly faster in simulation
 pub trait MoveEvaluatableWithStateGame: SnakeIDGettableGame + PositionGettableGame + Sized {
+    /// The type that is prepared ahead of time and passed into each evaluate usage
     type PreparedState;
 
+    /// Prepare the state for each snake move
     fn generate_state(
         &self,
         snake_ids_and_moves: Vec<(Self::SnakeIDType, Vec<crate::types::Move>)>,
     ) -> Self::PreparedState;
 
+    /// Evaluate the given moves with the precomputed state from Self::generate_state
     fn evaluate_moves_with_state(
         &self,
         moves: &[(Self::SnakeIDType, Move)],
@@ -1728,7 +1622,9 @@ pub trait MoveEvaluatableWithStateGame: SnakeIDGettableGame + PositionGettableGa
     ) -> Self;
 }
 
+/// Evaluate the given set of moves on the Board and return a new Game for the result
 pub trait MoveEvaluatableGame: SnakeIDGettableGame + PositionGettableGame + Sized {
+    /// Evaluate the given moves on this Board
     fn evaluate_moves(&self, moves: &[(Self::SnakeIDType, Move)]) -> Self;
 }
 
@@ -1740,9 +1636,4 @@ impl<T: MoveEvaluatableWithStateGame> MoveEvaluatableGame for T {
             .collect_vec();
         self.evaluate_moves_with_state(moves, &self.generate_state(simulate_ver))
     }
-}
-
-pub struct CellBoardMoveEvalPreparedState<T: CellNum> {
-    new_snake_bodies: Vec<[Option<BattleSnakeResult<T>>; 4]>,
-    snake_moves: Vec<Vec<Move>>,
 }
