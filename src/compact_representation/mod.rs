@@ -695,6 +695,16 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
     pub fn width() -> u8 {
         (BOARD_SIZE as f32).sqrt() as u8
     }
+
+    /// Get all the hazards for this board
+    pub fn get_all_hazards_as_positions(&self) -> Vec<crate::wire_representation::Position> {
+        self.cells
+            .iter()
+            .enumerate()
+            .filter(|(_, c)| c.is_hazard())
+            .map(|(i, _)| CellIndex(T::from_usize(i)).into_position(Self::width()))
+            .collect()
+    }
 }
 
 impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> SnakeIDGettableGame
