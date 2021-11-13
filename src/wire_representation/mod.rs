@@ -232,6 +232,10 @@ impl VictorDeterminableGame for Game {
             None
         }
     }
+
+    fn alive_snake_count(&self) -> usize {
+       self.board.snakes.iter().filter(|s| s.health > 0).count() 
+    }
 }
 
 impl YouDeterminableGame for Game {

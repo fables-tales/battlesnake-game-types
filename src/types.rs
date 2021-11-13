@@ -173,6 +173,9 @@ pub trait VictorDeterminableGame: std::fmt::Debug + SnakeIDGettableGame {
 
     /// get the winner for a given game, will return None in the case of a draw, or if the game is not over
     fn get_winner(&self) -> Option<Self::SnakeIDType>;
+
+    /// How many snakes are alive
+    fn alive_snake_count(&self) -> usize;
 }
 
 /// This represents a single move for a single snake

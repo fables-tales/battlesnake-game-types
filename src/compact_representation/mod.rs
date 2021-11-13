@@ -786,6 +786,10 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> VictorDetermi
         }
         None
     }
+
+    fn alive_snake_count(&self) -> usize {
+        self.healths.iter().filter(|h| **h != 0).count()
+    }
 }
 
 impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> RandomReasonableMovesGame
