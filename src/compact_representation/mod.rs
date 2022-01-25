@@ -867,18 +867,24 @@ impl<T: SimulatorInstruments, N: CellNum, const BOARD_SIZE: usize, const MAX_SNA
             .into_iter()
             .filter(|(_, moves)| !moves.is_empty())
             .map(|(sid, moves)| {
-                let mv_count = moves.len();
-
-                std::iter::repeat(sid)
-                    .zip(moves)
+                let first_move = moves[0];
+                let mut valid_moves = moves
+                    .into_iter()
                     // Here we ignore any moves that results in instant death. UNLESS its the only move
-                    .filter(move |(sid, mv)| {
-                        mv_count == 1
-                            || matches!(
-                                eval_state[sid.as_usize()][mv.as_index()],
-                                SinglePlayerMoveResult::Alive { .. }
-                            )
+                    .filter(|mv| {
+                        matches!(
+                            eval_state[sid.as_usize()][mv.as_index()],
+                            SinglePlayerMoveResult::Alive { .. }
+                        )
                     })
+                    .collect_vec();
+
+                // If we filtered out all the moves we pick a random move to keep
+                if valid_moves.is_empty() {
+                    valid_moves.push(first_move);
+                }
+
+                std::iter::repeat(sid).zip(valid_moves)
             });
         let possible_new_games = ids_and_moves.multi_cartesian_product();
         let res = possible_new_games
