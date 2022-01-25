@@ -39,62 +39,44 @@ impl<T: MoveEvaluatableWithStateGame> MoveEvaluatableGame for T {
 }
 
 #[derive(Copy, Clone, Debug)]
+/// Precomputed state for Move Evaluation
+/// for a single Snake Move
+pub struct AliveMoveResult<T: CellNum> {
+    /// This sid for this snake
+    id: SnakeId,
+    /// CellIndex for where the head used to be
+    old_head: CellIndex<T>,
+    /// CellIndex where the new head will be
+    new_head: CellIndex<T>,
+    /// CellIndex where the tail was previously
+    old_tail: CellIndex<T>,
+    /// CellIndex where the tail will be
+    new_tail: CellIndex<T>,
+    /// The new health of the snake
+    new_health: u8,
+    /// True if the snake ate food
+    ate_food: bool,
+    /// The new length of the snake, after moving and potentially eating
+    new_length: u16,
+}
+
+#[derive(Copy, Clone, Debug)]
 /// This is the pre-captured state for the two-phase move evaluation
 /// For each alive snake we store some things for easy lookups later
 /// For dead snakes we don't need to record anything.
 /// Snakes can 'die' in the process phase, or in the actual evaluate function.
 pub enum SinglePlayerMoveResult<T: CellNum> {
     /// Represents the given snake is alive after phase 1 of evaluation
-    Alive {
-        /// This sid for this snake
-        id: SnakeId,
-        /// CellIndex for where the head used to be
-        old_head: CellIndex<T>,
-        /// CellIndex where the new head will be
-        new_head: CellIndex<T>,
-        /// CellIndex where the tail was previously
-        old_tail: CellIndex<T>,
-        /// CellIndex where the tail will be
-        new_tail: CellIndex<T>,
-        /// The new health of the snake
-        new_health: u8,
-        /// True if the snake ate food
-        ate_food: bool,
-        /// The new length of the snake, after moving and potentially eating
-        new_length: u16,
-    },
+    Alive(AliveMoveResult<T>),
     /// Represents the snake died during phase 1. Cause it ran into a snake (including itself)
     /// [excluding head to heads] or went out of bounds
     Dead,
 }
 
 impl<T: CellNum> SinglePlayerMoveResult<T> {
-    #[allow(clippy::type_complexity)]
-    fn to_tuple(
-        self,
-    ) -> Option<(
-        SnakeId,
-        CellIndex<T>,
-        CellIndex<T>,
-        CellIndex<T>,
-        CellIndex<T>,
-        u8,
-        bool,
-        u16,
-    )> {
+    fn to_alive_struct(self) -> Option<AliveMoveResult<T>> {
         match self {
-            SinglePlayerMoveResult::Alive {
-                id,
-                new_head,
-                old_head,
-                new_tail,
-                old_tail,
-                new_health,
-                ate_food,
-                new_length,
-            } => Some((
-                id, old_head, new_head, old_tail, new_tail, new_health, ate_food, new_length,
-            )),
+            SinglePlayerMoveResult::Alive(alive) => Some(alive),
             _ => None,
         }
     }
@@ -171,16 +153,17 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
                     continue;
                 };
 
-                new_heads[id.as_usize()][m.as_index()] = SinglePlayerMoveResult::Alive {
-                    id: *id,
-                    new_head,
-                    old_head,
-                    new_tail,
-                    old_tail,
-                    new_health,
-                    ate_food,
-                    new_length,
-                };
+                new_heads[id.as_usize()][m.as_index()] =
+                    SinglePlayerMoveResult::Alive(AliveMoveResult {
+                        id: *id,
+                        new_head,
+                        old_head,
+                        new_tail,
+                        old_tail,
+                        new_health,
+                        ate_food,
+                        new_length,
+                    });
             }
         }
 
@@ -198,7 +181,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
             let result = new_heads[id.as_usize()][m.as_index()];
 
             match result {
-                SinglePlayerMoveResult::Alive {
+                SinglePlayerMoveResult::Alive(AliveMoveResult {
                     id,
                     old_head,
                     new_tail,
@@ -207,7 +190,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
                     ate_food,
                     new_length,
                     ..
-                } => {
+                }) => {
                     // Step 1a is delayed and done later. This is to not run into issues with
                     // overriding someone elses tail which would break the representation and make it
                     // impossible to correctly remove the tail if the snake dies.
@@ -248,7 +231,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
         for (id, m) in moves {
             let result = new_heads[id.as_usize()][m.as_index()];
 
-            if let SinglePlayerMoveResult::Alive { id, new_head, .. } = result {
+            if let SinglePlayerMoveResult::Alive(AliveMoveResult { id, new_head, .. }) = result {
                 let new_head_cell = new.get_cell(new_head);
 
                 if new_head_cell.is_body_segment() || new_head_cell.is_head() {
@@ -261,8 +244,8 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
         let grouped_heads = moves
             .iter()
             .map(|(id, m)| new_heads[id.as_usize()][m.as_index()])
-            .filter_map(|result| result.to_tuple())
-            .into_group_map_by(|t| t.2);
+            .filter_map(|result| result.to_alive_struct())
+            .into_group_map_by(|t| t.new_head);
         let head_to_head_collistions = grouped_heads
             .iter()
             .filter(|(_key, values)| values.len() >= 2);
@@ -270,14 +253,14 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
         for (pos, snake_move_info) in head_to_head_collistions {
             let max_length = snake_move_info
                 .iter()
-                .map(|i| (*i, new.get_length(i.0)))
+                .map(|i| (*i, new.get_length(i.id)))
                 .max_by_key(|x| x.1)
                 .unwrap()
                 .1;
 
             let multiple_snakes_max_length = snake_move_info
                 .iter()
-                .filter(|x| new.get_length(x.0) == max_length)
+                .filter(|x| new.get_length(x.id) == max_length)
                 .count()
                 != 1;
 
@@ -287,18 +270,18 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
                 Some(
                     snake_move_info
                         .iter()
-                        .map(|i| (*i, new.get_length(i.0)))
+                        .map(|i| (*i, new.get_length(i.id)))
                         .max_by_key(|x| x.1)
                         .unwrap()
                         .0,
                 )
             };
 
-            for (loser, _, _, _, _, _, _, _) in snake_move_info
+            for AliveMoveResult { id: dead, .. } in snake_move_info
                 .iter()
-                .filter(|x| Some(x.0) != winner.map(|x| x.0))
+                .filter(|x| Some(x.id) != winner.map(|x| x.id))
             {
-                to_kill[loser.as_usize()] = true;
+                to_kill[dead.as_usize()] = true;
             }
 
             if winner.is_none() {
@@ -306,24 +289,32 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
             }
         }
 
-        for (id, old_head, new_head, _old_tail, new_tail, _, _, _) in moves
+        for result in moves
             .iter()
             .map(|(id, m)| new_heads[id.as_usize()][m.as_index()])
-            .flat_map(|result| result.to_tuple())
         {
-            if to_kill[id.as_usize()] {
-                // Kill any player killed via collisions
-                new.kill_and_remove(id);
-            } else {
-                // Move Head
-                new.heads[id.as_usize()] = new_head;
-                new.set_cell_head(new_head, id, new_tail);
-
-                let old_head_cell = self.get_cell(old_head);
-                if old_head_cell.is_triple_stacked_piece() {
-                    new.set_cell_double_stacked(old_head, id, new_head);
+            if let SinglePlayerMoveResult::Alive(AliveMoveResult {
+                id,
+                old_head,
+                new_head,
+                new_tail,
+                ..
+            }) = result
+            {
+                if to_kill[id.as_usize()] {
+                    // Kill any player killed via collisions
+                    new.kill_and_remove(id);
                 } else {
-                    new.set_cell_body_piece(old_head, id, new_head);
+                    // Move Head
+                    new.heads[id.as_usize()] = new_head;
+                    new.set_cell_head(new_head, id, new_tail);
+
+                    let old_head_cell = self.get_cell(old_head);
+                    if old_head_cell.is_triple_stacked_piece() {
+                        new.set_cell_double_stacked(old_head, id, new_head);
+                    } else {
+                        new.set_cell_body_piece(old_head, id, new_head);
+                    }
                 }
             }
         }
