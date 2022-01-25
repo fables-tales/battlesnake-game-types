@@ -974,11 +974,11 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> SizeDetermina
     for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
     fn get_width(&self) -> u32 {
-        (BOARD_SIZE as f32).sqrt() as u32
+        self.actual_width.into()
     }
 
     fn get_height(&self) -> u32 {
-        (BOARD_SIZE as f32).sqrt() as u32
+        self.actual_height.into()
     }
 }
 
