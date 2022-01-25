@@ -267,15 +267,21 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
             .iter()
             .filter(|(_key, values)| values.len() >= 2);
 
-        for (_pos, snake_move_info) in head_to_head_collistions {
-            let all_snakes_same_length = snake_move_info
+        for (pos, snake_move_info) in head_to_head_collistions {
+            let max_length = snake_move_info
                 .iter()
-                .map(|x| new.get_length(x.0))
-                .dedup()
-                .count()
-                == 1;
+                .map(|i| (*i, new.get_length(i.0)))
+                .max_by_key(|x| x.1)
+                .unwrap()
+                .1;
 
-            let winner = if all_snakes_same_length {
+            let multiple_snakes_max_length = snake_move_info
+                .iter()
+                .filter(|x| new.get_length(x.0) == max_length)
+                .count()
+                != 1;
+
+            let winner = if multiple_snakes_max_length {
                 None
             } else {
                 Some(
@@ -293,6 +299,10 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
                 .filter(|x| Some(x.0) != winner.map(|x| x.0))
             {
                 to_kill[loser.as_usize()] = true;
+            }
+
+            if winner.is_none() {
+                new.cell_remove(*pos);
             }
         }
 

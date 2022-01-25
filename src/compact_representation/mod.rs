@@ -1191,6 +1191,7 @@ mod test {
             while !g.is_over() {
                 let orig = g.clone();
                 let moves = g.random_reasonable_move_for_each_snake();
+                eprintln!("moves: {:?}", &moves);
                 let non_compact_move_map = moves
                     .into_iter()
                     .map(|(id, mv)| (id, vec![mv]))
