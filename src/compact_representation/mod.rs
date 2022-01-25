@@ -960,7 +960,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
 
                 let new_head_position =
                     old_head.into_position(Self::width()).add_vec(m.to_vector());
-                let new_head = if self.off_board(new_head_position, Self::width()) {
+                let new_head = if self.off_board(new_head_position) {
                     continue;
                 } else {
                     CellIndex::<T>::new(new_head_position, Self::width())
@@ -986,8 +986,9 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
 
                 if ate_food {
                     new_health = 100;
+                    new_length = new_length.saturating_add(1);
                 } else {
-                    new_length = new_length.saturating_sub(1);
+                    new_health = new_health.saturating_sub(1);
                 };
 
                 if new_health == Self::ZERO {
@@ -1033,7 +1034,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
                 } => {
                     // Step 1a is delayed and done later. This is to not run into issues with
                     // overriding someone elses tail which would break the representation and make it
-                    // impoossible to correctly remove the tail if the snake dies.
+                    // impossible to correctly remove the tail if the snake dies.
 
                     // Remove old tail
                     let old_tail_cell = new.get_cell(old_tail);
