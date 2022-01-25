@@ -942,13 +942,13 @@ impl<T: CellNum> SinglePlayerMoveResult<T> {
 impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatableWithStateGame
     for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
-    type PreparedState = [[SinglePlayerMoveResult<T>; MAX_SNAKES]; MAX_SNAKES];
+    type PreparedState = [[SinglePlayerMoveResult<T>; 4]; MAX_SNAKES];
 
     fn generate_state(
         &self,
         moves: Vec<(Self::SnakeIDType, Vec<crate::types::Move>)>,
     ) -> Self::PreparedState {
-        let mut new_heads = [[SinglePlayerMoveResult::Dead; MAX_SNAKES]; MAX_SNAKES];
+        let mut new_heads = [[SinglePlayerMoveResult::Dead; 4]; MAX_SNAKES];
 
         for (id, mvs) in moves.iter() {
             for m in mvs {
