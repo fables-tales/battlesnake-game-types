@@ -1,5 +1,7 @@
 //! A compact board representation that is efficient for simulation
-pub use crate::compact_representation::eval::SinglePlayerMoveResult;
+pub use crate::compact_representation::eval::{
+    MoveEvaluatableGame, MoveEvaluatableWithStateGame, SinglePlayerMoveResult,
+};
 use crate::types::{
     build_snake_id_map, FoodGettableGame, HazardQueryableGame, HazardSettableGame,
     HeadGettableGame, HealthGettableGame, LengthGettableGame, PositionGettableGame,
@@ -21,8 +23,6 @@ use crate::{
     types::{Move, SimulableGame, SimulatorInstruments},
     wire_representation::Position,
 };
-
-use self::eval::MoveEvaluatableWithStateGame;
 
 mod eval;
 
