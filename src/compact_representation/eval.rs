@@ -165,8 +165,6 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
                 if ate_food {
                     new_health = 100;
                     new_length = new_length.saturating_add(1);
-                } else {
-                    new_health = new_health.saturating_sub(1);
                 };
 
                 if new_health == Self::ZERO {
