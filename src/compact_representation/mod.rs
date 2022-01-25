@@ -1,4 +1,5 @@
 //! A compact board representation that is efficient for simulation
+use crate::compact_representation::eval::SinglePlayerMoveResult;
 use crate::types::{
     build_snake_id_map, FoodGettableGame, HazardQueryableGame, HazardSettableGame,
     HeadGettableGame, HealthGettableGame, LengthGettableGame, PositionGettableGame,
@@ -865,7 +866,20 @@ impl<T: SimulatorInstruments, N: CellNum, const BOARD_SIZE: usize, const MAX_SNA
         let ids_and_moves = snake_ids_and_moves
             .into_iter()
             .filter(|(_, moves)| !moves.is_empty())
-            .map(|(sid, moves)| std::iter::repeat(sid).zip(moves).map(|(sid, mv)| (sid, mv)));
+            .map(|(sid, moves)| {
+                let mv_count = moves.len();
+
+                std::iter::repeat(sid)
+                    .zip(moves)
+                    // Here we ignore any moves that results in instant death. UNLESS its the only move
+                    .filter(move |(sid, mv)| {
+                        mv_count == 1
+                            || matches!(
+                                eval_state[sid.as_usize()][mv.as_index()],
+                                SinglePlayerMoveResult::Alive { .. }
+                            )
+                    })
+            });
         let possible_new_games = ids_and_moves.multi_cartesian_product();
         let res = possible_new_games
             .into_iter()
@@ -1278,7 +1292,7 @@ mod test {
             &Instruments,
             snake_id_mapping.values().map(|s| *s).collect_vec(),
         );
-        assert_eq!(compact_results.len(), non_compact_res.len());
+        assert!(compact_results.len() <= non_compact_res.len()); // TODO: We need to apply the same optimization about walls to the non-compact version to make sure they eliminate the same moves
         let non_compact_lookup =
             build_non_compact_lookup(snake_id_mapping.clone(), non_compact_res);
         for (moves, compact_game) in &compact_results {

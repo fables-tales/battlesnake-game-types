@@ -3,7 +3,7 @@ use super::*;
 /// Specialized Trait for Move Evaluation in Simulation
 /// Some steps of eval can be precomputed for each snake move and don't rely on the cartersian
 /// product.
-/// This allows the algorithem to be significantly faster in simulation
+/// This allows the algorithm to be significantly faster in simulation
 pub trait MoveEvaluatableWithStateGame: SnakeIDGettableGame + PositionGettableGame + Sized {
     /// The type that is prepared ahead of time and passed into each evaluate usage
     type PreparedState;
@@ -127,13 +127,30 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
                     CellIndex::<T>::new(new_head_position, Self::width())
                 };
 
+                // TWe calculate the 'neck' so that we can avoid the 'instant death'
+                // of moving into your neck
+                let neck = {
+                    let mut curr = old_tail;
+                    let mut prev = curr;
+
+                    while curr != old_head {
+                        prev = curr;
+                        curr = self.get_cell(curr).get_next_index().unwrap();
+                    }
+
+                    prev
+                };
+                if new_head == neck {
+                    continue;
+                }
+
                 let old_tail_cell = self.get_cell(old_tail);
                 let new_tail = if old_tail_cell.is_stacked() {
                     old_tail
                 } else {
                     old_tail_cell
                         .get_next_index()
-                        .expect("We specificly went to a tail so this shouldn't fail")
+                        .expect("We specifically went to a tail so this shouldn't fail")
                 };
 
                 let mut new_health = self.healths[id.as_usize()];
