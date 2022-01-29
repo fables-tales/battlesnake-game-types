@@ -93,7 +93,6 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
     for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
     // the prepared state is a 2d table where the "columns" are the moves and the "rows" are the snakes
-
     type PreparedState = [[SinglePlayerMoveResult<T>; N_MOVES]; MAX_SNAKES];
 
     fn generate_state<'a>(

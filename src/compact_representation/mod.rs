@@ -869,29 +869,32 @@ impl<T: SimulatorInstruments, N: CellNum, const BOARD_SIZE: usize, const MAX_SNA
             snake_ids_we_are_simulating[snake_id.0.as_usize()] = true;
         }
 
-        // (0. [up,down])
-        // [2, [up, down]]
+        // [
+            // sid major, move minor
+            // [ some_reulst_struct, some_dead_struct ]
+            // [ some_dead_struct, some_dead_struct ] // snake we didn't simulate
         let states = self.generate_state(snake_ids_and_moves.iter());
         let mut dead_snakes_table = [[false; N_MOVES]; MAX_SNAKES];
+
         for (sid, result_row) in states.iter().enumerate() {
             for (move_index, move_result) in result_row.iter().enumerate() {
                 dead_snakes_table[sid][move_index] = move_result.is_dead();
             }
         }
 
-        for (sid, result_row) in dead_snakes_table.iter_mut().enumerate() {
-            if result_row.iter().all(|&x| x) && snake_ids_we_are_simulating[sid] {
-                result_row[0] = false;
-            }
-        }
-
         let ids_and_moves_product = snake_ids_and_moves 
           .into_iter()
           .map(|(snake_id, moves)| { 
-              moves.into_iter()
+              let first_move = moves[0];
+              let mvs = moves.into_iter()
                 .filter(|mv| !dead_snakes_table[snake_id.0 as usize][mv.as_index()])
                 .map(|mv| (snake_id, mv))
-                .collect_vec()
+                .collect_vec();
+            if mvs.is_empty() {
+                vec![(snake_id, first_move)]
+            } else {
+                mvs
+            }
           })
           .multi_cartesian_product();
         let results = ids_and_moves_product
@@ -1207,7 +1210,6 @@ mod test {
             while !g.is_over() {
                 let orig = g.clone();
                 let moves = g.random_reasonable_move_for_each_snake();
-                eprintln!("moves: {:?}", &moves);
                 let non_compact_move_map = moves
                     .into_iter()
                     .map(|(id, mv)| (id, vec![mv]))
