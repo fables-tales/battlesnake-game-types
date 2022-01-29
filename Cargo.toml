@@ -25,5 +25,5 @@ name = "start_of_game_compact"
 harness = false
 
 [[bench]]
-name = "evaluate"
+name = "bench_evaluate"
 harness = false

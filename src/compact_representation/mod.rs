@@ -1,12 +1,12 @@
 //! A compact board representation that is efficient for simulation
 pub use crate::compact_representation::eval::{
-    MoveEvaluatableGame, MoveEvaluatableWithStateGame, SinglePlayerMoveResult,
+    MoveEvaluatableWithStateGame, SinglePlayerMoveResult,
 };
 use crate::types::{
     build_snake_id_map, FoodGettableGame, HazardQueryableGame, HazardSettableGame,
     HeadGettableGame, HealthGettableGame, LengthGettableGame, PositionGettableGame,
     RandomReasonableMovesGame, SizeDeterminableGame, SnakeIDGettableGame, SnakeIDMap, SnakeId,
-    VictorDeterminableGame, YouDeterminableGame,
+    VictorDeterminableGame, YouDeterminableGame, N_MOVES,
 };
 /// you almost certainly want to use the `convert_from_game` method to
 /// cast from a json represention to a `CellBoard`
@@ -863,42 +863,47 @@ impl<T: SimulatorInstruments, N: CellNum, const BOARD_SIZE: usize, const MAX_SNA
         snake_ids_and_moves: Vec<(Self::SnakeIDType, Vec<crate::types::Move>)>,
     ) -> Vec<(Vec<(Self::SnakeIDType, crate::types::Move)>, Self)> {
         let start = Instant::now();
-        let eval_state = self.generate_state(snake_ids_and_moves.clone().into_iter());
-        let ids_and_moves = snake_ids_and_moves
+
+        let mut snake_ids_we_are_simulating = [false; MAX_SNAKES];
+        for (snake_id, _) in snake_ids_and_moves.iter() {
+            snake_ids_we_are_simulating[snake_id.0.as_usize()] = true;
+        }
+
+        // (0. [up,down])
+        // [2, [up, down]]
+        let states = self.generate_state(snake_ids_and_moves.iter());
+        let mut dead_snakes_table = [[false; N_MOVES]; MAX_SNAKES];
+        for (sid, result_row) in states.iter().enumerate() {
+            for (move_index, move_result) in result_row.iter().enumerate() {
+                dead_snakes_table[sid][move_index] = move_result.is_dead();
+            }
+        }
+
+        for (sid, result_row) in dead_snakes_table.iter_mut().enumerate() {
+            if result_row.iter().all(|&x| x) && snake_ids_we_are_simulating[sid] {
+                result_row[0] = false;
+            }
+        }
+
+        let ids_and_moves_product = snake_ids_and_moves 
+          .into_iter()
+          .map(|(snake_id, moves)| { 
+              moves.into_iter()
+                .filter(|mv| !dead_snakes_table[snake_id.0 as usize][mv.as_index()])
+                .map(|mv| (snake_id, mv))
+                .collect_vec()
+          })
+          .multi_cartesian_product();
+        let results = ids_and_moves_product
             .into_iter()
-            .filter(|(_, moves)| !moves.is_empty())
-            .map(|(sid, moves)| {
-                let first_move = moves[0];
-                let mut valid_moves = moves
-                    .into_iter()
-                    // Here we ignore any moves that results in instant death. UNLESS its the only move
-                    .filter(|mv| {
-                        matches!(
-                            eval_state[sid.as_usize()][mv.as_index()],
-                            SinglePlayerMoveResult::Alive { .. }
-                        )
-                    })
-                    .collect_vec();
-
-                // If we filtered out all the moves we pick a random move to keep
-                if valid_moves.is_empty() {
-                    valid_moves.push(first_move);
-                }
-
-                std::iter::repeat(sid).zip(valid_moves)
+            .map(|m| { 
+                let game = self.evaluate_moves_with_state(m.iter(), &states);
+                (m, game)
             });
-        let possible_new_games = ids_and_moves.multi_cartesian_product();
-        let res = possible_new_games
-            .into_iter()
-            .map(|new_snakes| {
-                let output = self.evaluate_moves_with_state(&new_snakes, &eval_state);
-
-                (new_snakes, output)
-            })
-            .collect();
-        instruments.observe_simulation(start.elapsed());
-
-        res
+        let return_value = results.collect_vec();
+        let end = Instant::now();
+        instruments.observe_simulation(end-start);
+        return_value
     }
 }
 
