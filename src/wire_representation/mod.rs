@@ -173,10 +173,15 @@ impl Game {
         CellBoard::convert_from_game(self.clone(), snake_ids)
     }
 
-    pub fn as_wrapped_cell_board<T: wrapped_compact_representation::CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>(
+    pub fn as_wrapped_cell_board<
+        T: wrapped_compact_representation::CellNum,
+        const BOARD_SIZE: usize,
+        const MAX_SNAKES: usize,
+    >(
         &self,
         snake_ids: &SnakeIDMap,
-    ) -> Result<wrapped_compact_representation::CellBoard<T, BOARD_SIZE, MAX_SNAKES>, Box<dyn Error>> {
+    ) -> Result<wrapped_compact_representation::CellBoard<T, BOARD_SIZE, MAX_SNAKES>, Box<dyn Error>>
+    {
         if self.game.ruleset.name == "wrapped" {
             wrapped_compact_representation::CellBoard::convert_from_game(self.clone(), snake_ids)
         } else {

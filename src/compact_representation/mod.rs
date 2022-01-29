@@ -406,7 +406,6 @@ fn get_snake_id(
 impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
     CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
-
     fn actual_height(&self) -> u8 {
         self.actual_width
     }
@@ -870,9 +869,9 @@ impl<T: SimulatorInstruments, N: CellNum, const BOARD_SIZE: usize, const MAX_SNA
         }
 
         // [
-            // sid major, move minor
-            // [ some_reulst_struct, some_dead_struct ]
-            // [ some_dead_struct, some_dead_struct ] // snake we didn't simulate
+        // sid major, move minor
+        // [ some_reulst_struct, some_dead_struct ]
+        // [ some_dead_struct, some_dead_struct ] // snake we didn't simulate
         let states = self.generate_state(snake_ids_and_moves.iter());
         let mut dead_snakes_table = [[false; N_MOVES]; MAX_SNAKES];
 
@@ -882,30 +881,29 @@ impl<T: SimulatorInstruments, N: CellNum, const BOARD_SIZE: usize, const MAX_SNA
             }
         }
 
-        let ids_and_moves_product = snake_ids_and_moves 
-          .into_iter()
-          .map(|(snake_id, moves)| { 
-              let first_move = moves[0];
-              let mvs = moves.into_iter()
-                .filter(|mv| !dead_snakes_table[snake_id.0 as usize][mv.as_index()])
-                .map(|mv| (snake_id, mv))
-                .collect_vec();
-            if mvs.is_empty() {
-                vec![(snake_id, first_move)]
-            } else {
-                mvs
-            }
-          })
-          .multi_cartesian_product();
-        let results = ids_and_moves_product
+        let ids_and_moves_product = snake_ids_and_moves
             .into_iter()
-            .map(|m| { 
-                let game = self.evaluate_moves_with_state(m.iter(), &states);
-                (m, game)
-            });
+            .map(|(snake_id, moves)| {
+                let first_move = moves[0];
+                let mvs = moves
+                    .into_iter()
+                    .filter(|mv| !dead_snakes_table[snake_id.0 as usize][mv.as_index()])
+                    .map(|mv| (snake_id, mv))
+                    .collect_vec();
+                if mvs.is_empty() {
+                    vec![(snake_id, first_move)]
+                } else {
+                    mvs
+                }
+            })
+            .multi_cartesian_product();
+        let results = ids_and_moves_product.into_iter().map(|m| {
+            let game = self.evaluate_moves_with_state(m.iter(), &states);
+            (m, game)
+        });
         let return_value = results.collect_vec();
         let end = Instant::now();
-        instruments.observe_simulation(end-start);
+        instruments.observe_simulation(end - start);
         return_value
     }
 }
@@ -998,8 +996,9 @@ mod test {
 
     use super::*;
     use crate::{
+        game_fixture,
         types::{build_snake_id_map, SnakeIDGettableGame, VictorDeterminableGame},
-        wire_representation::Game as DEGame, game_fixture,
+        wire_representation::Game as DEGame,
     };
     #[derive(Debug)]
     struct Instruments;
@@ -1014,7 +1013,7 @@ mod test {
         assert!(converted.is_ok());
         let u = converted.unwrap();
         match u {
-            BestCellBoard::Standard(_) => {},
+            BestCellBoard::Standard(_) => {}
             _ => panic!("expected standard board"),
         }
 
@@ -1023,7 +1022,7 @@ mod test {
         assert!(converted.is_ok());
         let u = converted.unwrap();
         match u {
-            BestCellBoard::Tiny(_) => {},
+            BestCellBoard::Tiny(_) => {}
             _ => panic!("expected standard board"),
         }
     }

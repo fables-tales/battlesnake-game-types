@@ -1,4 +1,4 @@
-use crate::types::{N_MOVES, self};
+use crate::types::{self, N_MOVES};
 
 use super::*;
 
@@ -18,8 +18,10 @@ pub trait MoveEvaluatableWithStateGame: SnakeIDGettableGame + PositionGettableGa
     /// ]
     fn generate_state<'a>(
         &self,
-        snake_ids_and_moves: impl Iterator<Item=&'a (Self::SnakeIDType, Vec<crate::types::Move>)>,
-    ) -> Self::PreparedState where <Self as types::SnakeIDGettableGame>::SnakeIDType: 'a;
+        snake_ids_and_moves: impl Iterator<Item = &'a (Self::SnakeIDType, Vec<crate::types::Move>)>,
+    ) -> Self::PreparedState
+    where
+        <Self as types::SnakeIDGettableGame>::SnakeIDType: 'a;
 
     /// Evaluate the given moves with the precomputed state from Self::generate_state
     /// produces a single output state per call, so e.g. you call this with:
@@ -33,9 +35,11 @@ pub trait MoveEvaluatableWithStateGame: SnakeIDGettableGame + PositionGettableGa
     /// this means if you prepared a batched state, you need to also build your own move product
     fn evaluate_moves_with_state<'a>(
         &self,
-        moves: impl Iterator<Item=&'a (SnakeId, crate::types::Move)>,
+        moves: impl Iterator<Item = &'a (SnakeId, crate::types::Move)>,
         state: &Self::PreparedState,
-    ) -> Self where <Self as types::SnakeIDGettableGame>::SnakeIDType: 'a;
+    ) -> Self
+    where
+        <Self as types::SnakeIDGettableGame>::SnakeIDType: 'a;
 }
 #[derive(Copy, Clone, Debug)]
 /// Precomputed state for Move Evaluation
@@ -88,7 +92,6 @@ impl<T: CellNum> SinglePlayerMoveResult<T> {
     }
 }
 
-
 impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatableWithStateGame
     for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
@@ -97,9 +100,10 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
 
     fn generate_state<'a>(
         &self,
-        moves: impl Iterator<Item=&'a (SnakeId, Vec<crate::types::Move>)>,
-    ) -> Self::PreparedState 
-        where <Self as types::SnakeIDGettableGame>::SnakeIDType: 'a
+        moves: impl Iterator<Item = &'a (SnakeId, Vec<crate::types::Move>)>,
+    ) -> Self::PreparedState
+    where
+        <Self as types::SnakeIDGettableGame>::SnakeIDType: 'a,
     {
         let mut new_heads = [[SinglePlayerMoveResult::Dead; 4]; MAX_SNAKES];
 
@@ -182,12 +186,13 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
 
     fn evaluate_moves_with_state<'a>(
         &self,
-        moves: impl Iterator<Item=&'a (SnakeId, crate::types::Move)>,
+        moves: impl Iterator<Item = &'a (SnakeId, crate::types::Move)>,
         new_heads: &Self::PreparedState,
-    ) -> Self 
-        where <Self as types::SnakeIDGettableGame>::SnakeIDType: 'a
+    ) -> Self
+    where
+        <Self as types::SnakeIDGettableGame>::SnakeIDType: 'a,
     {
-        let moves= moves.collect_vec();
+        let moves = moves.collect_vec();
         let mut new = *self;
 
         for (id, m) in moves.iter() {
