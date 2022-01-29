@@ -1112,7 +1112,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> NeighborDeter
                 let new_head = head_pos.add_vec(mv.to_vector());
                 let ci = self.to_wrapped_cell_index(new_head);
 
-                debug_assert!(!self.off_board(ci.into_position(width)), "{:?}", new_head);
+                debug_assert!(!self.off_board(ci.into_position(width)));
 
                 (mv, new_head, ci)
             })
