@@ -10,6 +10,7 @@ use crate::types::{
     SizeDeterminableGame, SnakeBodyGettableGame, SnakeIDGettableGame, SnakeIDMap, SnakeMove,
     TurnDeterminableGame, Vector, VictorDeterminableGame, YouDeterminableGame,
 };
+use crate::wrapped_compact_representation;
 use rand::prelude::IteratorRandom;
 use rand::thread_rng;
 use serde::{Deserialize, Serialize};
@@ -170,6 +171,17 @@ impl Game {
         snake_ids: &SnakeIDMap,
     ) -> Result<CellBoard<T, BOARD_SIZE, MAX_SNAKES>, Box<dyn Error>> {
         CellBoard::convert_from_game(self.clone(), snake_ids)
+    }
+
+    pub fn as_wrapped_cell_board<T: wrapped_compact_representation::CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>(
+        &self,
+        snake_ids: &SnakeIDMap,
+    ) -> Result<wrapped_compact_representation::CellBoard<T, BOARD_SIZE, MAX_SNAKES>, Box<dyn Error>> {
+        if self.game.ruleset.name == "wrapped" {
+            wrapped_compact_representation::CellBoard::convert_from_game(self.clone(), snake_ids)
+        } else {
+            panic!("Cannot convert a non-wrapped game to a wrapped game")
+        }
     }
     pub fn off_board(&self, position: Position) -> bool {
         position.x < 0

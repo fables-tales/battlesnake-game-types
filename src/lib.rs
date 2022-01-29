@@ -32,6 +32,7 @@
 use wire_representation::Game;
 
 pub mod compact_representation;
+pub mod wrapped_compact_representation;
 mod cross_product;
 pub mod types;
 pub mod wire_representation;
