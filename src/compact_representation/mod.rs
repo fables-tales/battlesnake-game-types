@@ -24,7 +24,8 @@ use crate::{
     wire_representation::Position,
 };
 
-mod eval;
+#[allow(missing_docs)]
+pub mod eval;
 
 /// Wrapper type for numbers to allow for shrinking board sizes
 pub trait CellNum:
@@ -862,7 +863,7 @@ impl<T: SimulatorInstruments, N: CellNum, const BOARD_SIZE: usize, const MAX_SNA
         snake_ids_and_moves: Vec<(Self::SnakeIDType, Vec<crate::types::Move>)>,
     ) -> Vec<(Vec<(Self::SnakeIDType, crate::types::Move)>, Self)> {
         let start = Instant::now();
-        let eval_state = self.generate_state(snake_ids_and_moves.clone());
+        let eval_state = self.generate_state(snake_ids_and_moves.clone().into_iter());
         let ids_and_moves = snake_ids_and_moves
             .into_iter()
             .filter(|(_, moves)| !moves.is_empty())

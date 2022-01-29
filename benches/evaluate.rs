@@ -27,6 +27,17 @@ fn bench_compact_repr_start_of_game_no_state(c: &mut Criterion) {
     });
 }
 
+fn bench_compact_start_of_game_evaluate_full(c: &mut Criterion) {
+    let game_fixture = include_str!("../fixtures/start_of_game.json");
+    let g: Result<DEGame, _> = serde_json::from_slice(game_fixture.as_bytes());
+    let g = g.expect("the json literal is valid");
+    let snake_id_mapping = build_snake_id_map(&g);
+    let compact: CellBoard4Snakes11x11 = g.as_cell_board(&snake_id_mapping).unwrap();
+    c.bench_function("evaluate compact start of game - all moves", |b| {
+        b.iter(|| black_box(&compact).evaluate_all_moves())
+    });
+
+}
 fn bench_compact_repr_start_of_game_with_state(c: &mut Criterion) {
     let game_fixture = include_str!("../fixtures/start_of_game.json");
     let g: Result<DEGame, _> = serde_json::from_slice(game_fixture.as_bytes());
@@ -39,7 +50,7 @@ fn bench_compact_repr_start_of_game_with_state(c: &mut Criterion) {
         (SnakeId(2), Move::Up),
         (SnakeId(3), Move::Up),
     ];
-    let state = compact.generate_state(moves.iter().map(|(sid, m)| (*sid, vec![*m])).collect_vec());
+    let state = compact.generate_state(moves.iter().map(|(sid, m)| (*sid, vec![*m])));
 
     c.bench_function("evaluate compact start of game with state", |b| {
         b.iter(|| black_box(&compact).evaluate_moves_with_state(&moves, &state))
@@ -65,7 +76,7 @@ fn bench_compact_repr_late_stage_with_state(c: &mut Criterion) {
     let snake_id_mapping = build_snake_id_map(&g);
     let compact: CellBoard4Snakes11x11 = g.as_cell_board(&snake_id_mapping).unwrap();
     let moves = [(SnakeId(0), Move::Up), (SnakeId(1), Move::Up)];
-    let state = compact.generate_state(moves.iter().map(|(sid, m)| (*sid, vec![*m])).collect_vec());
+    let state = compact.generate_state(moves.iter().map(|(sid, m)| (*sid, vec![*m])));
 
     c.bench_function("evaluate compact late stage with state", |b| {
         b.iter(|| black_box(&compact).evaluate_moves_with_state(&moves, &state))
@@ -74,6 +85,7 @@ fn bench_compact_repr_late_stage_with_state(c: &mut Criterion) {
 
 criterion_group!(
     benches,
+    bench_compact_start_of_game_evaluate_full,
     bench_compact_repr_start_of_game_no_state,
     bench_compact_repr_start_of_game_with_state,
     bench_compact_repr_late_stage_no_state,

@@ -19,6 +19,9 @@ pub struct Vector {
     pub y: i64,
 }
 
+/// there are 4 moves
+pub const N_MOVES: usize = 4;
+
 /// Represents a move
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 pub enum Move {

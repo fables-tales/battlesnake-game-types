@@ -1,3 +1,5 @@
+use crate::types::N_MOVES;
+
 use super::*;
 
 /// Specialized Trait for Move Evaluation in Simulation
@@ -9,17 +11,33 @@ pub trait MoveEvaluatableWithStateGame: SnakeIDGettableGame + PositionGettableGa
     type PreparedState;
 
     /// Prepare the state for each snake move
+    /// this takes a table like:
+    /// [
+    ///    (SnakeId(0), vec![Move::Up, Move::Down]),
+    ///    (SnakeId(1), vec![Move::Up, Move::Down]),
+    /// ]
     fn generate_state(
         &self,
-        snake_ids_and_moves: Vec<(Self::SnakeIDType, Vec<crate::types::Move>)>,
+        snake_ids_and_moves: impl Iterator<Item=(Self::SnakeIDType, Vec<crate::types::Move>)>,
     ) -> Self::PreparedState;
 
     /// Evaluate the given moves with the precomputed state from Self::generate_state
+    /// produces a single output state per call, so e.g. you call this with:
+    /// moves: [
+    ///     (snake_id, move)
+    ///     (snake_id, move)
+    ///     (snake_id, move)
+    /// ],
+    /// state: prepared_state
+    /// and it will look up the prepared state for the given snake id and move tuples,
+    /// this means if you prepared a batched state, you need to also build your own move product
     fn evaluate_moves_with_state(
         &self,
         moves: &[(Self::SnakeIDType, Move)],
         state: &Self::PreparedState,
     ) -> Self;
+
+    fn evaluate_all_moves(&self) -> Vec<Self>;
 }
 
 /// Evaluate the given set of moves on the Board and return a new Game for the result
@@ -32,8 +50,7 @@ impl<T: MoveEvaluatableWithStateGame> MoveEvaluatableGame for T {
     fn evaluate_moves(&self, moves: &[(Self::SnakeIDType, Move)]) -> Self {
         let simulate_ver = moves
             .iter()
-            .map(|(sid, m)| (sid.clone(), vec![*m]))
-            .collect_vec();
+            .map(|(sid, m)| (sid.clone(), vec![*m]));
         self.evaluate_moves_with_state(moves, &self.generate_state(simulate_ver))
     }
 }
@@ -80,22 +97,64 @@ impl<T: CellNum> SinglePlayerMoveResult<T> {
             _ => None,
         }
     }
+
+    fn is_dead(&self) -> bool {
+        match self {
+            SinglePlayerMoveResult::Dead => true,
+            _ => false,
+        }
+    }
 }
+
 
 impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatableWithStateGame
     for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
-    type PreparedState = [[SinglePlayerMoveResult<T>; 4]; MAX_SNAKES];
+    // the prepared state is a 2d table where the "columns" are the moves and the "rows" are the snakes
+
+    type PreparedState = [[SinglePlayerMoveResult<T>; N_MOVES]; MAX_SNAKES];
+
+    fn evaluate_all_moves(&self) -> Vec<Self> {
+        let ids_and_moves = self.get_snake_ids().into_iter().map(|sid| (sid, Move::all()));
+        let states = self.generate_state(ids_and_moves);
+        let mut dead_snakes_table = [[false; N_MOVES]; MAX_SNAKES];
+        for (sid, result_row) in states.iter().enumerate() {
+            for (move_index, move_result) in result_row.iter().enumerate() {
+                dead_snakes_table[sid][move_index] = move_result.is_dead();
+            }
+        }
+
+        for result_row in dead_snakes_table.iter_mut() {
+            if result_row.iter().all(|&x| x) {
+                result_row[0] = false;
+            }
+        }
+
+        let ids_and_moves_product = self.get_snake_ids()
+          .into_iter()
+          .enumerate()
+          .map(|(idx, snake_id)| { 
+              debug_assert!(idx == snake_id.0 as usize);
+              // for a given snake we build the array of moves where it didn't die
+              Move::all().into_iter().filter(|mv| !dead_snakes_table[snake_id.0 as usize][mv.as_index()]).map(|mv| (snake_id, mv)).collect_vec()
+          })
+          .multi_cartesian_product();
+        let results = ids_and_moves_product
+            .into_iter()
+            .map(|m| self.evaluate_moves_with_state(&m, &states));
+        results.collect_vec()
+    }
+
 
     fn generate_state(
         &self,
-        moves: Vec<(Self::SnakeIDType, Vec<crate::types::Move>)>,
+        moves: impl Iterator<Item=(SnakeId, Vec<crate::types::Move>)>,
     ) -> Self::PreparedState {
         let mut new_heads = [[SinglePlayerMoveResult::Dead; 4]; MAX_SNAKES];
 
-        for (id, mvs) in moves.iter() {
+        for (id, mvs) in moves {
             for m in mvs {
-                let old_head = self.get_head_as_native_position(id);
+                let old_head = self.get_head_as_native_position(&id);
                 let old_tail = self
                     .get_cell(old_head)
                     .get_tail_position(old_head)
@@ -155,7 +214,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
 
                 new_heads[id.as_usize()][m.as_index()] =
                     SinglePlayerMoveResult::Alive(AliveMoveResult {
-                        id: *id,
+                        id: id,
                         new_head,
                         old_head,
                         new_tail,
