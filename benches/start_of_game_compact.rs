@@ -54,6 +54,18 @@ fn bench_compact_repr_start_of_game(c: &mut Criterion) {
     });
 }
 
+fn bench_compact_repr_start_of_game_full(c: &mut Criterion) {
+    let game_fixture = include_str!("../fixtures/start_of_game.json");
+    let g: Result<DEGame, _> = serde_json::from_slice(game_fixture.as_bytes());
+    let g = g.expect("the json literal is valid");
+    let snake_id_mapping = build_snake_id_map(&g);
+    let compact: CellBoard4Snakes11x11 = g.as_cell_board(&snake_id_mapping).unwrap();
+    let instruments = Instruments {};
+    c.bench_function("compact start of game - all moves", |b| {
+        b.iter(|| bench_compact_full(black_box(&compact), &instruments))
+    });
+}
+
 fn late_stage_compact_repr(c: &mut Criterion) {
     let game_fixture = include_str!("../fixtures/late_stage.json");
     let g: Result<DEGame, _> = serde_json::from_slice(game_fixture.as_bytes());
@@ -88,6 +100,7 @@ fn bench_vec_repr_start_of_game(c: &mut Criterion) {
 criterion_group!(
     benches,
     bench_compact_repr_start_of_game,
+    bench_compact_repr_start_of_game_full,
     bench_vec_repr_start_of_game,
     late_stage_compact_repr,
     late_stage_vec_repr
