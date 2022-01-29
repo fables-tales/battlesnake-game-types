@@ -29,14 +29,15 @@
 //! Found 14 outliers among 100 measurements (14.00%)
 //! ```
 
+use wire_representation::Game;
+
 pub mod compact_representation;
 mod cross_product;
 pub mod types;
 pub mod wire_representation;
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
+
+/// Loads a fixture from a given string
+pub fn game_fixture(game_fixture: &str) -> Game {
+    let g: Result<Game, _> = serde_json::from_str(game_fixture);
+    g.expect("the json literal is valid")
 }

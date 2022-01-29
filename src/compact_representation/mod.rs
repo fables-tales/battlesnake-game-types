@@ -281,8 +281,10 @@ pub struct CellBoard<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usiz
     heads: [CellIndex<T>; MAX_SNAKES],
     lengths: [u16; MAX_SNAKES],
     actual_width: u8,
-    actual_height: u8,
 }
+
+/// 7x7 board with 4 snakes
+pub type CellBoard4Snakes7x7 = CellBoard<u8, { 7 * 7 }, 4>;
 
 /// Used to represent the standard 11x11 game with up to 4 snakes.
 pub type CellBoard4Snakes11x11 = CellBoard<u8, { 11 * 11 }, 4>;
@@ -300,6 +302,8 @@ pub type CellBoard16Snakes50x50 = CellBoard<u16, { 50 * 50 }, 16>;
 /// Enum that holds a Cell Board sized right for the given game
 #[derive(Debug)]
 pub enum BestCellBoard {
+    #[allow(missing_docs)]
+    Tiny(Box<CellBoard4Snakes7x7>),
     #[allow(missing_docs)]
     Standard(Box<CellBoard4Snakes11x11>),
     #[allow(missing_docs)]
@@ -321,23 +325,27 @@ pub trait ToBestCellBoard {
 
 impl ToBestCellBoard for Game {
     fn to_best_cell_board(self) -> Result<BestCellBoard, Box<dyn Error>> {
-        let required_board_size = self.board.width * self.board.height;
+        let dimension = self.board.width;
         let num_snakes = self.board.snakes.len();
         let id_map = build_snake_id_map(&self);
 
-        let best_board = if required_board_size <= (11 * 11) && num_snakes <= 4 {
+        let best_board = if dimension <= 7 && num_snakes <= 4 {
+            BestCellBoard::Tiny(Box::new(CellBoard4Snakes7x7::convert_from_game(
+                self, &id_map,
+            )?))
+        } else if dimension <= 11 && num_snakes <= 4 {
             BestCellBoard::Standard(Box::new(CellBoard4Snakes11x11::convert_from_game(
                 self, &id_map,
             )?))
-        } else if required_board_size <= (15 * 15) && num_snakes <= 8 {
+        } else if dimension <= 15 && num_snakes <= 8 {
             BestCellBoard::LargestU8(Box::new(CellBoard8Snakes15x15::convert_from_game(
                 self, &id_map,
             )?))
-        } else if required_board_size <= (25 * 25) && num_snakes <= 8 {
+        } else if dimension <= 25 && num_snakes <= 8 {
             BestCellBoard::Large(Box::new(CellBoard8Snakes25x25::convert_from_game(
                 self, &id_map,
             )?))
-        } else if required_board_size <= (50 * 50) && num_snakes <= 16 {
+        } else if dimension <= 50 && num_snakes <= 16 {
             BestCellBoard::Silly(Box::new(CellBoard16Snakes50x50::convert_from_game(
                 self, &id_map,
             )?))
@@ -354,7 +362,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> Display
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let width = self.actual_width;
-        let height = self.actual_height;
+        let height = self.actual_height();
         writeln!(f)?;
         for y in 0..height {
             for x in 0..width {
@@ -415,6 +423,11 @@ impl<T: CellNum> Deref for BattleSnakeResult<T> {
 impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
     CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
+
+    fn actual_height(&self) -> u8 {
+        self.actual_width
+    }
+
     fn kill(&mut self, sid: SnakeId) {
         self.healths[sid.0 as usize] = 0;
         self.heads[sid.0 as usize] = CellIndex::from_i32(0);
@@ -506,7 +519,6 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
             healths,
             lengths,
             actual_width: game.board.width as u8,
-            actual_height: game.board.height as u8,
             hazard_damage: game
                 .game
                 .ruleset
@@ -525,7 +537,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
         position.x < 0
             || position.x >= self.actual_width as i32
             || position.y < 0
-            || position.y >= self.actual_height as i32
+            || position.y >= self.actual_height() as i32
     }
 
     /// Get the health for a given snake
@@ -1138,12 +1150,33 @@ mod test {
     use super::*;
     use crate::{
         types::{build_snake_id_map, SnakeIDGettableGame, VictorDeterminableGame},
-        wire_representation::Game as DEGame,
+        wire_representation::Game as DEGame, game_fixture,
     };
     #[derive(Debug)]
     struct Instruments;
     impl SimulatorInstruments for Instruments {
         fn observe_simulation(&self, _: std::time::Duration) {}
+    }
+
+    #[test]
+    fn test_compact_board_conversion() {
+        let start_of_game_fixture = game_fixture(include_str!("../../fixtures/start_of_game.json"));
+        let converted = Game::to_best_cell_board(start_of_game_fixture);
+        assert!(converted.is_ok());
+        let u = converted.unwrap();
+        match u {
+            BestCellBoard::Standard(_) => {},
+            _ => panic!("expected standard board"),
+        }
+
+        let tiny_board = game_fixture(include_str!("../../fixtures/7x7board.json"));
+        let converted = Game::to_best_cell_board(tiny_board);
+        assert!(converted.is_ok());
+        let u = converted.unwrap();
+        match u {
+            BestCellBoard::Tiny(_) => {},
+            _ => panic!("expected standard board"),
+        }
     }
 
     #[test]
