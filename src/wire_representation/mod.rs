@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::convert::TryInto;
 use std::error::Error;
-use std::fmt;
+use std::fmt::{self, Display};
 
 /// Struct that matches the `battlesnake` object from the wire representation
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -42,6 +42,10 @@ pub struct Position {
 impl Position {
     pub fn new(x: i32, y: i32) -> Self {
         Self { x, y }
+    }
+
+    pub fn manhattan_length(&self) -> u32 {
+        (self.x.abs() + self.y.abs()) as u32
     }
 
     pub fn add_vec(&self, v: Vector) -> Position {
@@ -157,6 +161,8 @@ pub struct Game {
     pub game: NestedGame,
 }
 
+
+
 impl Game {
     pub fn you_are_winner(&self) -> bool {
         if self.you.health == 0 {
@@ -229,6 +235,46 @@ impl Game {
                 )
             })
             .collect()
+    }
+}
+
+impl Display for Game {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f)?;
+        for i in 0..self.board.height {
+            let k = self.board.height - i - 1;
+            for j in 0..self.board.width {
+                let position = Position {
+                    x: j as i32,
+                    y: k as i32,
+                };
+                if self.board.food.contains(&position) {
+                    write!(f, "f")?;
+                } else if self.board.snakes.iter().any(|s| s.head == position) {
+                    if position == self.you.head {
+                        write!(f, "S")?;
+                    } else {
+                        write!(f, "H")?;
+                    }
+                } else if self.board.snakes.iter().any(|s| s.body.contains(&position)) {
+                    write!(f, "s")?;
+                } else if self.board.hazards.contains(&position) {
+                    write!(f, "x")?;
+                } else {
+                    write!(f, ".")?;
+                }
+                write!(f, " ")?;
+            }
+            writeln!(f)?;
+        }
+        for snake in self.board.snakes.iter() {
+            write!(
+                f,
+                "({} health: {} head: {:?}) ",
+                snake.id, snake.health, snake.head
+            )?;
+        }
+        Ok(())
     }
 }
 
