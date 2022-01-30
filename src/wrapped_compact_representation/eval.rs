@@ -143,14 +143,12 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
                 };
 
                 let mut new_health = self.healths[id.as_usize()];
-                eprintln!("{:?}", new_health);
                 new_health = new_health.saturating_sub(1);
                 if self.get_cell(new_head).is_hazard() {
                     new_health = new_health.saturating_sub(self.hazard_damage);
                 }
 
                 let ate_food = self.get_cell(new_head).is_food();
-                eprintln!("{:?}", new_health);
                 let mut new_length = self.lengths[id.as_usize()];
 
                 if ate_food {

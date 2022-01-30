@@ -432,6 +432,10 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
     /// the provided BOARD_SIZE or MAX_SNAKES. You are encouraged to use `CellBoard4Snakes11x11`
     /// for the common game layout
     pub fn convert_from_game(game: Game, snake_ids: &SnakeIDMap) -> Result<Self, Box<dyn Error>> {
+        if game.game.ruleset.name == "wrapped" {
+            return Err("Wrapped games are not supported".into());
+        }
+
         if game.board.width * game.board.height > BOARD_SIZE as u32 {
             return Err("game size doesn't fit in the given board size".into());
         }
