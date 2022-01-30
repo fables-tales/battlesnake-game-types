@@ -1126,7 +1126,7 @@ mod test {
         eprintln!("{}", compact);
         for mv in moves {
             let res = compact.simulate_with_moves(&instruments, vec![(SnakeId(0), vec![mv])]);
-            compact = res[0].1.clone();
+            compact = res[0].1;
             eprintln!("{}", compact);
         }
         assert!(compact.healths[0] > 0);
@@ -1224,7 +1224,7 @@ mod test {
                 assert_eq!(non_compact_next.len(), 1);
                 assert_eq!(compact_next.len(), 1);
                 g = non_compact_next[0].clone().1;
-                compact = compact_next[0].1.clone();
+                compact = compact_next[0].1;
                 if g.is_over() {
                     eprintln!("orig: {}", orig.board);
                     break;
@@ -1252,7 +1252,7 @@ mod test {
         let snake_id_mapping = build_snake_id_map(&g);
         let non_compact_res = g.simulate(&Instruments, g.get_snake_ids());
         let snake_id_map = build_snake_id_map(&g);
-        let compact = CellBoard4Snakes11x11::convert_from_game(g.clone(), &snake_id_map.clone());
+        let compact = CellBoard4Snakes11x11::convert_from_game(g.clone(), &snake_id_map);
         let compact = compact.unwrap();
         if !format!("{}", g.board).starts_with(&format!("{}", compact)) {
             eprintln!("{}", g.board);
@@ -1282,26 +1282,26 @@ mod test {
             &snake_id_mapping,
             &g,
             non_compact_res.clone(),
-            compact.clone(),
+            compact,
         );
         let non_compact_lookup =
             build_non_compact_lookup(snake_id_mapping.clone(), non_compact_res);
 
         let compact_results = compact.simulate(
             &Instruments,
-            snake_id_mapping.values().map(|s| *s).collect_vec(),
+            snake_id_mapping.values().copied().collect_vec(),
         );
         for (moves, compact_game) in &compact_results {
             if compact_game.healths.iter().filter(|h| **h > 0).count() > 1 {
                 eprintln!("{:?}", moves);
-                let non_compact_game = non_compact_lookup.get(&to_map_key(&moves)).unwrap();
+                let non_compact_game = non_compact_lookup.get(&to_map_key(moves)).unwrap();
                 let non_compact_res =
                     non_compact_game.simulate(&Instruments, non_compact_game.get_snake_ids());
                 compare_simulated_games(
                     &snake_id_mapping,
                     non_compact_game,
                     non_compact_res,
-                    compact_game.clone(),
+                    *compact_game,
                 );
             }
         }
@@ -1315,7 +1315,7 @@ mod test {
     ) {
         let compact_results = compact.simulate(
             &Instruments,
-            snake_id_mapping.values().map(|s| *s).collect_vec(),
+            snake_id_mapping.values().copied().collect_vec(),
         );
         assert!(compact_results.len() <= non_compact_res.len()); // TODO: We need to apply the same optimization about walls to the non-compact version to make sure they eliminate the same moves
         let non_compact_lookup =
@@ -1358,7 +1358,7 @@ mod test {
         for (move_map, game) in non_compact_res {
             let move_map = move_map
                 .into_iter()
-                .map(|(id, mv)| (snake_id_mapping.get(&id).unwrap().clone(), mv))
+                .map(|(id, mv)| (*snake_id_mapping.get(&id).unwrap(), mv))
                 .collect::<Vec<_>>();
             let move_map = to_map_key(&move_map);
             non_compact_lookup.insert(move_map, game);
@@ -1366,11 +1366,11 @@ mod test {
         non_compact_lookup
     }
 
-    fn to_map_key(mv_map: &Vec<(SnakeId, Move)>) -> Vec<(SnakeId, Move)> {
+    fn to_map_key(mv_map: &[(SnakeId, Move)]) -> Vec<(SnakeId, Move)> {
         mv_map
-            .clone()
-            .into_iter()
+            .iter()
             .sorted_by_key(|(id, _mv)| id.0)
-            .collect::<Vec<_>>()
+            .copied()
+            .collect_vec()
     }
 }

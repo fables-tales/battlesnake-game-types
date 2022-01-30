@@ -406,7 +406,7 @@ fn get_snake_id(
 impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
     CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
-    fn to_wrapped_cell_index(&self, mut new_head_position: Position) -> CellIndex<T> {
+    fn as_wrapped_cell_index(&self, mut new_head_position: Position) -> CellIndex<T> {
         if self.off_board(new_head_position) {
             if new_head_position.x < 0 {
                 debug_assert!(new_head_position.x == -1);
@@ -874,7 +874,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> RandomReasona
                     .into_iter()
                     .filter(|mv| {
                         let new_head = head_pos.add_vec(mv.to_vector());
-                        let ci = self.to_wrapped_cell_index(new_head);
+                        let ci = self.as_wrapped_cell_index(new_head);
 
                         !self.get_cell(ci).is_body_segment() && !self.get_cell(ci).is_head()
                     })
@@ -1083,14 +1083,14 @@ mod test {
         );
         run_move_test(
             orig_wrapped_cell,
-            snake_ids.clone(),
+            snake_ids,
             11 * 2 + (rng.next_u32() % 20) as i32,
             1,
             0,
             Move::Right,
         );
 
-        let mut wrapped = orig_wrapped_cell.clone();
+        let mut wrapped = orig_wrapped_cell;
         for _ in 0..15 {
             let move_map = wrapped
                 .random_reasonable_move_for_each_snake()
@@ -1111,7 +1111,7 @@ mod test {
         inc_y: i32,
         mv: Move,
     ) {
-        let mut wrapped_cell = orig_wrapped_cell.clone();
+        let mut wrapped_cell = orig_wrapped_cell;
         let instruments = Instruments {};
         let start_health = wrapped_cell.get_health(SnakeId(0));
         let move_map = snake_ids

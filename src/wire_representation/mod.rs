@@ -475,8 +475,7 @@ mod tests {
     fn fixture() -> Game {
         let game_fixture = include_str!("../../fixtures/4_snake_game.json");
         let g: Result<Game, _> = serde_json::from_slice(game_fixture.as_bytes());
-        let g = g.expect("the json literal is valid");
-        g
+        g.expect("the json literal is valid")
     }
 
     #[test]

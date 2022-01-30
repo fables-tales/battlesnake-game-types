@@ -224,7 +224,7 @@ mod tests {
 
     fn test_simulate_games(g: Game, g2: Game) {
         eprintln!("{:?}", g2.you);
-        if !g2.board.snakes.iter().find(|s| s.id == g2.you.id).is_some() {
+        if !g2.board.snakes.iter().any(|s| s.id == g2.you.id) {
             return;
         }
         let gid = g.game.id.clone();
@@ -252,12 +252,11 @@ mod tests {
         }
         let matching_game = specific_res.find(|(_, res)| {
             res.board.snakes.iter().all(|s| {
-                let c = g2.board.snakes.contains(s);
-                c
+                g2.board.snakes.contains(s)
             })
         });
         let (_, matching_game) =
-            matching_game.expect(&format!("we generated a matching game {} {}", gid, turn));
+            matching_game.unwrap_or_else(|| panic!("we generated a matching game {} {}", gid, turn));
         assert!(matching_game
             .board
             .snakes
@@ -272,12 +271,10 @@ mod tests {
         let g: Result<DEGame, _> = serde_json::from_slice(before.as_bytes());
         let g = g.expect("the json literal is valid");
         eprintln!("before: {}", g.board);
-        let g = Game::from(g);
 
         let g2: Result<DEGame, _> = serde_json::from_slice(after.as_bytes());
         let g2 = g2.expect("the json literal is valid");
         eprintln!("after: {}", g2.board);
-        let g2 = Game::from(g2);
 
         test_simulate_games(g, g2);
     }
@@ -287,7 +284,7 @@ mod tests {
         let game_fixture = include_str!("../../fixtures/goes_for_food.json");
         let g: Result<DEGame, _> = serde_json::from_slice(game_fixture.as_bytes());
         let g = g.expect("the json literal is valid");
-        let game = Game::from(g.clone());
+        let game = g.clone();
         let sim = Simulator::new(&game);
         let instruments = Instruments::new("test".to_string());
         let res = sim.simulate(&instruments, vec![g.you.id]);
@@ -302,7 +299,7 @@ mod tests {
         let g = g.expect("the json literal is valid");
         eprintln!("g: {}", g.board);
         let snake_ids = g.board.snakes.iter().map(|s| s.id.clone()).collect();
-        let game = Game::from(g.clone());
+        let game = g;
         let sim = Simulator::new(&game);
         let instruments = Instruments::new("test".to_string());
         let res = sim.simulate(&instruments, snake_ids);
@@ -316,15 +313,13 @@ mod tests {
                 .snakes
                 .iter()
                 .map(|s| s.id.clone())
-                .collect::<Vec<_>>()
-                .contains(&"gs_XYGMgHpHV64q78BgQKH8kYxP".to_string()));
+                .any(|x| x == *"gs_XYGMgHpHV64q78BgQKH8kYxP"));
             assert!(!g
                 .board
                 .snakes
                 .iter()
                 .map(|s| s.id.clone())
-                .collect::<Vec<_>>()
-                .contains(&"gs_Hh7hhfbfM9rTDx3GcyHKKxdc".to_string()));
+                .any(|x| x == *"gs_Hh7hhfbfM9rTDx3GcyHKKxdc"));
         }
     }
     #[test]
@@ -334,7 +329,7 @@ mod tests {
         let g = g.expect("the json literal is valid");
         eprintln!("g: {}", g.board);
         let snake_ids = g.board.snakes.iter().map(|s| s.id.clone()).collect();
-        let game = Game::from(g.clone());
+        let game = g;
         let sim = Simulator::new(&game);
         let instruments = Instruments::new("test".to_string());
         let res = sim.simulate(&instruments, snake_ids);
@@ -349,15 +344,13 @@ mod tests {
                 .snakes
                 .iter()
                 .map(|s| s.id.clone())
-                .collect::<Vec<_>>()
-                .contains(&"bees".to_string()));
+                .any(|x| x == *"bees"));
             assert!(g
                 .board
                 .snakes
                 .iter()
                 .map(|s| s.id.clone())
-                .collect::<Vec<_>>()
-                .contains(&"bees2".to_string()));
+                .any(|x| x == *"bees2"));
             assert!(g.you.health == 0)
         }
     }
@@ -369,7 +362,6 @@ mod tests {
         let g = g.expect("the json literal is valid");
         eprintln!("g: {}", g.board);
         let snake_ids = g.board.snakes.iter().map(|s| s.id.clone()).collect();
-        let g = Game::from(g.clone());
         let sim = Simulator::new(&g);
         let instruments = Instruments::new("test".to_string());
         let res = sim.simulate(&instruments, snake_ids);

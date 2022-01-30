@@ -85,10 +85,7 @@ impl<T: CellNum> SinglePlayerMoveResult<T> {
     }
 
     pub fn is_dead(&self) -> bool {
-        match self {
-            SinglePlayerMoveResult::Dead => true,
-            _ => false,
-        }
+        matches!(self, SinglePlayerMoveResult::Dead)
     }
 }
 
@@ -109,7 +106,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
 
         for (id, mvs) in moves {
             for m in mvs {
-                let old_head = self.get_head_as_native_position(&id);
+                let old_head = self.get_head_as_native_position(id);
                 let old_tail = self
                     .get_cell(old_head)
                     .get_tail_position(old_head)
