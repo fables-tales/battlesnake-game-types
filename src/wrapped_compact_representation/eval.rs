@@ -273,7 +273,6 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
             .iter()
             .filter(|(_key, values)| values.len() >= 2);
 
-        dbg!(&head_to_head_collistions);
         for (head_to_head_collision_pos, snake_move_info) in head_to_head_collistions {
             let max_length = snake_move_info
                 .iter()

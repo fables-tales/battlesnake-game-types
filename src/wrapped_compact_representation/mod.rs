@@ -635,9 +635,6 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
         sid: SnakeId,
         next_id: CellIndex<T>,
     ) {
-        if sid.as_usize() == 1 {
-            dbg!("Setting", old_head_index, next_id);
-        }
         let mut old_cell = self.get_cell(old_head_index);
         old_cell.set_head(sid, next_id);
         self.cells[old_head_index.0.as_usize()] = old_cell;
