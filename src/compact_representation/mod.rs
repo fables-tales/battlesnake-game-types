@@ -1286,12 +1286,7 @@ mod test {
         assert!(
             format!("{}", g.board).starts_with(&format!("{}", compact)) || compact.healths[0] == 0
         );
-        compare_simulated_games(
-            &snake_id_mapping,
-            &g,
-            non_compact_res.clone(),
-            compact,
-        );
+        compare_simulated_games(&snake_id_mapping, &g, non_compact_res.clone(), compact);
         let non_compact_lookup =
             build_non_compact_lookup(snake_id_mapping.clone(), non_compact_res);
 

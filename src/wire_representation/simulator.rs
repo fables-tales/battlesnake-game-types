@@ -250,13 +250,10 @@ mod tests {
             eprintln!("!!!!!!!!!!!!!!!!!!!!!!!!!!");
             eprintln!("!!!!!!!!!!!!!!!!!!!!!!!!!!");
         }
-        let matching_game = specific_res.find(|(_, res)| {
-            res.board.snakes.iter().all(|s| {
-                g2.board.snakes.contains(s)
-            })
-        });
-        let (_, matching_game) =
-            matching_game.unwrap_or_else(|| panic!("we generated a matching game {} {}", gid, turn));
+        let matching_game = specific_res
+            .find(|(_, res)| res.board.snakes.iter().all(|s| g2.board.snakes.contains(s)));
+        let (_, matching_game) = matching_game
+            .unwrap_or_else(|| panic!("we generated a matching game {} {}", gid, turn));
         assert!(matching_game
             .board
             .snakes

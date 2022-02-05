@@ -1,6 +1,6 @@
 //! various types that are useful for working with battlesnake
 use crate::wire_representation::{Game, Position};
-use serde::{Serialize, Serializer, Deserialize};
+use serde::{Deserialize, Serialize, Serializer};
 use std::collections::HashMap;
 use std::fmt::{self, Debug};
 use std::hash::Hash;

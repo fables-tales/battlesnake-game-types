@@ -161,8 +161,6 @@ pub struct Game {
     pub game: NestedGame,
 }
 
-
-
 impl Game {
     pub fn you_are_winner(&self) -> bool {
         if self.you.health == 0 {
@@ -504,7 +502,11 @@ impl HazardQueryableGame for Game {
     }
 
     fn get_hazard_damage(&self) -> u8 {
-        self.game.ruleset.settings.map(|settings| settings.hazard_damage_per_turn).unwrap_or(15) as u8
+        self.game
+            .ruleset
+            .settings
+            .map(|settings| settings.hazard_damage_per_turn)
+            .unwrap_or(15) as u8
     }
 }
 

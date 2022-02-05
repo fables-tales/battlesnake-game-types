@@ -113,7 +113,13 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
                 let old_tail = self
                     .get_cell(old_head)
                     .get_tail_position(old_head)
-                    .unwrap_or_else(|| panic!("We came from a head so we should have a tail snake: {} health: {}", id.0, self.healths[id.as_usize()]));
+                    .unwrap_or_else(|| {
+                        panic!(
+                            "We came from a head so we should have a tail snake: {} health: {}",
+                            id.0,
+                            self.healths[id.as_usize()]
+                        )
+                    });
 
                 let new_head_position =
                     old_head.into_position(Self::width()).add_vec(m.to_vector());
@@ -129,10 +135,8 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
                         prev = curr;
                         curr = self.get_cell(curr).get_next_index().unwrap_or_else(|| {
                             eprintln!("{}", self);
-                            panic!(
-                                "snake is inconsistent"
-                            )
-                            });
+                            panic!("snake is inconsistent")
+                        });
                     }
 
                     prev
@@ -267,7 +271,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
             .into_group_map_by(|t| t.new_head);
         let head_to_head_collistions = grouped_heads
             .iter()
-            .filter(|(_key, values)| values.len() >= 2 );
+            .filter(|(_key, values)| values.len() >= 2);
 
         dbg!(&head_to_head_collistions);
         for (head_to_head_collision_pos, snake_move_info) in head_to_head_collistions {
@@ -277,31 +281,30 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
                 .max_by_key(|x| x.1)
                 .unwrap()
                 .1;
-            let snake_ids = snake_move_info
-                .iter()
-                .map(|i| i.id)
-                .collect_vec();
+            let snake_ids = snake_move_info.iter().map(|i| i.id).collect_vec();
             let cell = new.get_cell(*head_to_head_collision_pos);
             // consider this board:
-            //   s . . f . . s s s 3 s 
-            //   s s s . . . . s s . . 
-            //   . . s . . . . . . . . 
-            //   . f s . . . . . . . . 
-            //   s s s . . . . . . . s 
-            //   s s f . . s s s s s s 
-            //   s s . . 2 s . . . . s 
-            //   s s s s . . . . s . s 
-            //   . . . . . . s s s . . 
-            //   s s s s . . s . . 0 . 
-            //   s . . . . . s . 1 s s 
+            //   s . . f . . s s s 3 s
+            //   s s s . . . . s s . .
+            //   . . s . . . . . . . .
+            //   . f s . . . . . . . .
+            //   s s s . . . . . . . s
+            //   s s f . . s s s s s s
+            //   s s . . 2 s . . . . s
+            //   s s s s . . . . s . s
+            //   . . . . . . s s s . .
+            //   s s s s . . s . . 0 .
+            //   s . . . . . s . 1 s s
             // it's a little hard to see, but if at the same time
-            // snake 3 moves up: it will warp around on the second column from the top row to the bottom row (from 10,9 to 0,9), 
+            // snake 3 moves up: it will warp around on the second column from the top row to the bottom row (from 10,9 to 0,9),
             // snake 1 moves right from (0,8 to 0,9) it will also be on 0,9
             // and snake 0 has a body segment (currently it's neck) on 0,
             // this will cause a head to head collision between snake 1 and snake 3 on snake 0's neck.
             // this statement needs to be added to the winner check, because if it isn't, the neck cell for
             // snake 0 will be removed, causing the body to go in to an inconsistent state
-            let head_to_head_collision_on_another_snake = cell.is_body_segment() && !cell.is_head() && !snake_ids.contains(&cell.get_snake_id().unwrap());
+            let head_to_head_collision_on_another_snake = cell.is_body_segment()
+                && !cell.is_head()
+                && !snake_ids.contains(&cell.get_snake_id().unwrap());
 
             let multiple_snakes_max_length = snake_move_info
                 .iter()

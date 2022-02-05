@@ -15,7 +15,7 @@ pub use crate::wrapped_compact_representation::eval::{
 use itertools::Itertools;
 use rand::prelude::IteratorRandom;
 use rand::thread_rng;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::Display;
@@ -96,7 +96,7 @@ impl<T: CellNum> CellIndex<T> {
 
     /// get a usize from a CellIndex
     pub fn as_usize(&self) -> usize {
-        self.0.as_usize() 
+        self.0.as_usize()
     }
 
     /// converts a cellindex to a position
@@ -321,7 +321,6 @@ pub struct CellBoard<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usiz
 impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
     CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
-
     /// Asserts that all tails eventually loop back to a head and panics if the board is inconsistent
     pub fn assert_consistency(&self) -> bool {
         for i in 0..MAX_SNAKES {
@@ -350,7 +349,6 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
                     index = maybe_index.unwrap();
                 }
             }
-
         }
         true
     }
@@ -361,10 +359,22 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
         let mut hash = HashMap::new();
         hash.insert("hazard_damage".to_string(), vec![self.hazard_damage as u32]);
         hash.insert("actual_width".to_string(), vec![self.actual_width as u32]);
-        hash.insert("healths".to_string(), self.healths.iter().map(|x| *x as u32).collect());
-        hash.insert("lengths".to_string(), self.lengths.iter().map(|x| *x as u32).collect());
-        hash.insert("heads".to_string(), self.heads.iter().map(|x| x.as_usize() as u32).collect());
-        hash.insert("cells".to_string(), self.cells.iter().map(|x| x.pack_as_u32()).collect());
+        hash.insert(
+            "healths".to_string(),
+            self.healths.iter().map(|x| *x as u32).collect(),
+        );
+        hash.insert(
+            "lengths".to_string(),
+            self.lengths.iter().map(|x| *x as u32).collect(),
+        );
+        hash.insert(
+            "heads".to_string(),
+            self.heads.iter().map(|x| x.as_usize() as u32).collect(),
+        );
+        hash.insert(
+            "cells".to_string(),
+            self.cells.iter().map(|x| x.pack_as_u32()).collect(),
+        );
         hash
     }
 
@@ -383,7 +393,6 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
         for (idx, length) in lengths_iter.enumerate() {
             lengths[idx] = length;
         }
-
 
         let mut heads = [CellIndex::<T>::from_usize(0); MAX_SNAKES];
         let heads_iter = hash.get("heads").unwrap().iter().map(|x| *x as usize);
@@ -620,7 +629,12 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
     }
 
     /// Set the given index as a snake head
-    pub fn set_cell_head(&mut self, old_head_index: CellIndex<T>, sid: SnakeId, next_id: CellIndex<T>) {
+    pub fn set_cell_head(
+        &mut self,
+        old_head_index: CellIndex<T>,
+        sid: SnakeId,
+        next_id: CellIndex<T>,
+    ) {
         if sid.as_usize() == 1 {
             dbg!("Setting", old_head_index, next_id);
         }
@@ -684,7 +698,6 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
             .collect()
     }
 }
-
 
 /// 7x7 board with 4 snakes
 pub type CellBoard4Snakes7x7 = CellBoard<u8, { 7 * 7 }, 4>;
@@ -993,7 +1006,8 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> RandomReasona
     for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
     fn random_reasonable_move_for_each_snake(&self) -> Vec<(Self::SnakeIDType, Move)> {
-        #[cfg(test)] {
+        #[cfg(test)]
+        {
             if !self.assert_consistency() {
                 panic!("assertion failed, I am: {}", self);
             }
@@ -1071,7 +1085,10 @@ impl<T: SimulatorInstruments, N: CellNum, const BOARD_SIZE: usize, const MAX_SNA
         let results = ids_and_moves_product.into_iter().map(|m| {
             let game = self.evaluate_moves_with_state(m.iter(), &states);
             if !game.assert_consistency() {
-                panic!("caught an inconsistent simulate, moves: {:?} orig: {}, new: {}", m, self, game);
+                panic!(
+                    "caught an inconsistent simulate, moves: {:?} orig: {}, new: {}",
+                    m, self, game
+                );
             }
             (m, game)
         });
@@ -1165,10 +1182,11 @@ mod test {
         types::{
             build_snake_id_map, HeadGettableGame, Move, RandomReasonableMovesGame, SimulableGame,
             SimulatorInstruments, SnakeId,
-        }, wire_representation::Position,
+        },
+        wire_representation::Position,
     };
 
-    use super::{CellBoard4Snakes11x11, Cell, CellIndex};
+    use super::{Cell, CellBoard4Snakes11x11, CellIndex};
 
     #[derive(Debug)]
     struct Instruments {}
@@ -1185,8 +1203,15 @@ mod test {
         let orig_wrapped_cell: CellBoard4Snakes11x11 = g.as_wrapped_cell_board(&snake_ids).unwrap();
         let hash = orig_wrapped_cell.pack_as_hash();
         eprintln!("{}", serde_json::to_string(&hash).unwrap());
-        eprintln!("{}", serde_json::to_string(&CellBoard4Snakes11x11::from_packed_hash(&hash).pack_as_hash()).unwrap());
-        assert_eq!(CellBoard4Snakes11x11::from_packed_hash(&hash), orig_wrapped_cell);
+        eprintln!(
+            "{}",
+            serde_json::to_string(&CellBoard4Snakes11x11::from_packed_hash(&hash).pack_as_hash())
+                .unwrap()
+        );
+        assert_eq!(
+            CellBoard4Snakes11x11::from_packed_hash(&hash),
+            orig_wrapped_cell
+        );
     }
 
     #[test]
@@ -1195,7 +1220,6 @@ mod test {
         c.set_body_piece(SnakeId(3), CellIndex::new(Position::new(1, 2), 11));
         let as_u32 = c.pack_as_u32();
         assert_eq!(c, Cell::from_u32(as_u32));
-
     }
 
     #[test]
@@ -1293,5 +1317,4 @@ mod test {
         assert_eq!(((start_y + (rollout * inc_y)).rem_euclid(11)) as i32, end_y);
         assert_eq!(((start_x + (rollout * inc_x)).rem_euclid(11)) as i32, end_x);
     }
-
 }
