@@ -502,6 +502,10 @@ impl HazardQueryableGame for Game {
     fn is_hazard(&self, pos: &Self::NativePositionType) -> bool {
         self.board.hazards.contains(pos)
     }
+
+    fn get_hazard_damage(&self) -> u8 {
+        self.game.ruleset.settings.map(|settings| settings.hazard_damage_per_turn).unwrap_or(15) as u8
+    }
 }
 
 impl HazardSettableGame for Game {

@@ -1,6 +1,6 @@
 //! various types that are useful for working with battlesnake
 use crate::wire_representation::{Game, Position};
-use serde::{Serialize, Serializer};
+use serde::{Serialize, Serializer, Deserialize};
 use std::collections::HashMap;
 use std::fmt::{self, Debug};
 use std::hash::Hash;
@@ -108,7 +108,7 @@ impl Move {
 }
 
 /// token to represent a snake id
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Deserialize)]
 #[repr(transparent)]
 pub struct SnakeId(pub u8);
 
@@ -215,6 +215,9 @@ pub trait SimulableGame<T: SimulatorInstruments>:
 pub trait HazardQueryableGame: PositionGettableGame {
     /// Is this position a hazard?
     fn is_hazard(&self, pos: &Self::NativePositionType) -> bool;
+
+    /// how much damage do hazards do?
+    fn get_hazard_damage(&self) -> u8;
 }
 
 /// A game where positions can have their hazards set and cleared

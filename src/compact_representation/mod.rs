@@ -693,6 +693,10 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> HazardQueryab
     fn is_hazard(&self, pos: &Self::NativePositionType) -> bool {
         self.cell_is_hazard(*pos)
     }
+
+    fn get_hazard_damage(&self) -> u8 {
+        self.hazard_damage
+    }
 }
 
 impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> HazardSettableGame

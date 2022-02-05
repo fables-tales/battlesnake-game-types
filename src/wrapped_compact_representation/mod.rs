@@ -15,6 +15,8 @@ pub use crate::wrapped_compact_representation::eval::{
 use itertools::Itertools;
 use rand::prelude::IteratorRandom;
 use rand::thread_rng;
+use serde::{Serialize, Deserialize};
+use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::Display;
 use std::time::Instant;
@@ -67,7 +69,7 @@ impl CellNum for u16 {
 }
 
 /// wrapper type for an index in to the board
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
 #[repr(transparent)]
 pub struct CellIndex<T: CellNum>(pub T);
 
@@ -77,9 +79,24 @@ impl<T: CellNum> CellIndex<T> {
         Self(T::from_i32(pos.y * width as i32 + pos.x))
     }
 
+    /// build a CellIndex from a usize
+    pub fn from_usize(u: usize) -> Self {
+        Self(T::from_usize(u))
+    }
+
     /// makes a cellindex from an i32
     pub fn from_i32(i: i32) -> Self {
         Self(T::from_i32(i))
+    }
+
+    /// build a CellIndex from a u32
+    pub fn from_u32(u: u32) -> Self {
+        Self(T::from_usize(u as usize))
+    }
+
+    /// get a usize from a CellIndex
+    pub fn as_usize(&self) -> usize {
+        self.0.as_usize() 
     }
 
     /// converts a cellindex to a position
@@ -126,6 +143,24 @@ impl<T: CellNum> Cell<T> {
         } else {
             None
         }
+    }
+
+    fn pack_as_u32(&self) -> u32 {
+        let mut value: u32 = 0;
+        // flags is a byte
+        value |= self.flags as u32;
+        // ids are actually a u8
+        value |= ((self.id.as_usize() as u32) & 0xff) << 8;
+        // idx is at most a u16
+        value |= ((self.idx.0.as_usize() as u32) & 0xffff) << 16;
+        value
+    }
+
+    fn from_u32(value: u32) -> Self {
+        let flags = (value & 0xff) as u8;
+        let id = SnakeId(((value >> 8) & 0xff) as u8);
+        let idx = CellIndex::from_u32((value >> 16) & 0xffff);
+        Self { flags, id, idx }
     }
 
     fn is_empty(&self) -> bool {
@@ -283,129 +318,95 @@ pub struct CellBoard<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usiz
     actual_width: u8,
 }
 
-/// 7x7 board with 4 snakes
-pub type CellBoard4Snakes7x7 = CellBoard<u8, { 7 * 7 }, 4>;
-
-/// Used to represent the standard 11x11 game with up to 4 snakes.
-pub type CellBoard4Snakes11x11 = CellBoard<u8, { 11 * 11 }, 4>;
-
-/// Used to represent the a 15x15 board with up to 4 snakes. This is the biggest board size that
-/// can still use u8s
-pub type CellBoard8Snakes15x15 = CellBoard<u8, { 15 * 15 }, 8>;
-
-/// Used to represent the largest UI Selectable board with 8 snakes.
-pub type CellBoard8Snakes25x25 = CellBoard<u16, { 25 * 25 }, 8>;
-
-/// Used to represent an absolutely silly game board
-pub type CellBoard16Snakes50x50 = CellBoard<u16, { 50 * 50 }, 16>;
-
-/// Enum that holds a Cell Board sized right for the given game
-#[derive(Debug)]
-pub enum BestCellBoard {
-    #[allow(missing_docs)]
-    Tiny(Box<CellBoard4Snakes7x7>),
-    #[allow(missing_docs)]
-    Standard(Box<CellBoard4Snakes11x11>),
-    #[allow(missing_docs)]
-    LargestU8(Box<CellBoard8Snakes15x15>),
-    #[allow(missing_docs)]
-    Large(Box<CellBoard8Snakes25x25>),
-    #[allow(missing_docs)]
-    Silly(Box<CellBoard16Snakes50x50>),
-}
-
-/// Trait to get the best sized cellboard for the given game. It returns the smallest Compact board
-/// that has enough room to fit the given Wire game. If the game can't fit in any of our Compact
-/// boards we panic. However the largest board available is MUCH larger than the biggest selectable
-/// board in the Battlesnake UI
-pub trait ToBestCellBoard {
-    #[allow(missing_docs)]
-    fn to_best_cell_board(self) -> Result<BestCellBoard, Box<dyn Error>>;
-}
-
-impl ToBestCellBoard for Game {
-    fn to_best_cell_board(self) -> Result<BestCellBoard, Box<dyn Error>> {
-        let dimension = self.board.width;
-        let num_snakes = self.board.snakes.len();
-        let id_map = build_snake_id_map(&self);
-
-        let best_board = if dimension <= 7 && num_snakes <= 4 {
-            BestCellBoard::Tiny(Box::new(CellBoard4Snakes7x7::convert_from_game(
-                self, &id_map,
-            )?))
-        } else if dimension <= 11 && num_snakes <= 4 {
-            BestCellBoard::Standard(Box::new(CellBoard4Snakes11x11::convert_from_game(
-                self, &id_map,
-            )?))
-        } else if dimension <= 15 && num_snakes <= 8 {
-            BestCellBoard::LargestU8(Box::new(CellBoard8Snakes15x15::convert_from_game(
-                self, &id_map,
-            )?))
-        } else if dimension <= 25 && num_snakes <= 8 {
-            BestCellBoard::Large(Box::new(CellBoard8Snakes25x25::convert_from_game(
-                self, &id_map,
-            )?))
-        } else if dimension <= 50 && num_snakes <= 16 {
-            BestCellBoard::Silly(Box::new(CellBoard16Snakes50x50::convert_from_game(
-                self, &id_map,
-            )?))
-        } else {
-            panic!("No board was big enough")
-        };
-
-        Ok(best_board)
-    }
-}
-
-impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> Display
-    for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let width = self.actual_width;
-        let height = self.actual_height();
-        writeln!(f)?;
-        for y in 0..height {
-            for x in 0..width {
-                let y = height - y - 1;
-                let position = Position {
-                    x: x as i32,
-                    y: y as i32,
-                };
-                let cell_idx = CellIndex::new(position, width);
-                if self.cell_is_snake_head(cell_idx) {
-                    write!(f, "H")?;
-                } else if self.cell_is_food(cell_idx) {
-                    write!(f, "f")?
-                } else if self.cell_is_body(cell_idx) {
-                    write!(f, "s")?
-                } else if self.cell_is_hazard(cell_idx) {
-                    write!(f, "x")?
-                } else {
-                    debug_assert!(self.cells[cell_idx.0.as_usize()].is_empty());
-                    write!(f, ".")?
-                }
-                write!(f, " ")?;
-            }
-            writeln!(f)?;
-        }
-        Ok(())
-    }
-}
-
-fn get_snake_id(
-    snake: &crate::wire_representation::BattleSnake,
-    snake_ids: &SnakeIDMap,
-) -> Option<SnakeId> {
-    if snake.health == 0 {
-        None
-    } else {
-        Some(*snake_ids.get(&snake.id).unwrap())
-    }
-}
-
 impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
     CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
+
+    /// Asserts that all tails eventually loop back to a head and panics if the board is inconsistent
+    pub fn assert_consistency(&self) -> bool {
+        for i in 0..MAX_SNAKES {
+            let snake_id = SnakeId(i as u8);
+            let health = self.healths[i];
+            if health > 0 {
+                let head_index = self.heads[i];
+                let tail_index = self.get_cell(head_index).get_tail_position(head_index);
+                if tail_index.is_none() {
+                    return false;
+                }
+                let tail_index = tail_index.unwrap();
+                let mut index = tail_index;
+                while index != head_index {
+                    let cell = self.get_cell(index);
+                    if !cell.is_body_segment() {
+                        return false;
+                    }
+                    if cell.get_snake_id() != Some(snake_id) {
+                        return false;
+                    }
+                    let maybe_index = cell.get_next_index();
+                    if maybe_index.is_none() {
+                        return false;
+                    }
+                    index = maybe_index.unwrap();
+                }
+            }
+
+        }
+        true
+    }
+
+    /// packs this as a hash. Doing this because getting serde to work
+    /// with const generics is hard
+    pub fn pack_as_hash(&self) -> HashMap<String, Vec<u32>> {
+        let mut hash = HashMap::new();
+        hash.insert("hazard_damage".to_string(), vec![self.hazard_damage as u32]);
+        hash.insert("actual_width".to_string(), vec![self.actual_width as u32]);
+        hash.insert("healths".to_string(), self.healths.iter().map(|x| *x as u32).collect());
+        hash.insert("lengths".to_string(), self.lengths.iter().map(|x| *x as u32).collect());
+        hash.insert("heads".to_string(), self.heads.iter().map(|x| x.as_usize() as u32).collect());
+        hash.insert("cells".to_string(), self.cells.iter().map(|x| x.pack_as_u32()).collect());
+        hash
+    }
+
+    /// unpacks a packed hash repr back in to a CellBoard
+    pub fn from_packed_hash(hash: &HashMap<String, Vec<u32>>) -> Self {
+        let hazard_damage = hash.get("hazard_damage").unwrap()[0] as u8;
+        let actual_width = hash.get("actual_width").unwrap()[0] as u8;
+        let mut healths = [0; MAX_SNAKES];
+        let healths_iter = hash.get("healths").unwrap().iter().map(|x| *x as u8);
+        for (idx, health) in healths_iter.enumerate() {
+            healths[idx] = health;
+        }
+
+        let mut lengths = [0; MAX_SNAKES];
+        let lengths_iter = hash.get("lengths").unwrap().iter().map(|x| *x as u16);
+        for (idx, length) in lengths_iter.enumerate() {
+            lengths[idx] = length;
+        }
+
+
+        let mut heads = [CellIndex::<T>::from_usize(0); MAX_SNAKES];
+        let heads_iter = hash.get("heads").unwrap().iter().map(|x| *x as usize);
+        for (idx, head) in heads_iter.enumerate() {
+            heads[idx] = CellIndex::<T>::from_usize(head);
+        }
+
+        let mut cells = [Cell::<T>::empty(); BOARD_SIZE];
+        let cells_iter = hash.get("cells").unwrap().iter().map(|x| *x as u32);
+        for (idx, cell) in cells_iter.enumerate() {
+            cells[idx] = Cell::<T>::from_u32(cell);
+        }
+
+        CellBoard {
+            hazard_damage,
+            cells,
+            healths,
+            heads,
+            lengths,
+            actual_width,
+        }
+    }
+
     fn as_wrapped_cell_index(&self, mut new_head_position: Position) -> CellIndex<T> {
         if self.off_board(new_head_position) {
             if new_head_position.x < 0 {
@@ -435,7 +436,6 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
             } else {
                 panic!("We should never get here");
             }
-            eprintln!("new head pos: {:?}", new_head_position);
             CellIndex::<T>::new(new_head_position, Self::width())
         } else {
             CellIndex::<T>::new(new_head_position, Self::width())
@@ -458,6 +458,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
 
         while let Some(i) = current_index {
             current_index = self.get_cell(i).get_next_index();
+            debug_assert!(self.get_cell(i).get_snake_id().unwrap().as_usize() == sid.as_usize());
             self.cell_remove(i);
         }
 
@@ -619,10 +620,13 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
     }
 
     /// Set the given index as a snake head
-    pub fn set_cell_head(&mut self, cell_index: CellIndex<T>, sid: SnakeId, next_id: CellIndex<T>) {
-        let mut old_cell = self.get_cell(cell_index);
+    pub fn set_cell_head(&mut self, old_head_index: CellIndex<T>, sid: SnakeId, next_id: CellIndex<T>) {
+        if sid.as_usize() == 1 {
+            dbg!("Setting", old_head_index, next_id);
+        }
+        let mut old_cell = self.get_cell(old_head_index);
         old_cell.set_head(sid, next_id);
-        self.cells[cell_index.0.as_usize()] = old_cell;
+        self.cells[old_head_index.0.as_usize()] = old_cell;
     }
 
     /// gets the snake ID at a given index, returns None if the provided index is not a snake cell
@@ -681,6 +685,130 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
     }
 }
 
+
+/// 7x7 board with 4 snakes
+pub type CellBoard4Snakes7x7 = CellBoard<u8, { 7 * 7 }, 4>;
+
+/// Used to represent the standard 11x11 game with up to 4 snakes.
+pub type CellBoard4Snakes11x11 = CellBoard<u8, { 11 * 11 }, 4>;
+
+/// Used to represent the a 15x15 board with up to 4 snakes. This is the biggest board size that
+/// can still use u8s
+pub type CellBoard8Snakes15x15 = CellBoard<u8, { 15 * 15 }, 8>;
+
+/// Used to represent the largest UI Selectable board with 8 snakes.
+pub type CellBoard8Snakes25x25 = CellBoard<u16, { 25 * 25 }, 8>;
+
+/// Used to represent an absolutely silly game board
+pub type CellBoard16Snakes50x50 = CellBoard<u16, { 50 * 50 }, 16>;
+
+/// Enum that holds a Cell Board sized right for the given game
+#[derive(Debug)]
+pub enum BestCellBoard {
+    #[allow(missing_docs)]
+    Tiny(Box<CellBoard4Snakes7x7>),
+    #[allow(missing_docs)]
+    Standard(Box<CellBoard4Snakes11x11>),
+    #[allow(missing_docs)]
+    LargestU8(Box<CellBoard8Snakes15x15>),
+    #[allow(missing_docs)]
+    Large(Box<CellBoard8Snakes25x25>),
+    #[allow(missing_docs)]
+    Silly(Box<CellBoard16Snakes50x50>),
+}
+
+/// Trait to get the best sized cellboard for the given game. It returns the smallest Compact board
+/// that has enough room to fit the given Wire game. If the game can't fit in any of our Compact
+/// boards we panic. However the largest board available is MUCH larger than the biggest selectable
+/// board in the Battlesnake UI
+pub trait ToBestCellBoard {
+    #[allow(missing_docs)]
+    fn to_best_cell_board(self) -> Result<BestCellBoard, Box<dyn Error>>;
+}
+
+impl ToBestCellBoard for Game {
+    fn to_best_cell_board(self) -> Result<BestCellBoard, Box<dyn Error>> {
+        let dimension = self.board.width;
+        let num_snakes = self.board.snakes.len();
+        let id_map = build_snake_id_map(&self);
+
+        let best_board = if dimension <= 7 && num_snakes <= 4 {
+            BestCellBoard::Tiny(Box::new(CellBoard4Snakes7x7::convert_from_game(
+                self, &id_map,
+            )?))
+        } else if dimension <= 11 && num_snakes <= 4 {
+            BestCellBoard::Standard(Box::new(CellBoard4Snakes11x11::convert_from_game(
+                self, &id_map,
+            )?))
+        } else if dimension <= 15 && num_snakes <= 8 {
+            BestCellBoard::LargestU8(Box::new(CellBoard8Snakes15x15::convert_from_game(
+                self, &id_map,
+            )?))
+        } else if dimension <= 25 && num_snakes <= 8 {
+            BestCellBoard::Large(Box::new(CellBoard8Snakes25x25::convert_from_game(
+                self, &id_map,
+            )?))
+        } else if dimension <= 50 && num_snakes <= 16 {
+            BestCellBoard::Silly(Box::new(CellBoard16Snakes50x50::convert_from_game(
+                self, &id_map,
+            )?))
+        } else {
+            panic!("No board was big enough")
+        };
+
+        Ok(best_board)
+    }
+}
+
+impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> Display
+    for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let width = self.actual_width;
+        let height = self.actual_height();
+        writeln!(f)?;
+        for y in 0..height {
+            for x in 0..width {
+                let y = height - y - 1;
+                let position = Position {
+                    x: x as i32,
+                    y: y as i32,
+                };
+                let cell_idx = CellIndex::new(position, width);
+                if self.cell_is_snake_head(cell_idx) {
+                    let id = self.get_snake_id_at(cell_idx);
+                    write!(f, "{}", id.unwrap().as_usize())?;
+                } else if self.cell_is_food(cell_idx) {
+                    write!(f, "f")?
+                } else if self.cell_is_body(cell_idx) {
+                    write!(f, "s")?
+                } else if self.cell_is_hazard(cell_idx) {
+                    write!(f, "x")?
+                } else {
+                    debug_assert!(self.cells[cell_idx.0.as_usize()].is_empty());
+                    write!(f, ".")?
+                }
+                write!(f, " ")?;
+            }
+            writeln!(f)?;
+        }
+        let hash_repr = self.pack_as_hash();
+        writeln!(f, "{}", serde_json::to_string(&hash_repr).unwrap())?;
+        Ok(())
+    }
+}
+
+fn get_snake_id(
+    snake: &crate::wire_representation::BattleSnake,
+    snake_ids: &SnakeIDMap,
+) -> Option<SnakeId> {
+    if snake.health == 0 {
+        None
+    } else {
+        Some(*snake_ids.get(&snake.id).unwrap())
+    }
+}
+
 impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> SnakeIDGettableGame
     for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
@@ -724,6 +852,10 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> HazardQueryab
 {
     fn is_hazard(&self, pos: &Self::NativePositionType) -> bool {
         self.cell_is_hazard(*pos)
+    }
+
+    fn get_hazard_damage(&self) -> u8 {
+        self.hazard_damage
     }
 }
 
@@ -861,6 +993,11 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> RandomReasona
     for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
     fn random_reasonable_move_for_each_snake(&self) -> Vec<(Self::SnakeIDType, Move)> {
+        #[cfg(test)] {
+            if !self.assert_consistency() {
+                panic!("assertion failed, I am: {}", self);
+            }
+        }
         let width = self.actual_width;
         self.healths
             .iter()
@@ -933,6 +1070,9 @@ impl<T: SimulatorInstruments, N: CellNum, const BOARD_SIZE: usize, const MAX_SNA
             .multi_cartesian_product();
         let results = ids_and_moves_product.into_iter().map(|m| {
             let game = self.evaluate_moves_with_state(m.iter(), &states);
+            if !game.assert_consistency() {
+                panic!("caught an inconsistent simulate, moves: {:?} orig: {}, new: {}", m, self, game);
+            }
             (m, game)
         });
         let return_value = results.collect_vec();
@@ -1025,16 +1165,37 @@ mod test {
         types::{
             build_snake_id_map, HeadGettableGame, Move, RandomReasonableMovesGame, SimulableGame,
             SimulatorInstruments, SnakeId,
-        },
+        }, wire_representation::Position,
     };
 
-    use super::CellBoard4Snakes11x11;
+    use super::{CellBoard4Snakes11x11, Cell, CellIndex};
 
     #[derive(Debug)]
     struct Instruments {}
 
     impl SimulatorInstruments for Instruments {
         fn observe_simulation(&self, _: std::time::Duration) {}
+    }
+
+    #[test]
+    fn test_to_hash_round_trips() {
+        let g = game_fixture(include_str!("../../fixtures/wrapped_fixture.json"));
+        eprintln!("{}", g.board);
+        let snake_ids = build_snake_id_map(&g);
+        let orig_wrapped_cell: CellBoard4Snakes11x11 = g.as_wrapped_cell_board(&snake_ids).unwrap();
+        let hash = orig_wrapped_cell.pack_as_hash();
+        eprintln!("{}", serde_json::to_string(&hash).unwrap());
+        eprintln!("{}", serde_json::to_string(&CellBoard4Snakes11x11::from_packed_hash(&hash).pack_as_hash()).unwrap());
+        assert_eq!(CellBoard4Snakes11x11::from_packed_hash(&hash), orig_wrapped_cell);
+    }
+
+    #[test]
+    fn test_cell_round_trips() {
+        let mut c: Cell<u8> = Cell::empty();
+        c.set_body_piece(SnakeId(3), CellIndex::new(Position::new(1, 2), 11));
+        let as_u32 = c.pack_as_u32();
+        assert_eq!(c, Cell::from_u32(as_u32));
+
     }
 
     #[test]
@@ -1121,19 +1282,8 @@ mod test {
         let start_y = wrapped_cell.get_head_as_position(&SnakeId(0)).y;
         let start_x = wrapped_cell.get_head_as_position(&SnakeId(0)).x;
         for _ in 0..rollout {
-            eprintln!("!!!!!!!!!!!!!!!!!!");
-            eprintln!("{}\n-------\n", wrapped_cell);
             wrapped_cell = wrapped_cell.simulate_with_moves(&instruments, move_map.clone())[0].1;
-            eprintln!("{}", wrapped_cell);
-            eprintln!("!!!!!!!!!!!!!!!!!!");
         }
-        eprintln!("done done done done");
-        eprintln!("done done done done");
-        eprintln!("done done done done");
-        eprintln!("done done done done");
-        eprintln!("done done done done");
-        eprintln!("direction is mv: {:?}", mv);
-        eprintln!("move count was rollouts: {}", rollout);
         let end_y = wrapped_cell.get_head_as_position(&SnakeId(0)).y;
         let end_x = wrapped_cell.get_head_as_position(&SnakeId(0)).x;
         assert_eq!(
@@ -1143,4 +1293,5 @@ mod test {
         assert_eq!(((start_y + (rollout * inc_y)).rem_euclid(11)) as i32, end_y);
         assert_eq!(((start_x + (rollout * inc_x)).rem_euclid(11)) as i32, end_x);
     }
+
 }
