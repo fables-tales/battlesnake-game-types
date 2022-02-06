@@ -1,4 +1,3 @@
-use battlesnake_game_types::compact_representation::eval::MoveEvaluatableWithStateGame;
 use battlesnake_game_types::wire_representation::Game as DEGame;
 use battlesnake_game_types::{
     compact_representation::CellBoard4Snakes11x11,

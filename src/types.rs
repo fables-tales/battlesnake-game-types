@@ -190,25 +190,26 @@ pub trait SimulableGame<T: SimulatorInstruments>:
 {
     /// simulates all possible future games for a given game returning the snake ids, moves that
     /// got to a given state, plus that state
+    #[allow(clippy::type_complexity)]
     fn simulate(
         &self,
         instruments: &T,
         snake_ids: Vec<Self::SnakeIDType>,
-    ) -> Vec<(Vec<SnakeMove<Self::SnakeIDType>>, Self)> {
+    ) -> Box<dyn Iterator<Item=(Vec<SnakeMove<Self::SnakeIDType>>, Self)> + '_> {
         let moves_to_simulate = Move::all();
         let build = snake_ids
             .into_iter()
-            .map(|s| (s, moves_to_simulate.clone()))
-            .collect::<Vec<_>>();
+            .map(|s| (s, moves_to_simulate.clone()));
         self.simulate_with_moves(instruments, build)
     }
     /// simulates the next possible states for a a game with a given set of snakes and moves, producing a list of the new games,
     /// along with the moves that got to that position
+    #[allow(clippy::type_complexity)]
     fn simulate_with_moves(
         &self,
         instruments: &T,
-        snake_ids_and_moves: Vec<(Self::SnakeIDType, Vec<Move>)>,
-    ) -> Vec<(Vec<SnakeMove<Self::SnakeIDType>>, Self)>;
+        snake_ids_and_moves: impl IntoIterator<Item=(Self::SnakeIDType, Vec<Move>)>,
+    ) -> Box<dyn Iterator<Item=(Vec<SnakeMove<Self::SnakeIDType>>, Self)> + '_>;
 }
 
 /// A game where positions can be checked for hazards
@@ -301,7 +302,7 @@ pub trait HealthGettableGame: SnakeIDGettableGame {
 /// a game for which random reasonable moves for a given snake can be determined. e.g. do not collide with yourself
 pub trait RandomReasonableMovesGame: SnakeIDGettableGame {
     #[allow(missing_docs)]
-    fn random_reasonable_move_for_each_snake(&self) -> Vec<(Self::SnakeIDType, Move)>;
+    fn random_reasonable_move_for_each_snake<'a>(&'a self) -> Box<dyn Iterator<Item=(Self::SnakeIDType, Move)> + 'a>;
 }
 
 /// a game for which the neighbors of a given Position can be determined
@@ -366,7 +367,7 @@ mod tests {
         let g = fixture();
         let you_id = g.you.id.clone();
         let mut s_result = g.simulate_with_moves(&Instruments {}, vec![(you_id, vec![Move::Down])]);
-        let new_g = s_result.pop().unwrap().1;
+        let new_g = s_result.next().unwrap().1;
         let new_head = new_g.you.head;
         let offset = new_head.sub_vec(g.you.head.to_vector()).to_vector();
         let mv = Move::from_vector(offset);

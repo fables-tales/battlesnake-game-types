@@ -6,41 +6,6 @@ use super::*;
 /// Some steps of eval can be precomputed for each snake move and don't rely on the cartersian
 /// product.
 /// This allows the algorithm to be significantly faster in simulation
-pub trait MoveEvaluatableWithStateGame: SnakeIDGettableGame + PositionGettableGame + Sized {
-    /// The type that is prepared ahead of time and passed into each evaluate usage
-    type PreparedState;
-
-    /// Prepare the state for each snake move
-    /// this takes a table like:
-    /// [
-    ///    (SnakeId(0), vec![Move::Up, Move::Down]),
-    ///    (SnakeId(1), vec![Move::Up, Move::Down]),
-    /// ]
-    fn generate_state<'a>(
-        &self,
-        snake_ids_and_moves: impl Iterator<Item = &'a (Self::SnakeIDType, Vec<crate::types::Move>)>,
-    ) -> Self::PreparedState
-    where
-        <Self as types::SnakeIDGettableGame>::SnakeIDType: 'a;
-
-    /// Evaluate the given moves with the precomputed state from Self::generate_state
-    /// produces a single output state per call, so e.g. you call this with:
-    /// moves: [
-    ///     (snake_id, move)
-    ///     (snake_id, move)
-    ///     (snake_id, move)
-    /// ],
-    /// state: prepared_state
-    /// and it will look up the prepared state for the given snake id and move tuples,
-    /// this means if you prepared a batched state, you need to also build your own move product
-    fn evaluate_moves_with_state<'a>(
-        &self,
-        moves: impl Iterator<Item = &'a (SnakeId, crate::types::Move)>,
-        state: &Self::PreparedState,
-    ) -> Self
-    where
-        <Self as types::SnakeIDGettableGame>::SnakeIDType: 'a;
-}
 #[derive(Copy, Clone, Debug)]
 /// Precomputed state for Move Evaluation
 /// for a single Snake Move
@@ -89,18 +54,13 @@ impl<T: CellNum> SinglePlayerMoveResult<T> {
     }
 }
 
-impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatableWithStateGame
-    for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
+impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
-    // the prepared state is a 2d table where the "columns" are the moves and the "rows" are the snakes
-    type PreparedState = [[SinglePlayerMoveResult<T>; N_MOVES]; MAX_SNAKES];
 
-    fn generate_state<'a>(
+    pub fn generate_state<'a>(
         &self,
         moves: impl Iterator<Item = &'a (SnakeId, Vec<crate::types::Move>)>,
-    ) -> Self::PreparedState
-    where
-        <Self as types::SnakeIDGettableGame>::SnakeIDType: 'a,
+    ) -> [[SinglePlayerMoveResult<T>; N_MOVES]; MAX_SNAKES]
     {
         let mut new_heads = [[SinglePlayerMoveResult::Dead; 4]; MAX_SNAKES];
 
@@ -181,10 +141,10 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> MoveEvaluatab
         new_heads
     }
 
-    fn evaluate_moves_with_state<'a>(
+    pub fn evaluate_moves_with_state<'a>(
         &self,
         moves: impl Iterator<Item = &'a (SnakeId, crate::types::Move)>,
-        new_heads: &Self::PreparedState,
+        new_heads: &[[SinglePlayerMoveResult<T>; N_MOVES]; MAX_SNAKES],
     ) -> Self
     where
         <Self as types::SnakeIDGettableGame>::SnakeIDType: 'a,

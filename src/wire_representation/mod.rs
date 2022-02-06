@@ -11,6 +11,7 @@ use crate::types::{
     TurnDeterminableGame, Vector, VictorDeterminableGame, YouDeterminableGame,
 };
 use crate::wrapped_compact_representation;
+use itertools::Itertools;
 use rand::prelude::IteratorRandom;
 use rand::thread_rng;
 use serde::{Deserialize, Serialize};
@@ -403,21 +404,22 @@ impl HeadGettableGame for Game {
 }
 
 impl<T: SimulatorInstruments> SimulableGame<T> for Game {
+    #[allow(clippy::type_complexity)]
     fn simulate_with_moves(
         &self,
         instruments: &T,
-        snake_ids_and_moves: Vec<(Self::SnakeIDType, Vec<Move>)>,
-    ) -> Vec<(Vec<SnakeMove<Self::SnakeIDType>>, Game)> {
-        simulator::Simulator::new(self).simulate_with_moves(instruments, snake_ids_and_moves)
+        snake_ids_and_moves: impl IntoIterator<Item=(Self::SnakeIDType, Vec<Move>)>,
+    ) -> Box<dyn Iterator<Item=(Vec<SnakeMove<Self::SnakeIDType>>, Self)> + '_> {
+        Box::new(simulator::Simulator::new(self).simulate_with_moves(instruments, snake_ids_and_moves.into_iter().collect_vec()).into_iter())
     }
 }
 
 impl RandomReasonableMovesGame for Game {
-    fn random_reasonable_move_for_each_snake(&self) -> Vec<(String, Move)> {
-        self.board
+    fn random_reasonable_move_for_each_snake<'a>(&'a self) -> Box<dyn std::iter::Iterator<Item = (Self::SnakeIDType, Move)> + 'a> {
+        Box::new(self.board
             .snakes
             .iter()
-            .map(|s| {
+            .map(move |s| {
                 let moves = Move::all().into_iter().filter(|mv| {
                     let new_head = s.head.add_vec(mv.to_vector());
                     let unreasonable = self.off_board(new_head)
@@ -428,8 +430,7 @@ impl RandomReasonableMovesGame for Game {
                     s.id.clone(),
                     moves.choose(&mut thread_rng()).unwrap_or(Move::Up),
                 )
-            })
-            .collect()
+            }))
     }
 }
 

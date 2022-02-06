@@ -1,12 +1,12 @@
 //! A compact board representation that is efficient for simulation
 pub use crate::compact_representation::eval::{
-    MoveEvaluatableWithStateGame, SinglePlayerMoveResult,
+    SinglePlayerMoveResult,
 };
 use crate::types::{
     build_snake_id_map, FoodGettableGame, HazardQueryableGame, HazardSettableGame,
     HeadGettableGame, HealthGettableGame, LengthGettableGame, PositionGettableGame,
     RandomReasonableMovesGame, SizeDeterminableGame, SnakeIDGettableGame, SnakeIDMap, SnakeId,
-    VictorDeterminableGame, YouDeterminableGame, N_MOVES,
+    VictorDeterminableGame, YouDeterminableGame, N_MOVES, SnakeMove,
 };
 /// you almost certainly want to use the `convert_from_game` method to
 /// cast from a json represention to a `CellBoard`
@@ -29,7 +29,7 @@ pub mod eval;
 
 /// Wrapper type for numbers to allow for shrinking board sizes
 pub trait CellNum:
-    std::fmt::Debug + Copy + Clone + PartialEq + Eq + std::hash::Hash + Ord + Display
+    std::fmt::Debug + Copy + Clone + PartialEq + Eq + std::hash::Hash + Ord + Display + 'static
 {
     /// converts this cellnum to a usize
     fn as_usize(&self) -> usize;
@@ -832,13 +832,13 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> VictorDetermi
 impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> RandomReasonableMovesGame
     for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
-    fn random_reasonable_move_for_each_snake(&self) -> Vec<(Self::SnakeIDType, Move)> {
+    fn random_reasonable_move_for_each_snake<'a>(&'a self) -> Box<dyn std::iter::Iterator<Item = (SnakeId, Move)> + 'a> {
         let width = self.actual_width;
-        self.healths
+        Box::new(self.healths
             .iter()
             .enumerate()
             .filter(|(_, health)| **health > 0)
-            .map(|(idx, _)| {
+            .map(move |(idx, _)| {
                 let head = self.heads[idx];
                 let head_pos = head.into_position(width);
 
@@ -856,7 +856,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> RandomReasona
                     .unwrap_or(Move::Up);
                 (SnakeId(idx as u8), mv)
             })
-            .collect_vec()
+        )
     }
 }
 
@@ -867,9 +867,10 @@ impl<T: SimulatorInstruments, N: CellNum, const BOARD_SIZE: usize, const MAX_SNA
     fn simulate_with_moves(
         &self,
         instruments: &T,
-        snake_ids_and_moves: Vec<(Self::SnakeIDType, Vec<crate::types::Move>)>,
-    ) -> Vec<(Vec<(Self::SnakeIDType, crate::types::Move)>, Self)> {
+        snake_ids_and_moves: impl IntoIterator<Item=(Self::SnakeIDType, Vec<Move>)>,
+    ) -> Box<dyn Iterator<Item=(Vec<SnakeMove<Self::SnakeIDType>>, Self)> + '_> {
         let start = Instant::now();
+        let snake_ids_and_moves = snake_ids_and_moves.into_iter().collect_vec();
 
         let mut snake_ids_we_are_simulating = [false; MAX_SNAKES];
         for (snake_id, _) in snake_ids_and_moves.iter() {
@@ -905,11 +906,11 @@ impl<T: SimulatorInstruments, N: CellNum, const BOARD_SIZE: usize, const MAX_SNA
                 }
             })
             .multi_cartesian_product();
-        let results = ids_and_moves_product.into_iter().map(|m| {
+        let results = ids_and_moves_product.into_iter().map(move |m| {
             let game = self.evaluate_moves_with_state(m.iter(), &states);
             (m, game)
         });
-        let return_value = results.collect_vec();
+        let return_value = Box::new(results);
         let end = Instant::now();
         instruments.observe_simulation(end - start);
         return_value
@@ -1096,26 +1097,6 @@ mod test {
     }
 
     #[test]
-    fn test_bench_compact_late_stage() {
-        let game_fixture = include_str!("../../fixtures/late_stage.json");
-        let g: Result<DEGame, _> = serde_json::from_slice(game_fixture.as_bytes());
-        let g = g.expect("the json literal is valid");
-        let snake_id_mapping = build_snake_id_map(&g);
-        let compact: CellBoard4Snakes11x11 = g.as_cell_board(&snake_id_mapping).unwrap();
-        let snake_ids = compact.get_snake_ids();
-        eprintln!("sids: {:?}", snake_ids);
-        let instruments = Instruments;
-        for _ in 0..100 {
-            compact.simulate(&instruments, snake_ids.clone());
-        }
-        let start_time = Instant::now();
-        for _ in 0..100000 {
-            compact.simulate(&instruments, snake_ids.clone());
-        }
-        eprintln!("{:?}", start_time.elapsed());
-    }
-
-    #[test]
     fn test_tail_collision() {
         let game_fixture = include_str!("../../fixtures/start_of_game.json");
         let g: Result<DEGame, _> = serde_json::from_slice(game_fixture.as_bytes());
@@ -1133,7 +1114,7 @@ mod test {
         let instruments = Instruments;
         eprintln!("{}", compact);
         for mv in moves {
-            let res = compact.simulate_with_moves(&instruments, vec![(SnakeId(0), vec![mv])]);
+            let res = compact.simulate_with_moves(&instruments, vec![(SnakeId(0), vec![mv])]).collect_vec();
             compact = res[0].1;
             eprintln!("{}", compact);
         }
@@ -1227,8 +1208,8 @@ mod test {
                     .cloned()
                     .map(|(id, mvs)| (*snake_id_mapping.get(&id).unwrap(), mvs))
                     .collect_vec();
-                let non_compact_next = g.simulate_with_moves(&instruments, non_compact_move_map);
-                let compact_next = compact.simulate_with_moves(&instruments, compact_move_map);
+                let non_compact_next = g.simulate_with_moves(&instruments, non_compact_move_map).collect_vec();
+                let compact_next = compact.simulate_with_moves(&instruments, compact_move_map).collect_vec();
                 assert_eq!(non_compact_next.len(), 1);
                 assert_eq!(compact_next.len(), 1);
                 g = non_compact_next[0].clone().1;
@@ -1258,7 +1239,7 @@ mod test {
 
     fn test_simulation_equivalents(g: DEGame) {
         let snake_id_mapping = build_snake_id_map(&g);
-        let non_compact_res = g.simulate(&Instruments, g.get_snake_ids());
+        let non_compact_res = g.simulate(&Instruments, g.get_snake_ids()).collect_vec();
         let snake_id_map = build_snake_id_map(&g);
         let compact = CellBoard4Snakes11x11::convert_from_game(g.clone(), &snake_id_map);
         let compact = compact.unwrap();
@@ -1293,13 +1274,13 @@ mod test {
         let compact_results = compact.simulate(
             &Instruments,
             snake_id_mapping.values().copied().collect_vec(),
-        );
+        ).collect_vec();
         for (moves, compact_game) in &compact_results {
             if compact_game.healths.iter().filter(|h| **h > 0).count() > 1 {
                 eprintln!("{:?}", moves);
                 let non_compact_game = non_compact_lookup.get(&to_map_key(moves)).unwrap();
                 let non_compact_res =
-                    non_compact_game.simulate(&Instruments, non_compact_game.get_snake_ids());
+                    non_compact_game.simulate(&Instruments, non_compact_game.get_snake_ids()).collect_vec();
                 compare_simulated_games(
                     &snake_id_mapping,
                     non_compact_game,
@@ -1319,7 +1300,7 @@ mod test {
         let compact_results = compact.simulate(
             &Instruments,
             snake_id_mapping.values().copied().collect_vec(),
-        );
+        ).collect_vec();
         assert!(compact_results.len() <= non_compact_res.len()); // TODO: We need to apply the same optimization about walls to the non-compact version to make sure they eliminate the same moves
         let non_compact_lookup =
             build_non_compact_lookup(snake_id_mapping.clone(), non_compact_res);

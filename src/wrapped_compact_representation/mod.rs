@@ -3,14 +3,14 @@ use crate::types::{
     build_snake_id_map, FoodGettableGame, HazardQueryableGame, HazardSettableGame,
     HeadGettableGame, HealthGettableGame, LengthGettableGame, PositionGettableGame,
     RandomReasonableMovesGame, SizeDeterminableGame, SnakeIDGettableGame, SnakeIDMap, SnakeId,
-    VictorDeterminableGame, YouDeterminableGame, N_MOVES,
+    VictorDeterminableGame, YouDeterminableGame, N_MOVES, SnakeMove,
 };
 /// you almost certainly want to use the `convert_from_game` method to
 /// cast from a json represention to a `CellBoard`
 use crate::types::{NeighborDeterminableGame, SnakeBodyGettableGame};
 use crate::wire_representation::Game;
 pub use crate::wrapped_compact_representation::eval::{
-    MoveEvaluatableWithStateGame, SinglePlayerMoveResult,
+    SinglePlayerMoveResult,
 };
 use itertools::Itertools;
 use rand::prelude::IteratorRandom;
@@ -31,7 +31,7 @@ pub mod eval;
 
 /// Wrapper type for numbers to allow for shrinking board sizes
 pub trait CellNum:
-    std::fmt::Debug + Copy + Clone + PartialEq + Eq + std::hash::Hash + Ord + Display
+    std::fmt::Debug + Copy + Clone + PartialEq + Eq + std::hash::Hash + Ord + Display + 'static
 {
     /// converts this cellnum to a usize
     fn as_usize(&self) -> usize;
@@ -1002,19 +1002,13 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> VictorDetermi
 impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> RandomReasonableMovesGame
     for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
-    fn random_reasonable_move_for_each_snake(&self) -> Vec<(Self::SnakeIDType, Move)> {
-        #[cfg(test)]
-        {
-            if !self.assert_consistency() {
-                panic!("assertion failed, I am: {}", self);
-            }
-        }
+    fn random_reasonable_move_for_each_snake<'a>(&'a self) -> Box<dyn std::iter::Iterator<Item = (SnakeId, Move)> + 'a> {
         let width = self.actual_width;
-        self.healths
+        Box::new(self.healths
             .iter()
             .enumerate()
             .filter(|(_, health)| **health > 0)
-            .map(|(idx, _)| {
+            .map(move |(idx, _)| {
                 let head = self.heads[idx];
                 let head_pos = head.into_position(width);
 
@@ -1029,8 +1023,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> RandomReasona
                     .choose(&mut thread_rng())
                     .unwrap_or(Move::Up);
                 (SnakeId(idx as u8), mv)
-            })
-            .collect_vec()
+            }))
     }
 }
 
@@ -1041,9 +1034,10 @@ impl<T: SimulatorInstruments, N: CellNum, const BOARD_SIZE: usize, const MAX_SNA
     fn simulate_with_moves(
         &self,
         instruments: &T,
-        snake_ids_and_moves: Vec<(Self::SnakeIDType, Vec<crate::types::Move>)>,
-    ) -> Vec<(Vec<(Self::SnakeIDType, crate::types::Move)>, Self)> {
+        snake_ids_and_moves: impl IntoIterator<Item=(Self::SnakeIDType, Vec<Move>)>,
+    ) -> Box<dyn Iterator<Item=(Vec<SnakeMove<Self::SnakeIDType>>, Self)> + '_> {
         let start = Instant::now();
+        let snake_ids_and_moves = snake_ids_and_moves.into_iter().collect_vec();
 
         let mut snake_ids_we_are_simulating = [false; MAX_SNAKES];
         for (snake_id, _) in snake_ids_and_moves.iter() {
@@ -1079,7 +1073,7 @@ impl<T: SimulatorInstruments, N: CellNum, const BOARD_SIZE: usize, const MAX_SNA
                 }
             })
             .multi_cartesian_product();
-        let results = ids_and_moves_product.into_iter().map(|m| {
+        let results = ids_and_moves_product.into_iter().map(move |m| {
             let game = self.evaluate_moves_with_state(m.iter(), &states);
             if !game.assert_consistency() {
                 panic!(
@@ -1089,7 +1083,7 @@ impl<T: SimulatorInstruments, N: CellNum, const BOARD_SIZE: usize, const MAX_SNA
             }
             (m, game)
         });
-        let return_value = results.collect_vec();
+        let return_value = Box::new(results);
         let end = Instant::now();
         instruments.observe_simulation(end - start);
         return_value
@@ -1245,7 +1239,7 @@ mod test {
         let instruments = Instruments {};
         let wrapped_for_down = orig_wrapped_cell
             .clone()
-            .simulate_with_moves(&instruments, move_map)[0]
+            .simulate_with_moves(&instruments, move_map.into_iter()).next().unwrap()
             .1;
         run_move_test(
             wrapped_for_down,
@@ -1280,7 +1274,7 @@ mod test {
                 .into_iter()
                 .map(|(sid, mv)| (sid, vec![mv]))
                 .collect_vec();
-            wrapped = wrapped.simulate_with_moves(&instruments, move_map)[0].1;
+            wrapped = wrapped.simulate_with_moves(&instruments, move_map.into_iter()).collect_vec()[0].1;
         }
         assert!(wrapped.get_health(SnakeId(0)) as i32 > 0);
         assert!(wrapped.get_health(SnakeId(1)) as i32 > 0);
@@ -1304,7 +1298,7 @@ mod test {
         let start_y = wrapped_cell.get_head_as_position(&SnakeId(0)).y;
         let start_x = wrapped_cell.get_head_as_position(&SnakeId(0)).x;
         for _ in 0..rollout {
-            wrapped_cell = wrapped_cell.simulate_with_moves(&instruments, move_map.clone())[0].1;
+            wrapped_cell = wrapped_cell.simulate_with_moves(&instruments, move_map.clone()).collect_vec()[0].1;
         }
         let end_y = wrapped_cell.get_head_as_position(&SnakeId(0)).y;
         let end_x = wrapped_cell.get_head_as_position(&SnakeId(0)).x;
