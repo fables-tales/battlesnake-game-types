@@ -57,15 +57,16 @@ impl<T: CellNum> SinglePlayerMoveResult<T> {
 impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
 
-    pub fn generate_state<'a>(
+    pub fn generate_state<'a, S: 'a>(
         &self,
-        moves: impl Iterator<Item = &'a (SnakeId, Vec<crate::types::Move>)>,
+        moves: impl Iterator<Item = &'a (SnakeId, S)>,
     ) -> [[SinglePlayerMoveResult<T>; N_MOVES]; MAX_SNAKES]
+    where S: Borrow<[Move]>
     {
         let mut new_heads = [[SinglePlayerMoveResult::Dead; 4]; MAX_SNAKES];
 
         for (id, mvs) in moves {
-            for m in mvs {
+            for m in mvs.borrow() {
                 let old_head = self.get_head_as_native_position(id);
                 let old_tail = self
                     .get_cell(old_head)

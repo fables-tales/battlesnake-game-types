@@ -62,7 +62,9 @@ impl<'a> Simulator<'a> {
         instruments: &T,
         snake_ids: Vec<String>,
     ) -> Vec<(Vec<(String, Move)>, Game)> {
-        let moves_to_simulate = Move::all();
+        use itertools::Itertools;
+
+        let moves_to_simulate = Move::all().iter().copied().collect_vec();
         let build = snake_ids
             .into_iter()
             .map(|s| (s, moves_to_simulate.clone()))

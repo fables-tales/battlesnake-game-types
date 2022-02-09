@@ -14,12 +14,13 @@ fn bench_compact_repr_start_of_game_with_state(c: &mut Criterion) {
     let snake_id_mapping = build_snake_id_map(&g);
     let compact: CellBoard4Snakes11x11 = g.as_cell_board(&snake_id_mapping).unwrap();
     let moves = [
-        (SnakeId(0), vec![Move::Up]),
-        (SnakeId(1), vec![Move::Up]),
-        (SnakeId(2), vec![Move::Up]),
-        (SnakeId(3), vec![Move::Up]),
+        (SnakeId(0), [Move::Up].as_slice()),
+        (SnakeId(1), [Move::Up].as_slice()),
+        (SnakeId(2), [Move::Up].as_slice()),
+        (SnakeId(3), [Move::Up].as_slice()),
     ];
-    let state = compact.generate_state(moves.iter());
+    let moves_iter = moves.iter();
+    let state = compact.generate_state(moves_iter);
     let individual_moves = moves.iter().map(|(sid, mvs)| (*sid, mvs[0])).collect_vec();
 
     c.bench_function("evaluate compact start of game with state", |b| {
@@ -32,7 +33,7 @@ fn bench_compact_repr_late_stage_with_state(c: &mut Criterion) {
     let g = g.expect("the json literal is valid");
     let snake_id_mapping = build_snake_id_map(&g);
     let compact: CellBoard4Snakes11x11 = g.as_cell_board(&snake_id_mapping).unwrap();
-    let moves = [(SnakeId(0), vec![Move::Up]), (SnakeId(1), vec![Move::Up])];
+    let moves = [(SnakeId(0), [Move::Up].as_slice()), (SnakeId(1), [Move::Up].as_slice())];
     let state = compact.generate_state(moves.iter());
     let individual_moves = moves.iter().map(|(sid, mvs)| (*sid, mvs[0])).collect_vec();
 

@@ -7,7 +7,7 @@ use crate::types::{
     FoodGettableGame, HazardQueryableGame, HazardSettableGame, HeadGettableGame,
     HealthGettableGame, LengthGettableGame, Move, NeighborDeterminableGame, PositionGettableGame,
     RandomReasonableMovesGame, ShoutGettableGame, SimulableGame, SimulatorInstruments,
-    SizeDeterminableGame, SnakeBodyGettableGame, SnakeIDGettableGame, SnakeIDMap, SnakeMove,
+    SizeDeterminableGame, SnakeBodyGettableGame, SnakeIDGettableGame, SnakeIDMap,
     TurnDeterminableGame, Vector, VictorDeterminableGame, YouDeterminableGame,
 };
 use crate::wrapped_compact_representation;
@@ -15,6 +15,7 @@ use itertools::Itertools;
 use rand::prelude::IteratorRandom;
 use rand::thread_rng;
 use serde::{Deserialize, Serialize};
+use std::borrow::Borrow;
 use std::collections::VecDeque;
 use std::convert::TryInto;
 use std::error::Error;
@@ -213,7 +214,8 @@ impl Game {
             .snakes
             .iter()
             .map(|s| {
-                let moves = Move::all().into_iter().filter(|mv| {
+                let all_moves = Move::all();
+                let moves = all_moves.iter().filter(|mv| {
                     let new_head = s.head.add_vec(mv.to_vector());
                     let unreasonable = self.off_board(new_head)
                         || self.board.snakes.iter().any(|s| s.body.contains(&new_head));
@@ -221,14 +223,15 @@ impl Game {
                 });
                 (
                     s.id.clone(),
-                    moves.choose(&mut thread_rng()).unwrap_or_else(|| {
+                    moves.choose(&mut thread_rng()).copied().unwrap_or_else(|| {
                         Move::all()
-                            .into_iter()
+                            .iter()
                             .filter(|mv| {
                                 let new_head = s.head.add_vec(mv.to_vector());
                                 new_head != s.body[1]
                             })
                             .choose(&mut thread_rng())
+                            .copied()
                             .unwrap()
                     }),
                 )
@@ -405,12 +408,17 @@ impl HeadGettableGame for Game {
 
 impl<T: SimulatorInstruments> SimulableGame<T> for Game {
     #[allow(clippy::type_complexity)]
-    fn simulate_with_moves(
+    fn simulate_with_moves<'a, S>(
         &self,
         instruments: &T,
-        snake_ids_and_moves: impl IntoIterator<Item=(Self::SnakeIDType, Vec<Move>)>,
-    ) -> Box<dyn Iterator<Item=(Vec<SnakeMove<Self::SnakeIDType>>, Self)> + '_> {
-        Box::new(simulator::Simulator::new(self).simulate_with_moves(instruments, snake_ids_and_moves.into_iter().collect_vec()).into_iter())
+        snake_ids_and_moves: impl IntoIterator<Item=(Self::SnakeIDType, S)>,
+    ) -> Box<dyn Iterator<Item=(Vec<(Self::SnakeIDType, Move)>, Self)> + '_> where S: Borrow<[Move]> {
+        Box::new(simulator::Simulator::new(self).simulate_with_moves(
+            instruments,
+snake_ids_and_moves
+                    .into_iter()
+                    .map(|(sid, moves)| (sid, moves.borrow().iter().copied().collect_vec()))
+                    .collect_vec()).into_iter())
     }
 }
 
@@ -420,7 +428,8 @@ impl RandomReasonableMovesGame for Game {
             .snakes
             .iter()
             .map(move |s| {
-                let moves = Move::all().into_iter().filter(|mv| {
+                let all_moves = Move::all();
+                let moves = all_moves.iter().filter(|mv| {
                     let new_head = s.head.add_vec(mv.to_vector());
                     let unreasonable = self.off_board(new_head)
                         || self.board.snakes.iter().any(|s| s.body.contains(&new_head));
@@ -428,7 +437,7 @@ impl RandomReasonableMovesGame for Game {
                 });
                 (
                     s.id.clone(),
-                    moves.choose(&mut thread_rng()).unwrap_or(Move::Up),
+                    moves.choose(&mut thread_rng()).copied().unwrap_or(Move::Up),
                 )
             }))
     }
@@ -437,7 +446,7 @@ impl RandomReasonableMovesGame for Game {
 impl NeighborDeterminableGame for Game {
     fn neighbors(&self, pos: &Self::NativePositionType) -> Vec<Self::NativePositionType> {
         Move::all()
-            .into_iter()
+            .iter()
             .map(|mv| pos.add_vec(mv.to_vector()))
             .filter(|new_head| !self.off_board(*new_head))
             .collect()
@@ -448,8 +457,8 @@ impl NeighborDeterminableGame for Game {
         pos: &Self::NativePositionType,
     ) -> Vec<(Move, Self::NativePositionType)> {
         Move::all()
-            .into_iter()
-            .map(|mv| (mv, pos.add_vec(mv.to_vector())))
+            .iter()
+            .map(|mv| (*mv, pos.add_vec(mv.to_vector())))
             .filter(|(_mv, new_head)| !self.off_board(*new_head))
             .collect()
     }

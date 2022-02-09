@@ -1,6 +1,7 @@
 //! various types that are useful for working with battlesnake
 use crate::wire_representation::{Game, Position};
 use serde::{Deserialize, Serialize, Serializer};
+use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::fmt::{self, Debug};
 use std::hash::Hash;
@@ -69,8 +70,8 @@ impl Move {
     }
 
     /// returns a vec of all possible moves
-    pub fn all() -> Vec<Move> {
-        vec![Move::Up, Move::Down, Move::Left, Move::Right]
+    pub const fn all() -> [Self; N_MOVES] {
+        [Move::Up, Move::Down, Move::Left, Move::Right]
     }
 
     /// converts this move to a usize index. indices are the same order as the `Move::all()` method
@@ -181,9 +182,6 @@ pub trait VictorDeterminableGame: std::fmt::Debug + SnakeIDGettableGame {
     fn alive_snake_count(&self) -> usize;
 }
 
-/// This represents a single move for a single snake
-pub type SnakeMove<T> = (T, Move);
-
 /// a game for which future states can be simulated
 pub trait SimulableGame<T: SimulatorInstruments>:
     std::fmt::Debug + Sized + SnakeIDGettableGame
@@ -195,21 +193,21 @@ pub trait SimulableGame<T: SimulatorInstruments>:
         &self,
         instruments: &T,
         snake_ids: Vec<Self::SnakeIDType>,
-    ) -> Box<dyn Iterator<Item=(Vec<SnakeMove<Self::SnakeIDType>>, Self)> + '_> {
+    ) -> Box<dyn Iterator<Item=(Vec<(Self::SnakeIDType, Move)>, Self)> + '_> {
         let moves_to_simulate = Move::all();
         let build = snake_ids
             .into_iter()
-            .map(|s| (s, moves_to_simulate.clone()));
+            .map(|s| (s, moves_to_simulate.as_slice()));
         self.simulate_with_moves(instruments, build)
     }
     /// simulates the next possible states for a a game with a given set of snakes and moves, producing a list of the new games,
     /// along with the moves that got to that position
     #[allow(clippy::type_complexity)]
-    fn simulate_with_moves(
+    fn simulate_with_moves<S>(
         &self,
         instruments: &T,
-        snake_ids_and_moves: impl IntoIterator<Item=(Self::SnakeIDType, Vec<Move>)>,
-    ) -> Box<dyn Iterator<Item=(Vec<SnakeMove<Self::SnakeIDType>>, Self)> + '_>;
+        snake_ids_and_moves: impl IntoIterator<Item=(Self::SnakeIDType, S)>,
+    ) -> Box<dyn Iterator<Item=(Vec<(Self::SnakeIDType, Move)>, Self)> + '_> where S: Borrow<[Move]>;
 }
 
 /// A game where positions can be checked for hazards
@@ -345,8 +343,6 @@ pub trait SnakeBodyGettableGame: PositionGettableGame + SnakeIDGettableGame {
 
 #[cfg(test)]
 mod tests {
-    use std::vec;
-
     use super::*;
 
     fn fixture() -> Game {
@@ -366,7 +362,7 @@ mod tests {
     fn test_move_from_vector() {
         let g = fixture();
         let you_id = g.you.id.clone();
-        let mut s_result = g.simulate_with_moves(&Instruments {}, vec![(you_id, vec![Move::Down])]);
+        let mut s_result = g.simulate_with_moves(&Instruments {}, [(you_id, [Move::Down].as_slice())]);
         let new_g = s_result.next().unwrap().1;
         let new_head = new_g.you.head;
         let offset = new_head.sub_vec(g.you.head.to_vector()).to_vector();
