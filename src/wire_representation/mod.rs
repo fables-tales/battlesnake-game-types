@@ -2,7 +2,9 @@
 //! types to match the battlesnake wire representation
 mod simulator;
 
-use crate::compact_representation::{CellBoard, CellNum};
+use crate::compact_representation;
+use crate::compact_representation::StandardCellBoard;
+use crate::compact_representation::CellNum;
 use crate::types::{
     FoodGettableGame, HazardQueryableGame, HazardSettableGame, HeadGettableGame,
     HealthGettableGame, LengthGettableGame, Move, NeighborDeterminableGame, PositionGettableGame,
@@ -10,7 +12,6 @@ use crate::types::{
     SizeDeterminableGame, SnakeBodyGettableGame, SnakeIDGettableGame, SnakeIDMap,
     TurnDeterminableGame, Vector, VictorDeterminableGame, YouDeterminableGame,
 };
-use crate::wrapped_compact_representation;
 use itertools::Itertools;
 use rand::prelude::IteratorRandom;
 use rand::thread_rng;
@@ -175,21 +176,21 @@ impl Game {
     pub fn as_cell_board<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>(
         &self,
         snake_ids: &SnakeIDMap,
-    ) -> Result<CellBoard<T, BOARD_SIZE, MAX_SNAKES>, Box<dyn Error>> {
-        CellBoard::convert_from_game(self.clone(), snake_ids)
+    ) -> Result<StandardCellBoard<T, BOARD_SIZE, MAX_SNAKES>, Box<dyn Error>> {
+        StandardCellBoard::convert_from_game(self.clone(), snake_ids)
     }
 
     pub fn as_wrapped_cell_board<
-        T: wrapped_compact_representation::CellNum,
+        T: compact_representation::CellNum,
         const BOARD_SIZE: usize,
         const MAX_SNAKES: usize,
     >(
         &self,
         snake_ids: &SnakeIDMap,
-    ) -> Result<wrapped_compact_representation::CellBoard<T, BOARD_SIZE, MAX_SNAKES>, Box<dyn Error>>
+    ) -> Result<compact_representation::wrapped::CellBoard<T, BOARD_SIZE, MAX_SNAKES>, Box<dyn Error>>
     {
         if self.game.ruleset.name == "wrapped" {
-            wrapped_compact_representation::CellBoard::convert_from_game(self.clone(), snake_ids)
+            compact_representation::wrapped::CellBoard::convert_from_game(self.clone(), snake_ids)
         } else {
             panic!("Cannot convert a non-wrapped game to a wrapped game")
         }

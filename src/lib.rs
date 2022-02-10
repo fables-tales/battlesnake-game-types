@@ -35,7 +35,6 @@ pub mod compact_representation;
 mod cross_product;
 pub mod types;
 pub mod wire_representation;
-pub mod wrapped_compact_representation;
 
 /// Loads a fixture from a given string
 pub fn game_fixture(game_fixture: &str) -> Game {
