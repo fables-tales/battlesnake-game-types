@@ -33,7 +33,10 @@ fn bench_compact_repr_late_stage_with_state(c: &mut Criterion) {
     let g = g.expect("the json literal is valid");
     let snake_id_mapping = build_snake_id_map(&g);
     let compact: StandardCellBoard4Snakes11x11 = g.as_cell_board(&snake_id_mapping).unwrap();
-    let moves = [(SnakeId(0), [Move::Up].as_slice()), (SnakeId(1), [Move::Up].as_slice())];
+    let moves = [
+        (SnakeId(0), [Move::Up].as_slice()),
+        (SnakeId(1), [Move::Up].as_slice()),
+    ];
     let state = compact.generate_state(moves.iter());
     let individual_moves = moves.iter().map(|(sid, mvs)| (*sid, mvs[0])).collect_vec();
 

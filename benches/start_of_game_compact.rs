@@ -13,33 +13,52 @@ impl SimulatorInstruments for Instruments {
     fn observe_simulation(&self, _: std::time::Duration) {}
 }
 fn bench_this(compact: &StandardCellBoard4Snakes11x11, instruments: &Instruments) {
-    compact.simulate_with_moves(
-        instruments,
-        vec![
-            (SnakeId(0), [Move::Up].as_slice()),
-            (SnakeId(1), [Move::Right].as_slice()),
-            (SnakeId(2), [Move::Down].as_slice()),
-            (SnakeId(3), [Move::Left].as_slice()),
-        ],
-    ).for_each(|_|{});
+    compact
+        .simulate_with_moves(
+            instruments,
+            vec![
+                (SnakeId(0), [Move::Up].as_slice()),
+                (SnakeId(1), [Move::Right].as_slice()),
+                (SnakeId(2), [Move::Down].as_slice()),
+                (SnakeId(3), [Move::Left].as_slice()),
+            ],
+        )
+        .for_each(|_| {});
 }
 
 fn bench_compact_full(compact: &StandardCellBoard4Snakes11x11, instruments: &Instruments) {
-    compact.simulate(instruments, compact.get_snake_ids()).for_each(|_|{});
+    compact
+        .simulate(instruments, compact.get_snake_ids())
+        .for_each(|_| {});
 }
 
 fn bench_non_compact_full(game: &DEGame, instruments: &Instruments) {
-    game.simulate(instruments, game.get_snake_ids()).for_each(|_|{});
+    game.simulate(instruments, game.get_snake_ids())
+        .for_each(|_| {});
 }
 
 fn bench_this_2(compact: &DEGame, instruments: &Instruments) {
     let moves = vec![
-        ("gs_YkwKKSmYwqFFgDk9BycMvWf8".to_string(), [Move::Up].as_slice()),
-        ("gs_vbvwfwk6jBc4jmCrKCbdJh3G".to_string(), [Move::Right].as_slice()),
-        ("gs_6kQVWJXt9BFpD6dchrmX8qpM".to_string(), [Move::Down].as_slice()),
-        ("gs_vbvwfwk6jBc4jmCrKCbdJh3G".to_string(), [Move::Left].as_slice()),
+        (
+            "gs_YkwKKSmYwqFFgDk9BycMvWf8".to_string(),
+            [Move::Up].as_slice(),
+        ),
+        (
+            "gs_vbvwfwk6jBc4jmCrKCbdJh3G".to_string(),
+            [Move::Right].as_slice(),
+        ),
+        (
+            "gs_6kQVWJXt9BFpD6dchrmX8qpM".to_string(),
+            [Move::Down].as_slice(),
+        ),
+        (
+            "gs_vbvwfwk6jBc4jmCrKCbdJh3G".to_string(),
+            [Move::Left].as_slice(),
+        ),
     ];
-    compact.simulate_with_moves(instruments, moves).for_each(|_|{});
+    compact
+        .simulate_with_moves(instruments, moves)
+        .for_each(|_| {});
 }
 
 fn bench_compact_repr_start_of_game(c: &mut Criterion) {

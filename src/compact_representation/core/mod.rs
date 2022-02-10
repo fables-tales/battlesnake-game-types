@@ -1,6 +1,9 @@
 use std::fmt::Display;
 
-use crate::{wire_representation::Position, types::{Move, SnakeId}};
+use crate::{
+    types::{Move, SnakeId},
+    wire_representation::Position,
+};
 
 /// Wrapper type for numbers to allow for shrinking board sizes
 pub trait CellNum:
@@ -97,7 +100,6 @@ const IS_HAZARD: u8 = 0x10;
 
 pub const TRIPLE_STACK: usize = 3;
 pub const DOUBLE_STACK: usize = 2;
-
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Cell<T: CellNum> {

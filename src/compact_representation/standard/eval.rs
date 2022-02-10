@@ -1,4 +1,7 @@
-use crate::{types::{self, N_MOVES}, compact_representation::core::CellNum};
+use crate::{
+    compact_representation::core::CellNum,
+    types::{self, N_MOVES},
+};
 
 use super::*;
 
@@ -54,14 +57,15 @@ impl<T: CellNum> SinglePlayerMoveResult<T> {
     }
 }
 
-impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> CellBoard<T, BOARD_SIZE, MAX_SNAKES>
+impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
+    CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
-
     pub fn generate_state<'a, S: 'a>(
         &self,
         moves: impl Iterator<Item = &'a (SnakeId, S)>,
     ) -> [[SinglePlayerMoveResult<T>; N_MOVES]; MAX_SNAKES]
-    where S: Borrow<[Move]>
+    where
+        S: Borrow<[Move]>,
     {
         let mut new_heads = [[SinglePlayerMoveResult::Dead; 4]; MAX_SNAKES];
 
