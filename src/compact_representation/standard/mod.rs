@@ -12,7 +12,7 @@ use crate::types::{NeighborDeterminableGame, SnakeBodyGettableGame};
 use crate::wire_representation::Game;
 use itertools::Itertools;
 use rand::prelude::IteratorRandom;
-use rand::thread_rng;
+use rand::{thread_rng, Rng};
 use std::borrow::Borrow;
 use std::error::Error;
 use std::fmt::Display;
@@ -592,20 +592,18 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> RandomReasona
     for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
     fn random_reasonable_move_for_each_snake<'a>(
-        &'a self,
+        &'a self, rng: &'a mut impl Rng,
     ) -> Box<dyn std::iter::Iterator<Item = (SnakeId, Move)> + 'a> {
         let width = self.actual_width;
         Box::new(
-            self.healths
-                .iter()
+            IntoIterator::into_iter(self.healths)
                 .enumerate()
-                .filter(|(_, health)| **health > 0)
+                .filter(|(_, health)| *health > 0)
                 .map(move |(idx, _)| {
                     let head = self.heads[idx];
                     let head_pos = head.into_position(width);
 
-                    let mv = Move::all()
-                        .iter()
+                    let mv = IntoIterator::into_iter(Move::all())
                         .filter(|mv| {
                             let new_head = head_pos.add_vec(mv.to_vector());
                             let ci = CellIndex::new(head_pos.add_vec(mv.to_vector()), width);
@@ -614,8 +612,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> RandomReasona
                                 && !self.get_cell(ci).is_body_segment()
                                 && !self.get_cell(ci).is_head()
                         })
-                        .choose(&mut thread_rng())
-                        .copied()
+                        .choose(rng)
                         .unwrap_or(Move::Up);
                     (SnakeId(idx as u8), mv)
                 }),

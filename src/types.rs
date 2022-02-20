@@ -1,5 +1,6 @@
 //! various types that are useful for working with battlesnake
 use crate::wire_representation::{Game, Position};
+use rand::Rng;
 use serde::{Deserialize, Serialize, Serializer};
 use std::borrow::Borrow;
 use std::collections::HashMap;
@@ -303,7 +304,7 @@ pub trait HealthGettableGame: SnakeIDGettableGame {
 pub trait RandomReasonableMovesGame: SnakeIDGettableGame {
     #[allow(missing_docs)]
     fn random_reasonable_move_for_each_snake<'a>(
-        &'a self,
+        &'a self, rng: &'a mut impl Rng,
     ) -> Box<dyn Iterator<Item = (Self::SnakeIDType, Move)> + 'a>;
 }
 

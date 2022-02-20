@@ -13,6 +13,7 @@ use crate::types::{
     TurnDeterminableGame, Vector, VictorDeterminableGame, YouDeterminableGame,
 };
 use itertools::Itertools;
+use rand::Rng;
 use rand::prelude::IteratorRandom;
 use rand::thread_rng;
 use serde::{Deserialize, Serialize};
@@ -433,7 +434,7 @@ impl<T: SimulatorInstruments> SimulableGame<T> for Game {
 
 impl RandomReasonableMovesGame for Game {
     fn random_reasonable_move_for_each_snake<'a>(
-        &'a self,
+        &'a self, rng: &'a mut impl Rng,
     ) -> Box<dyn std::iter::Iterator<Item = (Self::SnakeIDType, Move)> + 'a> {
         Box::new(self.board.snakes.iter().map(move |s| {
             let all_moves = Move::all();
@@ -445,7 +446,7 @@ impl RandomReasonableMovesGame for Game {
             });
             (
                 s.id.clone(),
-                moves.choose(&mut thread_rng()).copied().unwrap_or(Move::Up),
+                moves.choose(rng).copied().unwrap_or(Move::Up),
             )
         }))
     }

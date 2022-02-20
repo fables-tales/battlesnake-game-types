@@ -17,7 +17,7 @@ use crate::wire_representation::Game;
 pub use eval::SinglePlayerMoveResult;
 use itertools::Itertools;
 use rand::prelude::IteratorRandom;
-use rand::thread_rng;
+use rand::{thread_rng, Rng};
 use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::error::Error;
@@ -754,7 +754,7 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> RandomReasonableMo
     for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
     fn random_reasonable_move_for_each_snake<'a>(
-        &'a self,
+        &'a self, rng: &'a mut impl Rng,
     ) -> Box<dyn std::iter::Iterator<Item = (SnakeId, Move)> + 'a> {
         let width = self.actual_width;
         Box::new(
@@ -774,7 +774,7 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> RandomReasonableMo
 
                             !self.get_cell(ci).is_body_segment() && !self.get_cell(ci).is_head()
                         })
-                        .choose(&mut thread_rng())
+                        .choose(rng)
                         .copied()
                         .unwrap_or(Move::Up);
                     (SnakeId(idx as u8), mv)
@@ -927,7 +927,7 @@ mod test {
     use std::collections::HashMap;
 
     use itertools::Itertools;
-    use rand::RngCore;
+    use rand::{RngCore, SeedableRng};
 
     use crate::{
         game_fixture,
@@ -1030,9 +1030,10 @@ mod test {
         );
 
         let mut wrapped = orig_wrapped_cell;
+        let mut rng = rand::rngs::SmallRng::from_entropy();
         for _ in 0..15 {
             let move_map = wrapped
-                .random_reasonable_move_for_each_snake()
+                .random_reasonable_move_for_each_snake(&mut rng)
                 .into_iter()
                 .map(|(sid, mv)| (sid, [mv]))
                 .collect_vec();

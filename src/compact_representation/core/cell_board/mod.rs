@@ -28,6 +28,7 @@ pub struct CellBoard<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> {
     actual_width: u8,
 }
 
+#[allow(dead_code)]
 fn get_snake_id(
     snake: &crate::wire_representation::BattleSnake,
     snake_ids: &SnakeIDMap,
