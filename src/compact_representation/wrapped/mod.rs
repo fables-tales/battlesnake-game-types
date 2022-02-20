@@ -43,7 +43,7 @@ pub struct CellBoard<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> {
     heads: [CellIndex<T>; MAX_SNAKES],
     lengths: [u16; MAX_SNAKES],
     actual_width: u8,
-    embedded: CCB<T, BOARD_SIZE, MAX_SNAKES>,
+    //embedded: CCB<T, BOARD_SIZE, MAX_SNAKES>,
 }
 
 impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> CellBoard<T, BOARD_SIZE, MAX_SNAKES> {
@@ -132,14 +132,14 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> CellBoard<T, BOARD
             cells[idx] = Cell::<T>::from_u32(cell);
         }
 
-        let embedded = CCB::new(
-            hazard_damage,
-            cells,
-            healths,
-            heads,
-            lengths,
-            actual_width,
-        );
+        //let embedded = CCB::new(
+        //    hazard_damage,
+        //    cells,
+        //    healths,
+        //    heads,
+        //    lengths,
+        //    actual_width,
+        //);
 
         CellBoard {
             hazard_damage,
@@ -148,7 +148,7 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> CellBoard<T, BOARD
             heads,
             lengths,
             actual_width,
-            embedded,
+            //embedded,
         }
     }
 
@@ -289,20 +289,20 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> CellBoard<T, BOARD
                 }
             }
         }
-        let embedded = CCB::new(
-            game
-                .game
-                .ruleset
-                .settings
-                .as_ref()
-                .map(|s| s.hazard_damage_per_turn)
-                .unwrap_or(15) as u8,
-            cells,
-            healths,
-            heads,
-            lengths,
-    game.board.width as u8,
-        );
+        //let embedded = CCB::new(
+        //    game
+        //        .game
+        //        .ruleset
+        //        .settings
+        //        .as_ref()
+        //        .map(|s| s.hazard_damage_per_turn)
+        //        .unwrap_or(15) as u8,
+        //    cells,
+        //    healths,
+        //    heads,
+        //    lengths,
+            //game.board.width as u8,
+        //);
 
         Ok(CellBoard {
             cells,
@@ -317,7 +317,7 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> CellBoard<T, BOARD
                 .as_ref()
                 .map(|s| s.hazard_damage_per_turn)
                 .unwrap_or(15) as u8,
-            embedded,
+            //embedded,
         })
     }
     fn get_cell(&self, cell_index: CellIndex<T>) -> Cell<T> {
