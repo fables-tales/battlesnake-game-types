@@ -182,9 +182,44 @@ pub trait VictorDeterminableGame: std::fmt::Debug + SnakeIDGettableGame {
     /// How many snakes are alive
     fn alive_snake_count(&self) -> usize;
 }
+#[derive(Debug, Copy, Clone)]
+#[repr(transparent)]
+pub struct Action<const N_SNAKES: usize> {
+    moves: [Option<Move>; N_SNAKES],
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct OtherAction<const N_SNAKES: usize> {
+    moves: [Option<Move>; N_SNAKES],
+}
+
+impl <const N_SNAKES: usize> Action<N_SNAKES> {
+    pub fn new(moves: [Option<Move>; N_SNAKES]) -> Self {
+        Self {
+            moves,
+        }
+    }
+
+    pub fn collect_from<'a, T: Iterator<Item = &'a(SnakeId, Move)>>(ids_and_moves: T) -> Self {
+        let mut moves = [None; N_SNAKES];
+        for (id, mv) in ids_and_moves {
+            moves[id.as_usize()] = Some(*mv);
+        }
+        Self { moves }
+    }
+
+    pub fn own_move(&self) -> Move {
+        self.moves[0].unwrap()
+    }
+    pub fn other_moves(&self) -> OtherAction<N_SNAKES> {
+        let mut new_moves = self.moves;
+        new_moves[0] = None;
+        OtherAction { moves: new_moves }
+    }
+}
 
 /// a game for which future states can be simulated
-pub trait SimulableGame<T: SimulatorInstruments>:
+pub trait SimulableGame<T: SimulatorInstruments, const N_SNAKES: usize>:
     std::fmt::Debug + Sized + SnakeIDGettableGame
 {
     /// simulates all possible future games for a given game returning the snake ids, moves that
@@ -194,7 +229,7 @@ pub trait SimulableGame<T: SimulatorInstruments>:
         &self,
         instruments: &T,
         snake_ids: Vec<Self::SnakeIDType>,
-    ) -> Box<dyn Iterator<Item = (Vec<(Self::SnakeIDType, Move)>, Self)> + '_> {
+    ) -> Box<dyn Iterator<Item = (Action<N_SNAKES>, Self)> + '_> {
         let moves_to_simulate = Move::all();
         let build = snake_ids
             .into_iter()
@@ -208,7 +243,7 @@ pub trait SimulableGame<T: SimulatorInstruments>:
         &self,
         instruments: &T,
         snake_ids_and_moves: impl IntoIterator<Item = (Self::SnakeIDType, S)>,
-    ) -> Box<dyn Iterator<Item = (Vec<(Self::SnakeIDType, Move)>, Self)> + '_>
+    ) -> Box<dyn Iterator<Item = (Action<N_SNAKES>, Self)> + '_>
     where
         S: Borrow<[Move]>;
 }
@@ -344,35 +379,4 @@ pub trait TurnDeterminableGame {
 pub trait SnakeBodyGettableGame: PositionGettableGame + SnakeIDGettableGame {
     /// return a Vec of the positions for a given snake body, in order from head to tail
     fn get_snake_body_vec(&self, snake_id: &Self::SnakeIDType) -> Vec<Self::NativePositionType>;
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn fixture() -> Game {
-        let game_fixture = include_str!("../fixtures/4_snake_game.json");
-        let g: Result<Game, _> = serde_json::from_slice(game_fixture.as_bytes());
-        g.expect("the json literal is valid")
-    }
-
-    #[derive(Debug)]
-    struct Instruments {}
-
-    impl SimulatorInstruments for Instruments {
-        fn observe_simulation(&self, _duration: Duration) {}
-    }
-
-    #[test]
-    fn test_move_from_vector() {
-        let g = fixture();
-        let you_id = g.you.id.clone();
-        let mut s_result =
-            g.simulate_with_moves(&Instruments {}, [(you_id, [Move::Down].as_slice())]);
-        let new_g = s_result.next().unwrap().1;
-        let new_head = new_g.you.head;
-        let offset = new_head.sub_vec(g.you.head.to_vector()).to_vector();
-        let mv = Move::from_vector(offset);
-        assert_eq!(mv, Move::Down);
-    }
 }

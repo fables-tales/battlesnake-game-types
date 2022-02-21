@@ -1,23 +1,19 @@
 #![allow(missing_docs)]
 //! types to match the battlesnake wire representation
-mod simulator;
 
 use crate::compact_representation;
 use crate::compact_representation::CellNum;
 use crate::compact_representation::StandardCellBoard;
 use crate::types::{
     FoodGettableGame, HazardQueryableGame, HazardSettableGame, HeadGettableGame,
-    HealthGettableGame, LengthGettableGame, Move, NeighborDeterminableGame, PositionGettableGame,
-    RandomReasonableMovesGame, ShoutGettableGame, SimulableGame, SimulatorInstruments,
+    HealthGettableGame, LengthGettableGame, Move, PositionGettableGame,
+    ShoutGettableGame,
     SizeDeterminableGame, SnakeBodyGettableGame, SnakeIDGettableGame, SnakeIDMap,
     TurnDeterminableGame, Vector, VictorDeterminableGame, YouDeterminableGame,
 };
-use itertools::Itertools;
-use rand::Rng;
 use rand::prelude::IteratorRandom;
 use rand::thread_rng;
 use serde::{Deserialize, Serialize};
-use std::borrow::Borrow;
 use std::collections::VecDeque;
 use std::convert::TryInto;
 use std::error::Error;
@@ -405,71 +401,6 @@ impl HeadGettableGame for Game {
             .find(|s| &s.id == snake_id)
             .unwrap()
             .head
-    }
-}
-
-impl<T: SimulatorInstruments> SimulableGame<T> for Game {
-    #[allow(clippy::type_complexity)]
-    fn simulate_with_moves<'a, S>(
-        &self,
-        instruments: &T,
-        snake_ids_and_moves: impl IntoIterator<Item = (Self::SnakeIDType, S)>,
-    ) -> Box<dyn Iterator<Item = (Vec<(Self::SnakeIDType, Move)>, Self)> + '_>
-    where
-        S: Borrow<[Move]>,
-    {
-        Box::new(
-            simulator::Simulator::new(self)
-                .simulate_with_moves(
-                    instruments,
-                    snake_ids_and_moves
-                        .into_iter()
-                        .map(|(sid, moves)| (sid, moves.borrow().iter().copied().collect_vec()))
-                        .collect_vec(),
-                )
-                .into_iter(),
-        )
-    }
-}
-
-impl RandomReasonableMovesGame for Game {
-    fn random_reasonable_move_for_each_snake<'a>(
-        &'a self, rng: &'a mut impl Rng,
-    ) -> Box<dyn std::iter::Iterator<Item = (Self::SnakeIDType, Move)> + 'a> {
-        Box::new(self.board.snakes.iter().map(move |s| {
-            let all_moves = Move::all();
-            let moves = all_moves.iter().filter(|mv| {
-                let new_head = s.head.add_vec(mv.to_vector());
-                let unreasonable = self.off_board(new_head)
-                    || self.board.snakes.iter().any(|s| s.body.contains(&new_head));
-                !unreasonable
-            });
-            (
-                s.id.clone(),
-                moves.choose(rng).copied().unwrap_or(Move::Up),
-            )
-        }))
-    }
-}
-
-impl NeighborDeterminableGame for Game {
-    fn neighbors(&self, pos: &Self::NativePositionType) -> Vec<Self::NativePositionType> {
-        Move::all()
-            .iter()
-            .map(|mv| pos.add_vec(mv.to_vector()))
-            .filter(|new_head| !self.off_board(*new_head))
-            .collect()
-    }
-
-    fn possible_moves(
-        &self,
-        pos: &Self::NativePositionType,
-    ) -> Vec<(Move, Self::NativePositionType)> {
-        Move::all()
-            .iter()
-            .map(|mv| (*mv, pos.add_vec(mv.to_vector())))
-            .filter(|(_mv, new_head)| !self.off_board(*new_head))
-            .collect()
     }
 }
 

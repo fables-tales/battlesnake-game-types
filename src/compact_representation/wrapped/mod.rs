@@ -17,7 +17,7 @@ use crate::wire_representation::Game;
 pub use eval::SinglePlayerMoveResult;
 use itertools::Itertools;
 use rand::prelude::IteratorRandom;
-use rand::{thread_rng, Rng};
+use rand::Rng;
 use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::error::Error;
@@ -25,7 +25,7 @@ use std::fmt::Display;
 use std::time::Instant;
 
 use crate::{
-    types::{Move, SimulableGame, SimulatorInstruments},
+    types::{Move, SimulableGame, SimulatorInstruments, Action},
     wire_representation::Position,
 };
 
@@ -784,14 +784,14 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> RandomReasonableMo
 }
 
 impl<T: SimulatorInstruments, N: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
-    SimulableGame<T> for CellBoard<N, BOARD_SIZE, MAX_SNAKES>
+    SimulableGame<T, MAX_SNAKES> for CellBoard<N, BOARD_SIZE, MAX_SNAKES>
 {
     #[allow(clippy::type_complexity)]
     fn simulate_with_moves<S>(
         &self,
         instruments: &T,
         snake_ids_and_moves: impl IntoIterator<Item = (Self::SnakeIDType, S)>,
-    ) -> Box<dyn Iterator<Item = (Vec<(Self::SnakeIDType, Move)>, Self)> + '_>
+    ) -> Box<dyn Iterator<Item = (Action<MAX_SNAKES>, Self)> + '_>
     where
         S: Borrow<[Move]>,
     {
@@ -834,6 +834,8 @@ impl<T: SimulatorInstruments, N: CN, const BOARD_SIZE: usize, const MAX_SNAKES: 
             })
             .multi_cartesian_product();
         let results = ids_and_moves_product.into_iter().map(move |m| {
+            let action = Action::collect_from(m.iter());
+
             let game = self.evaluate_moves_with_state(m.iter(), &states);
             if !game.assert_consistency() {
                 panic!(
@@ -841,7 +843,7 @@ impl<T: SimulatorInstruments, N: CN, const BOARD_SIZE: usize, const MAX_SNAKES: 
                     m, self, game
                 );
             }
-            (m, game)
+            (action, game)
         });
         let return_value = Box::new(results);
         let end = Instant::now();

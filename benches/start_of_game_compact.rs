@@ -32,35 +32,6 @@ fn bench_compact_full(compact: &StandardCellBoard4Snakes11x11, instruments: &Ins
         .for_each(|_| {});
 }
 
-fn bench_non_compact_full(game: &DEGame, instruments: &Instruments) {
-    game.simulate(instruments, game.get_snake_ids())
-        .for_each(|_| {});
-}
-
-fn bench_this_2(compact: &DEGame, instruments: &Instruments) {
-    let moves = vec![
-        (
-            "gs_YkwKKSmYwqFFgDk9BycMvWf8".to_string(),
-            [Move::Up].as_slice(),
-        ),
-        (
-            "gs_vbvwfwk6jBc4jmCrKCbdJh3G".to_string(),
-            [Move::Right].as_slice(),
-        ),
-        (
-            "gs_6kQVWJXt9BFpD6dchrmX8qpM".to_string(),
-            [Move::Down].as_slice(),
-        ),
-        (
-            "gs_vbvwfwk6jBc4jmCrKCbdJh3G".to_string(),
-            [Move::Left].as_slice(),
-        ),
-    ];
-    compact
-        .simulate_with_moves(instruments, moves)
-        .for_each(|_| {});
-}
-
 fn bench_compact_repr_start_of_game(c: &mut Criterion) {
     let game_fixture = include_str!("../fixtures/start_of_game.json");
     let g: Result<DEGame, _> = serde_json::from_slice(game_fixture.as_bytes());
@@ -97,31 +68,10 @@ fn late_stage_compact_repr(c: &mut Criterion) {
     });
 }
 
-fn late_stage_vec_repr(c: &mut Criterion) {
-    let game_fixture = include_str!("../fixtures/late_stage.json");
-    let g: Result<DEGame, _> = serde_json::from_slice(game_fixture.as_bytes());
-    let g = g.expect("the json literal is valid");
-    let instruments = Instruments {};
-    c.bench_function("vec late stage", |b| {
-        b.iter(|| bench_non_compact_full(black_box(&g), &instruments))
-    });
-}
-fn bench_vec_repr_start_of_game(c: &mut Criterion) {
-    let game_fixture = include_str!("../fixtures/start_of_game.json");
-    let g: Result<DEGame, _> = serde_json::from_slice(game_fixture.as_bytes());
-    let g = g.expect("the json literal is valid");
-    let instruments = Instruments {};
-    c.bench_function("vec game start of game", |b| {
-        b.iter(|| bench_this_2(black_box(&g), &instruments))
-    });
-}
-
 criterion_group!(
     benches,
     bench_compact_repr_start_of_game,
     bench_compact_repr_start_of_game_full,
-    bench_vec_repr_start_of_game,
     late_stage_compact_repr,
-    late_stage_vec_repr
 );
 criterion_main!(benches);
