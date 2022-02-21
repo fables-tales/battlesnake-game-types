@@ -10,6 +10,6 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> SizeDetermina
     }
 
     fn get_height(&self) -> u32 {
-        self.actual_height() as u32
+        self.get_actual_height() as u32
     }
 }

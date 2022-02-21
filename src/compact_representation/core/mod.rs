@@ -1,5 +1,6 @@
 mod cell_board;
 mod cell_num;
+mod simulate;
 
 use crate::{
     types::{Move, SnakeId},
@@ -8,6 +9,7 @@ use crate::{
 
 pub use cell_num::CellNum;
 pub use cell_board::CellBoard;
+pub use simulate::simulate_with_moves;
 
 /// wrapper type for an index in to the board
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]

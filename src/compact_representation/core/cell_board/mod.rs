@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::error::Error;
+use std::slice::Iter;
 
 use itertools::Itertools;
 
@@ -16,7 +17,16 @@ use super::{TRIPLE_STACK, DOUBLE_STACK};
 mod snake_id_gettable;
 mod position_gettable;
 mod size_determinable;
+mod head_gettable;
 mod health_gettable;
+mod you_determinable;
+mod length_gettable;
+mod snake_body_gettable;
+mod victor_determinable;
+mod food_gettable;
+mod hazard_queryable;
+mod hazard_settable;
+mod eval;
 
 /// A compact board representation that is significantly faster for simulation than
 /// `battlesnake_game_types::wire_representation::Game`.
@@ -54,6 +64,10 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> CellBoard<T, BOARD
             lengths,
             actual_width,
         }
+    }
+
+    pub fn iter_healths(&self) -> Iter<'_, u8> {
+        self.healths.iter()
     }
 
     /// Asserts that all tails eventually loop back to a head and panics if the board is inconsistent
@@ -151,18 +165,18 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> CellBoard<T, BOARD
         }
     }
 
-    fn as_wrapped_cell_index(&self, mut new_head_position: Position) -> CellIndex<T> {
+    pub fn as_wrapped_cell_index(&self, mut new_head_position: Position) -> CellIndex<T> {
         if self.off_board(new_head_position) {
             if new_head_position.x < 0 {
                 debug_assert!(new_head_position.x == -1);
                 debug_assert!(
-                    new_head_position.y >= 0 && new_head_position.y < self.actual_height() as i32
+                    new_head_position.y >= 0 && new_head_position.y < self.get_actual_height() as i32
                 );
                 new_head_position.x = self.actual_width as i32 - 1;
             } else if new_head_position.x >= self.actual_width as i32 {
                 debug_assert!(new_head_position.x == self.actual_width as i32);
                 debug_assert!(
-                    new_head_position.y >= 0 && new_head_position.y < self.actual_height() as i32
+                    new_head_position.y >= 0 && new_head_position.y < self.get_actual_height() as i32
                 );
                 new_head_position.x = 0;
             } else if new_head_position.y < 0 {
@@ -170,9 +184,9 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> CellBoard<T, BOARD
                 debug_assert!(
                     new_head_position.x >= 0 && new_head_position.x < self.actual_width as i32
                 );
-                new_head_position.y = self.actual_height() as i32 - 1;
-            } else if new_head_position.y >= self.actual_height() as i32 {
-                debug_assert!(new_head_position.y == self.actual_height() as i32);
+                new_head_position.y = self.get_actual_height() as i32 - 1;
+            } else if new_head_position.y >= self.get_actual_height() as i32 {
+                debug_assert!(new_head_position.y == self.get_actual_height() as i32);
                 debug_assert!(
                     new_head_position.x >= 0 && new_head_position.x < self.actual_width as i32
                 );
@@ -186,7 +200,11 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> CellBoard<T, BOARD
         }
     }
 
-    fn actual_height(&self) -> u8 {
+    pub fn get_actual_width(&self) -> u8 {
+        self.actual_width
+    }
+
+    pub fn get_actual_height(&self) -> u8 {
         self.actual_width
     }
 
@@ -313,12 +331,7 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> CellBoard<T, BOARD
         position.x < 0
             || position.x >= self.actual_width as i32
             || position.y < 0
-            || position.y >= self.actual_height() as i32
-    }
-
-    /// Get the health for a given snake
-    pub fn get_health(&self, snake_id: SnakeId) -> u8 {
-        self.healths[snake_id.0 as usize]
+            || position.y >= self.get_actual_height() as i32
     }
 
     /// Get the length for a given snake
@@ -415,6 +428,10 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> CellBoard<T, BOARD
         self.get_cell(cell_idx).is_body()
     }
 
+    pub fn get_tail_index(&self, snake_id: SnakeId) -> Option<CellIndex<T>> {
+        self.get_cell(self.heads[snake_id.0 as usize]).get_next_index()
+    }
+
     /// determin the width of the CellBoard
     pub fn width() -> u8 {
         (BOARD_SIZE as f32).sqrt() as u8
@@ -429,4 +446,5 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> CellBoard<T, BOARD
             .map(|(i, _)| CellIndex(T::from_usize(i)).into_position(Self::width()))
             .collect()
     }
+
 }

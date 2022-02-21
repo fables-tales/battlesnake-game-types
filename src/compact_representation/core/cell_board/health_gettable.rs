@@ -13,6 +13,6 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> HealthGettabl
     }
 
     fn get_health_i64(&self, snake_id: &Self::SnakeIDType) -> i64 {
-        self.get_health(*snake_id) as i64
+        self.get_health(snake_id) as i64
     }
 }
