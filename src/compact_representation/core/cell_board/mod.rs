@@ -13,8 +13,10 @@ use super::CellIndex;
 use super::CellNum as CN;
 use super::{TRIPLE_STACK, DOUBLE_STACK};
 
+mod snake_id_gettable;
 mod position_gettable;
 mod size_determinable;
+mod health_gettable;
 
 /// A compact board representation that is significantly faster for simulation than
 /// `battlesnake_game_types::wire_representation::Game`.
