@@ -1,6 +1,7 @@
 mod cell_board;
 mod cell_num;
 mod simulate;
+mod impl_common;
 
 use crate::{
     types::{Move, SnakeId},

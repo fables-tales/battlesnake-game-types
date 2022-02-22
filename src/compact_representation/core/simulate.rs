@@ -4,7 +4,7 @@ use itertools::Itertools;
 
 use crate::types::{SimulatorInstruments, SnakeId, Action, Move, N_MOVES};
 
-use super::{CellBoard, CellNum};
+use super::{CellBoard, CellNum, cell_board::EvaluateMode};
 
 pub fn simulate_with_moves<'a, S, I: SimulatorInstruments, T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>(
     board: &'a CellBoard<T, BOARD_SIZE, MAX_SNAKES>,
@@ -26,7 +26,7 @@ pub fn simulate_with_moves<'a, S, I: SimulatorInstruments, T: CellNum, const BOA
     // sid major, move minor
     // [ some_reulst_struct, some_dead_struct ]
     // [ some_dead_struct, some_dead_struct ] // snake we didn't simulate
-    let states = board.generate_state(snake_ids_and_moves.iter());
+    let states = board.generate_state(snake_ids_and_moves.iter(), EvaluateMode::Wrapped);
     let mut dead_snakes_table = [[false; N_MOVES]; MAX_SNAKES];
 
     for (sid, result_row) in states.iter().enumerate() {

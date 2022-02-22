@@ -28,6 +28,8 @@ mod hazard_queryable;
 mod hazard_settable;
 mod eval;
 
+pub use eval::EvaluateMode;
+
 /// A compact board representation that is significantly faster for simulation than
 /// `battlesnake_game_types::wire_representation::Game`.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

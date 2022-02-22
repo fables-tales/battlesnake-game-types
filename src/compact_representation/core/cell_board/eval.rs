@@ -6,6 +6,12 @@ use crate::{types::{SnakeId, N_MOVES, Move, self, HeadGettableGame}, compact_rep
 
 use super::{CellIndex, CellBoard};
 
+/// Which mode to evaluate in
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum EvaluateMode {
+    Wrapped,
+}
+
 #[derive(Copy, Clone, Debug)]
 /// Precomputed state for Move Evaluation
 /// for a single Snake Move
@@ -60,6 +66,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
     pub fn generate_state<'a, S: 'a>(
         &self,
         moves: impl Iterator<Item = &'a (SnakeId, S)>,
+        mode: EvaluateMode,
     ) -> [[SinglePlayerMoveResult<T>; N_MOVES]; MAX_SNAKES]
     where
         S: Borrow<[Move]>,
