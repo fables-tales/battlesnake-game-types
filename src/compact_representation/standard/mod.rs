@@ -1,10 +1,10 @@
-use crate::compact_representation::core::CellNum;
-pub use crate::compact_representation::standard::eval::SinglePlayerMoveResult;
+use crate::compact_representation::core::CellNum as CN;
+use crate::impl_common_board_traits;
 use crate::types::{
     build_snake_id_map, FoodGettableGame, HazardQueryableGame, HazardSettableGame,
     HeadGettableGame, HealthGettableGame, LengthGettableGame, PositionGettableGame,
     RandomReasonableMovesGame, SizeDeterminableGame, SnakeIDGettableGame, SnakeIDMap, SnakeId,
-    VictorDeterminableGame, YouDeterminableGame, N_MOVES, Action,
+    VictorDeterminableGame, YouDeterminableGame, Action,
 };
 /// you almost certainly want to use the `convert_from_game` method to
 /// cast from a json represention to a `CellBoard`
@@ -16,31 +16,25 @@ use rand::Rng;
 use std::borrow::Borrow;
 use std::error::Error;
 use std::fmt::Display;
-use std::time::Instant;
 
 use crate::{
     types::{Move, SimulableGame, SimulatorInstruments},
     wire_representation::Position,
 };
 
-#[allow(missing_docs)]
-pub mod eval;
-
-use super::core::Cell;
+use super::core::{Cell, simulate_with_moves, EvaluateMode};
 use super::core::CellIndex;
+use super::core::CellBoard as CCB;
 use super::core::{DOUBLE_STACK, TRIPLE_STACK};
 
 /// A compact board representation that is significantly faster for simulation than
 /// `battlesnake_game_types::wire_representation::Game`.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct CellBoard<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> {
-    hazard_damage: u8,
-    cells: [Cell<T>; BOARD_SIZE],
-    healths: [u8; MAX_SNAKES],
-    heads: [CellIndex<T>; MAX_SNAKES],
-    lengths: [u16; MAX_SNAKES],
-    actual_width: u8,
+pub struct CellBoard<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> {
+    embedded: CCB<T, BOARD_SIZE, MAX_SNAKES>,
 }
+
+impl_common_board_traits!(CellBoard);
 
 /// 7x7 board with 4 snakes
 pub type CellBoard4Snakes7x7 = CellBoard<u8, { 7 * 7 }, 4>;
@@ -73,84 +67,6 @@ pub enum BestCellBoard {
     Silly(Box<CellBoard16Snakes50x50>),
 }
 
-/// Trait to get the best sized cellboard for the given game. It returns the smallest Compact board
-/// that has enough room to fit the given Wire game. If the game can't fit in any of our Compact
-/// boards we panic. However the largest board available is MUCH larger than the biggest selectable
-/// board in the Battlesnake UI
-pub trait ToBestCellBoard {
-    #[allow(missing_docs)]
-    fn to_best_cell_board(self) -> Result<BestCellBoard, Box<dyn Error>>;
-}
-
-impl ToBestCellBoard for Game {
-    fn to_best_cell_board(self) -> Result<BestCellBoard, Box<dyn Error>> {
-        let dimension = self.board.width;
-        let num_snakes = self.board.snakes.len();
-        let id_map = build_snake_id_map(&self);
-
-        let best_board = if dimension <= 7 && num_snakes <= 4 {
-            BestCellBoard::Tiny(Box::new(CellBoard4Snakes7x7::convert_from_game(
-                self, &id_map,
-            )?))
-        } else if dimension <= 11 && num_snakes <= 4 {
-            BestCellBoard::Standard(Box::new(CellBoard4Snakes11x11::convert_from_game(
-                self, &id_map,
-            )?))
-        } else if dimension <= 15 && num_snakes <= 8 {
-            BestCellBoard::LargestU8(Box::new(CellBoard8Snakes15x15::convert_from_game(
-                self, &id_map,
-            )?))
-        } else if dimension <= 25 && num_snakes <= 8 {
-            BestCellBoard::Large(Box::new(CellBoard8Snakes25x25::convert_from_game(
-                self, &id_map,
-            )?))
-        } else if dimension <= 50 && num_snakes <= 16 {
-            BestCellBoard::Silly(Box::new(CellBoard16Snakes50x50::convert_from_game(
-                self, &id_map,
-            )?))
-        } else {
-            panic!("No board was big enough")
-        };
-
-        Ok(best_board)
-    }
-}
-
-impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> Display
-    for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let width = self.actual_width;
-        let height = self.actual_height();
-        writeln!(f)?;
-        for y in 0..height {
-            for x in 0..width {
-                let y = height - y - 1;
-                let position = Position {
-                    x: x as i32,
-                    y: y as i32,
-                };
-                let cell_idx = CellIndex::new(position, width);
-                if self.cell_is_snake_head(cell_idx) {
-                    write!(f, "H")?;
-                } else if self.cell_is_food(cell_idx) {
-                    write!(f, "f")?
-                } else if self.cell_is_body(cell_idx) {
-                    write!(f, "s")?
-                } else if self.cell_is_hazard(cell_idx) {
-                    write!(f, "x")?
-                } else {
-                    debug_assert!(self.cells[cell_idx.0.as_usize()].is_empty());
-                    write!(f, ".")?
-                }
-                write!(f, " ")?;
-            }
-            writeln!(f)?;
-        }
-        Ok(())
-    }
-}
-
 fn get_snake_id(
     snake: &crate::wire_representation::BattleSnake,
     snake_ids: &SnakeIDMap,
@@ -162,31 +78,9 @@ fn get_snake_id(
     }
 }
 
-impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
+impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
     CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
-    fn actual_height(&self) -> u8 {
-        self.actual_width
-    }
-
-    fn kill(&mut self, sid: SnakeId) {
-        self.healths[sid.0 as usize] = 0;
-        self.heads[sid.0 as usize] = CellIndex::from_i32(0);
-        self.lengths[sid.0 as usize] = 0;
-    }
-
-    fn kill_and_remove(&mut self, sid: SnakeId) {
-        let head = self.heads[sid.as_usize()];
-        let mut current_index = self.get_cell(head).get_tail_position(head);
-
-        while let Some(i) = current_index {
-            current_index = self.get_cell(i).get_next_index();
-            self.cell_remove(i);
-        }
-
-        self.kill(sid);
-    }
-
     /// Builds a cellboard from a given game, will return an error if the game doesn't match
     /// the provided BOARD_SIZE or MAX_SNAKES. You are encouraged to use `CellBoard4Snakes11x11`
     /// for the common game layout
@@ -271,346 +165,55 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
             }
         }
 
+        let embedded = CCB::new(
+           game
+               .game
+               .ruleset
+               .settings
+               .as_ref()
+               .map(|s| s.hazard_damage_per_turn)
+               .unwrap_or(15) as u8,
+           cells,
+           healths,
+           heads,
+           lengths,
+         game.board.width as u8,
+        );
+
         Ok(CellBoard {
-            cells,
-            heads,
-            healths,
-            lengths,
-            actual_width: game.board.width as u8,
-            hazard_damage: game
-                .game
-                .ruleset
-                .settings
-                .as_ref()
-                .map(|s| s.hazard_damage_per_turn)
-                .unwrap_or(15) as u8,
+            embedded,
         })
     }
-    fn get_cell(&self, cell_index: CellIndex<T>) -> Cell<T> {
-        self.cells[cell_index.0.as_usize()]
-    }
 
-    /// determines if a given position is not on the board
-    pub fn off_board(&self, position: Position) -> bool {
-        position.x < 0
-            || position.x >= self.actual_width as i32
-            || position.y < 0
-            || position.y >= self.actual_height() as i32
-    }
-
-    /// Get the health for a given snake
-    pub fn get_health(&self, snake_id: SnakeId) -> u8 {
-        self.healths[snake_id.0 as usize]
-    }
-
-    /// Get the length for a given snake
-    pub fn get_length(&self, snake_id: SnakeId) -> u16 {
-        self.lengths[snake_id.0 as usize]
-    }
-    /// Mutibaly call remove on the specified cell
-    pub fn cell_remove(&mut self, cell_index: CellIndex<T>) {
-        let mut old_cell = self.get_cell(cell_index);
-        old_cell.remove();
-        self.cells[cell_index.0.as_usize()] = old_cell;
-    }
-
-    /// Mutibaly call remove_snake on the specified cell
-    pub fn cell_remove_snake(&mut self, cell_index: CellIndex<T>) {
-        let mut old_cell = self.get_cell(cell_index);
-        old_cell.remove_snake();
-        self.cells[cell_index.0.as_usize()] = old_cell;
-    }
-
-    /// Set the given index to a Snake Body Piece
-    pub fn set_cell_body_piece(
-        &mut self,
-        cell_index: CellIndex<T>,
-        sid: SnakeId,
-        next_id: CellIndex<T>,
-    ) {
-        let mut old_cell = self.get_cell(cell_index);
-        old_cell.set_body_piece(sid, next_id);
-        self.cells[cell_index.0.as_usize()] = old_cell;
-    }
-
-    /// Set the given index as a double stacked snake
-    pub fn set_cell_double_stacked(
-        &mut self,
-        cell_index: CellIndex<T>,
-        sid: SnakeId,
-        next_id: CellIndex<T>,
-    ) {
-        let mut old_cell = self.get_cell(cell_index);
-        old_cell.set_double_stacked(sid, next_id);
-        self.cells[cell_index.0.as_usize()] = old_cell;
-    }
-
-    /// Set the given index as a snake head
-    pub fn set_cell_head(&mut self, cell_index: CellIndex<T>, sid: SnakeId, next_id: CellIndex<T>) {
-        let mut old_cell = self.get_cell(cell_index);
-        old_cell.set_head(sid, next_id);
-        self.cells[cell_index.0.as_usize()] = old_cell;
-    }
-
-    /// gets the snake ID at a given index, returns None if the provided index is not a snake cell
-    pub fn get_snake_id_at(&self, index: CellIndex<T>) -> Option<SnakeId> {
-        self.get_cell(index).get_snake_id()
-    }
-
-    /// Determines if this cell contains exactly a snake's body piece, ignoring heads, double stacks and triple stacks
-    pub fn cell_is_snake_body_piece(&self, current_index: CellIndex<T>) -> bool {
-        self.get_cell(current_index).is_snake_body_piece()
-    }
-
-    /// determines if this cell is double stacked (e.g. a tail that has hit a food)
-    pub fn cell_is_double_stacked_piece(&self, current_index: CellIndex<T>) -> bool {
-        self.get_cell(current_index).is_double_stacked_piece()
-    }
-
-    /// determines if this cell is triple stacked (the snake at the start of the game)
-    pub fn cell_is_triple_stacked_piece(&self, current_index: CellIndex<T>) -> bool {
-        self.get_cell(current_index).is_triple_stacked_piece()
-    }
-
-    /// determines if this cell is a hazard
-    pub fn cell_is_hazard(&self, cell_idx: CellIndex<T>) -> bool {
-        self.get_cell(cell_idx).is_hazard()
-    }
-
-    /// determines if this cell is a snake head (including triple stacked)
-    pub fn cell_is_snake_head(&self, cell_idx: CellIndex<T>) -> bool {
-        self.get_cell(cell_idx).is_head()
-    }
-
-    /// determines if this cell is a food
-    pub fn cell_is_food(&self, cell_idx: CellIndex<T>) -> bool {
-        self.get_cell(cell_idx).is_food()
-    }
-
-    /// determines if this cell is a snake body piece (including double stacked)
-    pub fn cell_is_body(&self, cell_idx: CellIndex<T>) -> bool {
-        self.get_cell(cell_idx).is_body()
-    }
-
-    /// determin the width of the CellBoard
-    pub fn width() -> u8 {
-        (BOARD_SIZE as f32).sqrt() as u8
-    }
-
-    /// Get all the hazards for this board
-    pub fn get_all_hazards_as_positions(&self) -> Vec<crate::wire_representation::Position> {
-        self.cells
-            .iter()
-            .enumerate()
-            .filter(|(_, c)| c.is_hazard())
-            .map(|(i, _)| CellIndex(T::from_usize(i)).into_position(Self::width()))
-            .collect()
+    fn off_board(&self, new_head: Position) -> bool {
+        new_head.x < 0
+            || new_head.x >= self.embedded.get_actual_width() as i32
+            || new_head.y < 0
+            || new_head.y >= self.embedded.get_actual_height() as i32
     }
 }
 
-impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> SnakeIDGettableGame
-    for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
-{
-    type SnakeIDType = SnakeId;
-
-    fn get_snake_ids(&self) -> Vec<Self::SnakeIDType> {
-        // use the indices of the snakes with more than 0 health as the snake ids
-        self.healths
-            .iter()
-            .enumerate()
-            .filter(|(_, health)| **health > 0)
-            .map(|(id, _)| SnakeId(id as u8))
-            .collect_vec()
-    }
-}
-
-impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> PositionGettableGame
-    for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
-{
-    type NativePositionType = CellIndex<T>;
-
-    fn position_is_snake_body(&self, pos: Self::NativePositionType) -> bool {
-        let cell = self.get_cell(pos);
-
-        cell.is_body_segment()
-    }
-
-    fn position_from_native(&self, pos: Self::NativePositionType) -> Position {
-        let width = self.actual_width;
-
-        pos.into_position(width)
-    }
-
-    fn native_from_position(&self, pos: Position) -> Self::NativePositionType {
-        Self::NativePositionType::new(pos, self.actual_width)
-    }
-}
-
-impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> HazardQueryableGame
-    for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
-{
-    fn is_hazard(&self, pos: &Self::NativePositionType) -> bool {
-        self.cell_is_hazard(*pos)
-    }
-
-    fn get_hazard_damage(&self) -> u8 {
-        self.hazard_damage
-    }
-}
-
-impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> HazardSettableGame
-    for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
-{
-    fn set_hazard(&mut self, pos: Self::NativePositionType) {
-        self.cells[pos.0.as_usize()].set_hazard();
-    }
-
-    fn clear_hazard(&mut self, pos: Self::NativePositionType) {
-        self.cells[pos.0.as_usize()].clear_hazard();
-    }
-}
-
-impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> HeadGettableGame
-    for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
-{
-    fn get_head_as_position(
-        &self,
-        snake_id: &Self::SnakeIDType,
-    ) -> crate::wire_representation::Position {
-        let idx = self.heads[snake_id.0.as_usize()];
-        let width = self.actual_width;
-        idx.into_position(width)
-    }
-
-    fn get_head_as_native_position(
-        &self,
-        snake_id: &Self::SnakeIDType,
-    ) -> Self::NativePositionType {
-        self.heads[snake_id.0.as_usize()]
-    }
-}
-
-impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> FoodGettableGame
-    for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
-{
-    fn get_all_food_as_positions(&self) -> Vec<crate::wire_representation::Position> {
-        self.cells
-            .iter()
-            .enumerate()
-            .filter(|(_, c)| c.is_food())
-            .map(|(i, _)| CellIndex(T::from_usize(i)).into_position(self.actual_width))
-            .collect()
-    }
-
-    fn get_all_food_as_native_positions(&self) -> Vec<Self::NativePositionType> {
-        self.cells
-            .iter()
-            .enumerate()
-            .filter(|(_, c)| c.is_food())
-            .map(|(i, _)| CellIndex(T::from_usize(i)))
-            .collect()
-    }
-}
-
-impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> YouDeterminableGame
-    for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
-{
-    fn is_you(&self, snake_id: &Self::SnakeIDType) -> bool {
-        snake_id.0 == 0
-    }
-
-    fn you_id(&self) -> &Self::SnakeIDType {
-        &SnakeId(0)
-    }
-}
-
-impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> LengthGettableGame
-    for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
-{
-    type LengthType = u16;
-
-    fn get_length(&self, snake_id: &Self::SnakeIDType) -> Self::LengthType {
-        self.lengths[snake_id.0.as_usize()]
-    }
-
-    fn get_length_i64(&self, snake_id: &Self::SnakeIDType) -> i64 {
-        self.get_length(*snake_id) as i64
-    }
-}
-
-impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> HealthGettableGame
-    for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
-{
-    type HealthType = u8;
-    const ZERO: Self::HealthType = 0;
-
-    fn get_health(&self, snake_id: &Self::SnakeIDType) -> Self::HealthType {
-        self.healths[snake_id.0.as_usize()]
-    }
-
-    fn get_health_i64(&self, snake_id: &Self::SnakeIDType) -> i64 {
-        self.get_health(*snake_id) as i64
-    }
-}
-
-impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> VictorDeterminableGame
-    for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
-{
-    fn is_over(&self) -> bool {
-        self.healths[0] == 0 || self.healths.iter().filter(|h| **h != 0).count() <= 1
-    }
-
-    fn get_winner(&self) -> Option<Self::SnakeIDType> {
-        if self.is_over() {
-            let winning_ids = self
-                .healths
-                .iter()
-                .enumerate()
-                .filter_map(|(id, health)| {
-                    if *health != 0 {
-                        Some(SnakeId(id as u8))
-                    } else {
-                        None
-                    }
-                })
-                .collect_vec();
-            if winning_ids.is_empty() {
-                return None;
-            } else {
-                return Some(winning_ids[0]);
-            }
-        }
-        None
-    }
-
-    fn alive_snake_count(&self) -> usize {
-        self.healths.iter().filter(|h| **h != 0).count()
-    }
-}
-
-impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> RandomReasonableMovesGame
+impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> RandomReasonableMovesGame
     for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
     fn random_reasonable_move_for_each_snake<'a>(
         &'a self, rng: &'a mut impl Rng,
     ) -> Box<dyn std::iter::Iterator<Item = (SnakeId, Move)> + 'a> {
-        let width = self.actual_width;
+        let width = self.embedded.get_actual_width();
         Box::new(
-            IntoIterator::into_iter(self.healths)
+            self.embedded.iter_healths()
                 .enumerate()
-                .filter(|(_, health)| *health > 0)
+                .filter(|(_, health)| **health > 0)
                 .map(move |(idx, _)| {
-                    let head = self.heads[idx];
-                    let head_pos = head.into_position(width);
+                    let head_pos = self.get_head_as_position(&SnakeId(idx as u8));
 
                     let mv = IntoIterator::into_iter(Move::all())
                         .filter(|mv| {
                             let new_head = head_pos.add_vec(mv.to_vector());
                             let ci = CellIndex::new(head_pos.add_vec(mv.to_vector()), width);
 
-                            !self.off_board(new_head)
-                                && !self.get_cell(ci).is_body_segment()
-                                && !self.get_cell(ci).is_head()
+                            !self.off_board(new_head) &&
+                            !self.embedded.cell_is_body(ci) && !self.embedded.cell_is_snake_head(ci)
                         })
                         .choose(rng)
                         .unwrap_or(Move::Up);
@@ -620,7 +223,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> RandomReasona
     }
 }
 
-impl<T: SimulatorInstruments, N: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
+impl<T: SimulatorInstruments, N: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
     SimulableGame<T, MAX_SNAKES> for CellBoard<N, BOARD_SIZE, MAX_SNAKES>
 {
     #[allow(clippy::type_complexity)]
@@ -632,64 +235,21 @@ impl<T: SimulatorInstruments, N: CellNum, const BOARD_SIZE: usize, const MAX_SNA
     where
         S: Borrow<[Move]>,
     {
-        let start = Instant::now();
-        let snake_ids_and_moves = snake_ids_and_moves.into_iter().collect_vec();
-
-        let mut snake_ids_we_are_simulating = [false; MAX_SNAKES];
-        for (snake_id, _) in snake_ids_and_moves.iter() {
-            snake_ids_we_are_simulating[snake_id.0.as_usize()] = true;
-        }
-
-        // [
-        // sid major, move minor
-        // [ some_reulst_struct, some_dead_struct ]
-        // [ some_dead_struct, some_dead_struct ] // snake we didn't simulate
-        let states = self.generate_state(snake_ids_and_moves.iter());
-        let mut dead_snakes_table = [[false; N_MOVES]; MAX_SNAKES];
-
-        for (sid, result_row) in states.iter().enumerate() {
-            for (move_index, move_result) in result_row.iter().enumerate() {
-                dead_snakes_table[sid][move_index] = move_result.is_dead();
-            }
-        }
-
-        let ids_and_moves_product = snake_ids_and_moves
-            .into_iter()
-            .map(|(snake_id, moves)| {
-                let first_move = moves.borrow()[0];
-                let mvs = moves
-                    .borrow()
-                    .iter()
-                    .filter(|mv| !dead_snakes_table[snake_id.0 as usize][mv.as_index()])
-                    .map(|mv| (snake_id, *mv))
-                    .collect_vec();
-                if mvs.is_empty() {
-                    vec![(snake_id, first_move)]
-                } else {
-                    mvs
-                }
-            })
-            .multi_cartesian_product();
-        let results = ids_and_moves_product.into_iter().map(move |m| {
-            let action = Action::collect_from(m.iter());
-            let game = self.evaluate_moves_with_state(m.iter(), &states);
-            (action, game)
-        });
-        let return_value = Box::new(results);
-        let end = Instant::now();
-        instruments.observe_simulation(end - start);
-        return_value
+        Box::new(simulate_with_moves(&self.embedded, instruments, snake_ids_and_moves, EvaluateMode::Standard).map(|v| {
+            let (action, board) = v;
+            (action, Self { embedded: board})
+        }))
     }
 }
 
-impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> NeighborDeterminableGame
+impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> NeighborDeterminableGame
     for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
     fn possible_moves(
         &self,
         pos: &Self::NativePositionType,
     ) -> Vec<(Move, Self::NativePositionType)> {
-        let width = self.actual_width;
+        let width = self.embedded.get_actual_width();
 
         Move::all()
             .iter()
@@ -706,7 +266,7 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> NeighborDeter
     }
 
     fn neighbors(&self, pos: &Self::NativePositionType) -> std::vec::Vec<Self::NativePositionType> {
-        let width = self.actual_width;
+        let width = self.embedded.get_actual_width();
 
         Move::all()
             .iter()
@@ -723,55 +283,55 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> NeighborDeter
     }
 }
 
-impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> SnakeBodyGettableGame
-    for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
-{
-    fn get_snake_body_vec(&self, snake_id: &Self::SnakeIDType) -> Vec<Self::NativePositionType> {
-        let mut body = vec![];
-        body.reserve(self.get_length(*snake_id).into());
-        let head = self.get_head_as_native_position(snake_id);
-
-        let mut cur = Some(self.get_cell(head).get_tail_position(head).unwrap());
-
-        while let Some(c) = cur {
-            body.push(c);
-            if self.get_cell(c).is_double_stacked_piece() {
-                body.push(c);
-            }
-            if self.get_cell(c).is_triple_stacked_piece() {
-                body.push(c);
-                body.push(c);
-            }
-            cur = self.get_cell(c).get_next_index();
-        }
-
-        body.reverse();
-
-        body
-    }
+/// Trait to get the best sized cellboard for the given game. It returns the smallest Compact board
+/// that has enough room to fit the given Wire game. If the game can't fit in any of our Compact
+/// boards we panic. However the largest board available is MUCH larger than the biggest selectable
+/// board in the Battlesnake UI
+pub trait ToBestCellBoard {
+    #[allow(missing_docs)]
+    fn to_best_cell_board(self) -> Result<BestCellBoard, Box<dyn Error>>;
 }
 
-impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> SizeDeterminableGame
-    for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
-{
-    fn get_width(&self) -> u32 {
-        self.actual_width as u32
-    }
+impl ToBestCellBoard for Game {
+    fn to_best_cell_board(self) -> Result<BestCellBoard, Box<dyn Error>> {
+        let dimension = self.board.width;
+        let num_snakes = self.board.snakes.len();
+        let id_map = build_snake_id_map(&self);
 
-    fn get_height(&self) -> u32 {
-        self.actual_height() as u32
+        let best_board = if dimension <= 7 && num_snakes <= 4 {
+            BestCellBoard::Tiny(Box::new(CellBoard4Snakes7x7::convert_from_game(
+                self, &id_map,
+            )?))
+        } else if dimension <= 11 && num_snakes <= 4 {
+            BestCellBoard::Standard(Box::new(CellBoard4Snakes11x11::convert_from_game(
+                self, &id_map,
+            )?))
+        } else if dimension <= 15 && num_snakes <= 8 {
+            BestCellBoard::LargestU8(Box::new(CellBoard8Snakes15x15::convert_from_game(
+                self, &id_map,
+            )?))
+        } else if dimension <= 25 && num_snakes <= 8 {
+            BestCellBoard::Large(Box::new(CellBoard8Snakes25x25::convert_from_game(
+                self, &id_map,
+            )?))
+        } else if dimension <= 50 && num_snakes <= 16 {
+            BestCellBoard::Silly(Box::new(CellBoard16Snakes50x50::convert_from_game(
+                self, &id_map,
+            )?))
+        } else {
+            panic!("No board was big enough")
+        };
+
+        Ok(best_board)
     }
 }
-
 #[cfg(test)]
 mod test {
-
-    use std::collections::HashMap;
 
     use super::*;
     use crate::{
         game_fixture,
-        types::{build_snake_id_map, SnakeIDGettableGame, VictorDeterminableGame},
+        types::{build_snake_id_map},
         wire_representation::Game as DEGame,
     };
     #[derive(Debug)]
@@ -844,7 +404,7 @@ mod test {
             compact = res[0].1;
             eprintln!("{}", compact);
         }
-        assert!(compact.healths[0] > 0);
+        assert!(compact.get_health(&SnakeId(0)) > 0);
     }
 
     #[test]

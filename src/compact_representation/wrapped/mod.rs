@@ -26,7 +26,7 @@ use crate::{
     wire_representation::Position,
 };
 
-use super::core::{Cell, simulate_with_moves};
+use super::core::{Cell, simulate_with_moves, EvaluateMode};
 use super::core::{CellIndex, TRIPLE_STACK, CellBoard as CCB};
 use super::CellNum as CN;
 fn get_snake_id(
@@ -278,7 +278,7 @@ impl<T: SimulatorInstruments, N: CN, const BOARD_SIZE: usize, const MAX_SNAKES: 
     where
         S: Borrow<[Move]>,
     {
-        Box::new(simulate_with_moves(&self.embedded, instruments, snake_ids_and_moves).map(|v| {
+        Box::new(simulate_with_moves(&self.embedded, instruments, snake_ids_and_moves, EvaluateMode::Wrapped).map(|v| {
             let (action, board) = v;
             (action, Self { embedded: board})
         }))
@@ -491,7 +491,6 @@ mod test {
         // we essentially "break" the snake in the cell representation when we kill it.
         let orig_crash_game = game_fixture(include_str!("../../../fixtures/wrapped_panic.json"));
         let snake_ids = build_snake_id_map(&orig_crash_game);
-        let orig_compact: super::CellBoard4Snakes11x11 = orig_crash_game.as_wrapped_cell_board(&snake_ids).unwrap();
         let compact_ids: Vec<SnakeId> = snake_ids
             .iter()
             .map(|(_, v)| *v)

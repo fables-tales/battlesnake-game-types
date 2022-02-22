@@ -10,6 +10,7 @@ pub fn simulate_with_moves<'a, S, I: SimulatorInstruments, T: CellNum, const BOA
     board: &'a CellBoard<T, BOARD_SIZE, MAX_SNAKES>,
     instruments: &I,
     snake_ids_and_moves: impl IntoIterator<Item = (SnakeId, S)>,
+    evaluate_mode: EvaluateMode,
 ) -> Box<dyn Iterator<Item = (Action<MAX_SNAKES>, CellBoard<T, BOARD_SIZE, MAX_SNAKES>)> + 'a>
     where
         S: Borrow<[Move]>,
@@ -26,7 +27,7 @@ pub fn simulate_with_moves<'a, S, I: SimulatorInstruments, T: CellNum, const BOA
     // sid major, move minor
     // [ some_reulst_struct, some_dead_struct ]
     // [ some_dead_struct, some_dead_struct ] // snake we didn't simulate
-    let states = board.generate_state(snake_ids_and_moves.iter(), EvaluateMode::Wrapped);
+    let states = board.generate_state(snake_ids_and_moves.iter(), evaluate_mode);
     let mut dead_snakes_table = [[false; N_MOVES]; MAX_SNAKES];
 
     for (sid, result_row) in states.iter().enumerate() {

@@ -10,6 +10,7 @@ use super::{CellIndex, CellBoard};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum EvaluateMode {
     Wrapped,
+    Standard,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -92,7 +93,14 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
 
                 let new_head_position =
                     old_head.into_position(Self::width()).add_vec(m.to_vector());
-                let new_head = self.as_wrapped_cell_index(new_head_position);
+                let new_head = match mode {
+                    EvaluateMode::Wrapped => self.as_wrapped_cell_index(new_head_position),
+                    EvaluateMode::Standard => if self.off_board(new_head_position) {
+                        continue;
+                    } else { 
+                        CellIndex::<T>::new(new_head_position, Self::width()) 
+                    },
+                };
 
                 // TWe calculate the 'neck' so that we can avoid the 'instant death'
                 // of moving into your neck

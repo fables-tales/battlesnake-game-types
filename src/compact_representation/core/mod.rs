@@ -9,7 +9,7 @@ use crate::{
 };
 
 pub use cell_num::CellNum;
-pub use cell_board::CellBoard;
+pub use cell_board::{CellBoard, EvaluateMode};
 pub use simulate::simulate_with_moves;
 
 /// wrapper type for an index in to the board
