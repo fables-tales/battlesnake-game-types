@@ -47,6 +47,10 @@ pub struct CellBoard<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> {
 }
 
 impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> CellBoard<T, BOARD_SIZE, MAX_SNAKES> {
+    pub fn assert_consistency(&self) -> bool {
+        self.embedded.assert_consistency()
+    }
+
     pub fn convert_from_game(game: Game, snake_ids: &SnakeIDMap) -> Result<Self, Box<dyn Error>> {
         if game.board.width * game.board.height > BOARD_SIZE as u32 {
             return Err("game size doesn't fit in the given board size".into());
@@ -642,5 +646,81 @@ mod test {
         );
         assert_eq!(((start_y + (rollout * inc_y)).rem_euclid(11)) as i32, end_y);
         assert_eq!(((start_x + (rollout * inc_x)).rem_euclid(11)) as i32, end_x);
+    }
+
+    #[test]
+    fn test_wrapped_panic() {
+//        {"lengths":[9,0,19,0],"healths":[61,0,88,0],"hazard_damage":[0],"cells":[655361,5,5,5,5,5,5,5,5,5,589825,1,720897,786433,851969,5,5,5,5,5,1376257,917510,5,5,5,5,5,5,5,5,5,5,5,2818561,2163201,2228737,2294273,2359814,2425345,5,5,5,5,3539457,2949633,3670529,5,5,5,2490881,5,5,5,5,2884097,4260353,3604993,4,5,5,3211777,3932673,3998209,4063745,4129281,4194817,5,5,5,5,5,5,5,5,5,5,5,5,4,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,4,5,5,5,5,5,5,5],"heads":[21,0,37,0],"actual_width":[11]}
+//
+        // this panic was because we were simulating a snake with zero health, which is always consistent because
+        // we essentially "break" the snake in the cell representation when we kill it.
+        let orig_crash_game = game_fixture(include_str!("../../../fixtures/wrapped_panic.json"));
+        let snake_ids = build_snake_id_map(&orig_crash_game);
+        let orig_compact: super::CellBoard4Snakes11x11 = orig_crash_game.as_wrapped_cell_board(&snake_ids).unwrap();
+        let compact_ids: Vec<SnakeId> = snake_ids
+            .iter()
+            .map(|(_, v)| *v)
+            .collect();
+
+        let instruments = Instruments{};
+        {
+            // this json fixture is the frame at which we crashed, and it comes from a deep forward simulation of orig_crash_game
+            let json_hash = include_str!("../../../fixtures/crash_json_hash.json");
+            let hm = serde_json::from_str(json_hash).unwrap();
+            let game = super::CellBoard4Snakes11x11::from_packed_hash(&hm);
+            eprintln!("{}", orig_crash_game.board);
+            dbg!(&compact_ids);
+            let snakes_and_moves = compact_ids.iter().map(|id| (*id, vec![Move::Up]));
+            let mut results = game.simulate_with_moves(&instruments, snakes_and_moves).collect_vec();
+            assert!(results.len() == 1);
+            let (mvs, g) = results.pop().unwrap();
+            dbg!(mvs);
+            g.assert_consistency();
+            g.simulate(&instruments, compact_ids.clone()).for_each(drop);
+        }
+
+        {
+            let snakes_and_moves = vec![
+                (SnakeId(0), [Move::Up].as_slice()),
+                (SnakeId(1), [Move::Right].as_slice()),
+                (SnakeId(2), [Move::Up].as_slice()),
+                (SnakeId(3), [Move::Up].as_slice()),
+            ];
+            let json_hash = include_str!("../../../fixtures/another_wraped_panic_serialized.json");
+            let hm = serde_json::from_str(json_hash).unwrap();
+            let game = super::CellBoard4Snakes11x11::from_packed_hash(&hm);
+            game.assert_consistency();
+            eprintln!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!1\n{}", game);
+            let mut results = game.simulate_with_moves(&instruments, snakes_and_moves).collect_vec();
+            assert!(results.len() == 1);
+            let (mvs, g) = results.pop().unwrap();
+            dbg!(mvs);
+            eprintln!("{}", g);
+            g.assert_consistency();
+            g.simulate(&instruments, compact_ids.clone()).for_each(drop);
+        }
+        {
+            let snakes_and_moves = vec![
+                (SnakeId(0), [Move::Down].as_slice()),
+                (SnakeId(1), [Move::Left].as_slice()),
+                (SnakeId(2), [Move::Up].as_slice())
+            ];
+            let json_hash = include_str!("../../../fixtures/another_wrapped_panic.json");
+            let hm = serde_json::from_str(json_hash).unwrap();
+            let game = super::CellBoard4Snakes11x11::from_packed_hash(&hm);
+            game.assert_consistency();
+            eprintln!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!1\n{}", game);
+            let mut results = game.simulate_with_moves(&instruments, snakes_and_moves).collect_vec();
+            assert!(results.len() == 1);
+            let (mvs, g) = results.pop().unwrap();
+            dbg!(mvs);
+            eprintln!("{}", g);
+            // head to head collision of 0 and 1 here
+            assert_eq!(g.get_health(&SnakeId(0)), 0);
+            assert_eq!(g.get_health(&SnakeId(1)), 0);
+            g.assert_consistency();
+            g.simulate(&instruments, compact_ids).for_each(drop);
+        }
+
     }
 }
