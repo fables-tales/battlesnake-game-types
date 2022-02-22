@@ -10,7 +10,6 @@ use crate::types::{
 /// cast from a json represention to a `CellBoard`
 use crate::types::{NeighborDeterminableGame, SnakeBodyGettableGame};
 use crate::wire_representation::Game;
-use itertools::Itertools;
 use rand::prelude::IteratorRandom;
 use rand::Rng;
 use std::borrow::Borrow;
@@ -22,10 +21,9 @@ use crate::{
     wire_representation::Position,
 };
 
-use super::core::{Cell, simulate_with_moves, EvaluateMode};
+use super::core::{simulate_with_moves, EvaluateMode};
 use super::core::CellIndex;
 use super::core::CellBoard as CCB;
-use super::core::{DOUBLE_STACK, TRIPLE_STACK};
 
 /// A compact board representation that is significantly faster for simulation than
 /// `battlesnake_game_types::wire_representation::Game`.
@@ -67,17 +65,6 @@ pub enum BestCellBoard {
     Silly(Box<CellBoard16Snakes50x50>),
 }
 
-fn get_snake_id(
-    snake: &crate::wire_representation::BattleSnake,
-    snake_ids: &SnakeIDMap,
-) -> Option<SnakeId> {
-    if snake.health == 0 {
-        None
-    } else {
-        Some(*snake_ids.get(&snake.id).unwrap())
-    }
-}
-
 impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
     CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
@@ -89,97 +76,7 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
             return Err("Wrapped games are not supported".into());
         }
 
-        if game.board.width * game.board.height > BOARD_SIZE as u32 {
-            return Err("game size doesn't fit in the given board size".into());
-        }
-
-        if game.board.snakes.len() > MAX_SNAKES {
-            return Err("too many snakes".into());
-        }
-
-        for snake in &game.board.snakes {
-            let counts = &snake.body.iter().counts();
-            if counts.values().any(|v| *v == TRIPLE_STACK) && counts.len() != 1 {
-                return Err(format!("snake {} has a bad body stack (3 segs on same square and more than one unique position)", snake.id).into());
-            }
-        }
-        let width = game.board.width as u8;
-
-        let mut cells = [Cell::empty(); BOARD_SIZE];
-        let mut healths: [u8; MAX_SNAKES] = [0; MAX_SNAKES];
-        let mut heads: [CellIndex<T>; MAX_SNAKES] = [CellIndex::from_i32(0); MAX_SNAKES];
-        let mut lengths: [u16; MAX_SNAKES] = [0; MAX_SNAKES];
-
-        for snake in &game.board.snakes {
-            let snake_id = match get_snake_id(snake, snake_ids) {
-                Some(value) => value,
-                None => continue,
-            };
-
-            healths[snake_id.0 as usize] = snake.health as u8;
-            if snake.health == 0 {
-                continue;
-            }
-            lengths[snake_id.0 as usize] = snake.body.len() as u16;
-
-            let counts = &snake.body.iter().counts();
-
-            let head_idx = CellIndex::new(snake.head, width);
-            let mut next_index = head_idx;
-            for (idx, pos) in snake.body.iter().unique().enumerate() {
-                let cell_idx = CellIndex::new(*pos, width);
-                let count = counts.get(pos).unwrap();
-                if idx == 0 {
-                    assert!(cell_idx == head_idx);
-                    heads[snake_id.0 as usize] = head_idx;
-                }
-                cells[cell_idx.0.as_usize()] = if *count == TRIPLE_STACK {
-                    Cell::make_triple_stacked_piece(snake_id)
-                } else if *pos == snake.head {
-                    // head can never be doubled, so let's assert it here, the cost of
-                    // one comparison is worth the saftey imo
-                    assert!(*count != DOUBLE_STACK);
-                    let tail_index = CellIndex::new(*snake.body.back().unwrap(), width);
-                    Cell::make_snake_head(snake_id, tail_index)
-                } else if *count == DOUBLE_STACK {
-                    Cell::make_double_stacked_piece(snake_id, next_index)
-                } else {
-                    Cell::make_body_piece(snake_id, next_index)
-                };
-                next_index = cell_idx;
-            }
-        }
-        for y in 0..game.board.height {
-            for x in 0..game.board.width {
-                let position = Position {
-                    x: x as i32,
-                    y: y as i32,
-                };
-                let cell_idx: CellIndex<T> = CellIndex::new(position, width);
-                if game.board.hazards.contains(&position) {
-                    cells[cell_idx.0.as_usize()].set_hazard();
-                }
-                if game.board.food.contains(&position) {
-                    cells[cell_idx.0.as_usize()].set_food();
-                }
-            }
-        }
-
-        let embedded = CCB::new(
-           game
-               .game
-               .ruleset
-               .settings
-               .as_ref()
-               .map(|s| s.hazard_damage_per_turn)
-               .unwrap_or(15) as u8,
-           cells,
-           healths,
-           heads,
-           lengths,
-         game.board.width as u8,
-        );
-
+        let embedded = CCB::convert_from_game(game, snake_ids)?;
         Ok(CellBoard {
             embedded,
         })
@@ -328,11 +225,13 @@ impl ToBestCellBoard for Game {
 #[cfg(test)]
 mod test {
 
+    use itertools::Itertools;
+
     use super::*;
     use crate::{
         game_fixture,
         types::{build_snake_id_map},
-        wire_representation::Game as DEGame,
+        wire_representation::Game as DEGame, compact_representation::core::Cell,
     };
     #[derive(Debug)]
     struct Instruments;

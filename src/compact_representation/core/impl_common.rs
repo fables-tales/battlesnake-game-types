@@ -1,3 +1,4 @@
+/// Very internal, implements common board traits for any board type that embeds a cellboard
 #[macro_export]
 macro_rules! impl_common_board_traits {
     ($type:tt) => {

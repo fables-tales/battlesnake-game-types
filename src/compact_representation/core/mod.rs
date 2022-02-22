@@ -145,12 +145,6 @@ impl<T: CellNum> Cell<T> {
         self.flags & KIND_MASK == SNAKE_HEAD || self.is_triple_stacked_piece()
     }
 
-    pub fn remove_snake(&mut self) {
-        if self.is_head() || self.is_body_segment() {
-            self.remove();
-        }
-    }
-
     /// resets a cell to empty preserving the cell's hazard status
     pub fn remove(&mut self) {
         let reset_to_empty = (self.flags & !KIND_MASK) | EMPTY;

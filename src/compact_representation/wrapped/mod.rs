@@ -1,5 +1,4 @@
 //! A compact board representation that is efficient for simulation
-use crate::compact_representation::core::DOUBLE_STACK;
 use crate::impl_common_board_traits;
 use crate::types::{
     build_snake_id_map, FoodGettableGame, HazardQueryableGame, HazardSettableGame,
@@ -13,7 +12,6 @@ use crate::types::{
 /// cast from a json represention to a `CellBoard`
 use crate::types::{NeighborDeterminableGame, SnakeBodyGettableGame};
 use crate::wire_representation::Game;
-use itertools::Itertools;
 use rand::Rng;
 use rand::prelude::IteratorRandom;
 use std::borrow::Borrow;
@@ -26,19 +24,9 @@ use crate::{
     wire_representation::Position,
 };
 
-use super::core::{Cell, simulate_with_moves, EvaluateMode};
-use super::core::{CellIndex, TRIPLE_STACK, CellBoard as CCB};
+use super::core::{simulate_with_moves, EvaluateMode};
+use super::core::{CellIndex, CellBoard as CCB};
 use super::CellNum as CN;
-fn get_snake_id(
-    snake: &crate::wire_representation::BattleSnake,
-    snake_ids: &SnakeIDMap,
-) -> Option<SnakeId> {
-    if snake.health == 0 {
-        None
-    } else {
-        Some(*snake_ids.get(&snake.id).unwrap())
-    }
-}
 
 /// A compact board representation that is significantly faster for simulation than
 /// `battlesnake_game_types::wire_representation::Game`.
@@ -50,110 +38,28 @@ pub struct CellBoard<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> {
 impl_common_board_traits!(CellBoard);
 
 impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> CellBoard<T, BOARD_SIZE, MAX_SNAKES> {
+    /// Asserts that the board is consistent (e.g. no snake holes)
     pub fn assert_consistency(&self) -> bool {
         self.embedded.assert_consistency()
     }
 
+    /// creates a wrapped board from a Wire Representation game
     pub fn convert_from_game(game: Game, snake_ids: &SnakeIDMap) -> Result<Self, Box<dyn Error>> {
-        if game.board.width * game.board.height > BOARD_SIZE as u32 {
-            return Err("game size doesn't fit in the given board size".into());
+        if game.game.ruleset.name != "wrapped" {
+            return Err("only wrapped games are supported".into());
         }
-
-        if game.board.snakes.len() > MAX_SNAKES {
-            return Err("too many snakes".into());
-        }
-
-        for snake in &game.board.snakes {
-            let counts = &snake.body.iter().counts();
-            if counts.values().any(|v| *v == TRIPLE_STACK) && counts.len() != 1 {
-                return Err(format!("snake {} has a bad body stack (3 segs on same square and more than one unique position)", snake.id).into());
-            }
-        }
-        let width = game.board.width as u8;
-
-        let mut cells = [Cell::empty(); BOARD_SIZE];
-        let mut healths: [u8; MAX_SNAKES] = [0; MAX_SNAKES];
-        let mut heads: [CellIndex<T>; MAX_SNAKES] = [CellIndex::from_i32(0); MAX_SNAKES];
-        let mut lengths: [u16; MAX_SNAKES] = [0; MAX_SNAKES];
-
-        for snake in &game.board.snakes {
-            let snake_id = match get_snake_id(snake, snake_ids) {
-                Some(value) => value,
-                None => continue,
-            };
-
-            healths[snake_id.0 as usize] = snake.health as u8;
-            if snake.health == 0 {
-                continue;
-            }
-            lengths[snake_id.0 as usize] = snake.body.len() as u16;
-
-            let counts = &snake.body.iter().counts();
-
-            let head_idx = CellIndex::new(snake.head, width);
-            let mut next_index = head_idx;
-            for (idx, pos) in snake.body.iter().unique().enumerate() {
-                let cell_idx = CellIndex::new(*pos, width);
-                let count = counts.get(pos).unwrap();
-                if idx == 0 {
-                    assert!(cell_idx == head_idx);
-                    heads[snake_id.0 as usize] = head_idx;
-                }
-                cells[cell_idx.0.as_usize()] = if *count == TRIPLE_STACK {
-                    Cell::make_triple_stacked_piece(snake_id)
-                } else if *pos == snake.head {
-                    // head can never be doubled, so let's assert it here, the cost of
-                    // one comparison is worth the saftey imo
-                    assert!(*count != DOUBLE_STACK);
-                    let tail_index = CellIndex::new(*snake.body.back().unwrap(), width);
-                    Cell::make_snake_head(snake_id, tail_index)
-                } else if *count == DOUBLE_STACK {
-                    Cell::make_double_stacked_piece(snake_id, next_index)
-                } else {
-                    Cell::make_body_piece(snake_id, next_index)
-                };
-                next_index = cell_idx;
-            }
-        }
-        for y in 0..game.board.height {
-            for x in 0..game.board.width {
-                let position = Position {
-                    x: x as i32,
-                    y: y as i32,
-                };
-                let cell_idx: CellIndex<T> = CellIndex::new(position, width);
-                if game.board.hazards.contains(&position) {
-                    cells[cell_idx.0.as_usize()].set_hazard();
-                }
-                if game.board.food.contains(&position) {
-                    cells[cell_idx.0.as_usize()].set_food();
-                }
-            }
-        }
-        let embedded = CCB::new(
-           game
-               .game
-               .ruleset
-               .settings
-               .as_ref()
-               .map(|s| s.hazard_damage_per_turn)
-               .unwrap_or(15) as u8,
-           cells,
-           healths,
-           heads,
-           lengths,
-         game.board.width as u8,
-        );
-
+        let embedded = CCB::convert_from_game(game, snake_ids)?;
         Ok(CellBoard {
             embedded,
         })
     }
 
+    /// for debugging, packs this board into a custom json representation
     pub fn pack_as_hash(&self) -> HashMap<String, Vec<u32>> {
         self.embedded.pack_as_hash()
     }
 
+    /// for debugging, unloads a board from a custom json representation
     pub fn from_packed_hash(hash: &HashMap<String, Vec<u32>>) -> Self {
         Self {
             embedded: CCB::from_packed_hash(hash),
@@ -330,10 +236,10 @@ mod test {
             build_snake_id_map, HeadGettableGame, Move, RandomReasonableMovesGame, SimulableGame,
             SimulatorInstruments, SnakeId, HealthGettableGame,
         },
-        wire_representation::Position,
+        wire_representation::Position, compact_representation::core::Cell,
     };
 
-    use super::{Cell, CellBoard4Snakes11x11, CellIndex};
+    use super::{CellBoard4Snakes11x11, CellIndex};
 
     #[derive(Debug)]
     struct Instruments {}

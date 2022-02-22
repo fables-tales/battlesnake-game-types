@@ -184,22 +184,26 @@ pub trait VictorDeterminableGame: std::fmt::Debug + SnakeIDGettableGame {
 }
 #[derive(Debug, Copy, Clone)]
 #[repr(transparent)]
+/// Represents moves taken for a given simulation
 pub struct Action<const N_SNAKES: usize> {
     moves: [Option<Move>; N_SNAKES],
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+/// Represents only the moves taken by other snakes in a game
 pub struct OtherAction<const N_SNAKES: usize> {
     moves: [Option<Move>; N_SNAKES],
 }
 
 impl <const N_SNAKES: usize> Action<N_SNAKES> {
+    /// create a new action from a given array of moves
     pub fn new(moves: [Option<Move>; N_SNAKES]) -> Self {
         Self {
             moves,
         }
     }
 
+    /// collects an action from an iterator of moves
     pub fn collect_from<'a, T: Iterator<Item = &'a(SnakeId, Move)>>(ids_and_moves: T) -> Self {
         let mut moves = [None; N_SNAKES];
         for (id, mv) in ids_and_moves {
@@ -208,9 +212,11 @@ impl <const N_SNAKES: usize> Action<N_SNAKES> {
         Self { moves }
     }
 
+    /// gets your move
     pub fn own_move(&self) -> Move {
         self.moves[0].unwrap()
     }
+    /// construct an OtherAction of the other sankes moves
     pub fn other_moves(&self) -> OtherAction<N_SNAKES> {
         let mut new_moves = self.moves;
         new_moves[0] = None;

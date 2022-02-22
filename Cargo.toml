@@ -23,7 +23,3 @@ criterion = "0.3"
 [[bench]]
 name = "start_of_game_compact"
 harness = false
-
-[[bench]]
-name = "bench_evaluate"
-harness = false

@@ -56,18 +56,6 @@ fn get_snake_id(
 
 
 impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> CellBoard<T, BOARD_SIZE, MAX_SNAKES> {
-
-    pub fn new(hazard_damage: u8, cells: [Cell<T>; BOARD_SIZE], healths: [u8; MAX_SNAKES], heads: [CellIndex<T>; MAX_SNAKES], lengths: [u16; MAX_SNAKES], actual_width: u8) -> Self {
-        Self {
-            hazard_damage,
-            cells,
-            healths,
-            heads,
-            lengths,
-            actual_width,
-        }
-    }
-
     pub fn iter_healths(&self) -> Iter<'_, u8> {
         self.healths.iter()
     }
@@ -346,14 +334,6 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> CellBoard<T, BOARD
         old_cell.remove();
         self.cells[cell_index.0.as_usize()] = old_cell;
     }
-
-    /// Mutibaly call remove_snake on the specified cell
-    pub fn cell_remove_snake(&mut self, cell_index: CellIndex<T>) {
-        let mut old_cell = self.get_cell(cell_index);
-        old_cell.remove_snake();
-        self.cells[cell_index.0.as_usize()] = old_cell;
-    }
-
     /// Set the given index to a Snake Body Piece
     pub fn set_cell_body_piece(
         &mut self,
@@ -395,21 +375,6 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> CellBoard<T, BOARD
         self.get_cell(index).get_snake_id()
     }
 
-    /// Determines if this cell contains exactly a snake's body piece, ignoring heads, double stacks and triple stacks
-    pub fn cell_is_snake_body_piece(&self, current_index: CellIndex<T>) -> bool {
-        self.get_cell(current_index).is_snake_body_piece()
-    }
-
-    /// determines if this cell is double stacked (e.g. a tail that has hit a food)
-    pub fn cell_is_double_stacked_piece(&self, current_index: CellIndex<T>) -> bool {
-        self.get_cell(current_index).is_double_stacked_piece()
-    }
-
-    /// determines if this cell is triple stacked (the snake at the start of the game)
-    pub fn cell_is_triple_stacked_piece(&self, current_index: CellIndex<T>) -> bool {
-        self.get_cell(current_index).is_triple_stacked_piece()
-    }
-
     /// determines if this cell is a hazard
     pub fn cell_is_hazard(&self, cell_idx: CellIndex<T>) -> bool {
         self.get_cell(cell_idx).is_hazard()
@@ -430,25 +395,10 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> CellBoard<T, BOARD
         self.get_cell(cell_idx).is_body()
     }
 
-    pub fn get_tail_index(&self, snake_id: SnakeId) -> Option<CellIndex<T>> {
-        self.get_cell(self.heads[snake_id.0 as usize]).get_next_index()
-    }
-
     /// determin the width of the CellBoard
     pub fn width() -> u8 {
         (BOARD_SIZE as f32).sqrt() as u8
     }
-
-    /// Get all the hazards for this board
-    pub fn get_all_hazards_as_positions(&self) -> Vec<crate::wire_representation::Position> {
-        self.cells
-            .iter()
-            .enumerate()
-            .filter(|(_, c)| c.is_hazard())
-            .map(|(i, _)| CellIndex(T::from_usize(i)).into_position(Self::width()))
-            .collect()
-    }
-
 }
 
 #[cfg(test)]
