@@ -448,3 +448,15 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> CellBoard<T, BOARD
     }
 
 }
+
+#[cfg(test)]
+mod tests {
+    use super::CellBoard;
+    #[test]
+    fn test_assert_consistent() {
+        let inconsistent_fixture = include_str!("../../../../fixtures/inconsistent_fixture.json");
+        let hm = serde_json::from_str(inconsistent_fixture).unwrap();
+        let game: CellBoard<u8, {11*11}, 4> = CellBoard::from_packed_hash(&hm);
+        assert!(!game.assert_consistency());
+    }
+}
