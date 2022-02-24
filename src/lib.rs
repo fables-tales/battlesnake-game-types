@@ -34,6 +34,7 @@ use wire_representation::Game;
 pub mod compact_representation;
 pub mod types;
 pub mod wire_representation;
+pub mod hazard_algorithms;
 
 /// Loads a fixture from a given string
 pub fn game_fixture(game_fixture: &str) -> Game {

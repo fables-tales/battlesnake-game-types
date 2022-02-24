@@ -210,7 +210,7 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> CellBoard<T, BOARD
 
         while let Some(i) = current_index {
             current_index = self.get_cell(i).get_next_index();
-            debug_assert!(self.get_cell(i).get_snake_id().unwrap().as_usize() == sid.as_usize());
+            debug_assert!(self.get_cell(i).get_snake_id().unwrap_or(sid).as_usize() == sid.as_usize());
             self.cell_remove(i);
         }
 

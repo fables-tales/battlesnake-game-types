@@ -4,6 +4,7 @@ mod standard;
 pub mod wrapped;
 
 pub use self::core::CellNum;
+pub use self::core::CellIndex;
 
 /// A cell board for a standard game (e.g. not wrapped or constrictor)
 pub type StandardCellBoard<T, const BOARD_SIZE: usize, const MAX_SNAKES: usize> =
