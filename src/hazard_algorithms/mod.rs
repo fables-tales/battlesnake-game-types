@@ -5,13 +5,19 @@ use std::error::Error;
 
 use crate::{wire_representation::{Game, Position}, types::Move};
 
-trait HazardAlgorithm<T>: Clone + std::fmt::Debug {
+/// Represents various hazard algorithms
+pub trait HazardAlgorithm<T>: Clone + std::fmt::Debug {
+    /// use this to initialize the hazard algorithm, see implementation
+    /// specific notes for how to use for each hazard algorithm
     fn observe(&mut self, game: &Game) -> Result<(), Box<dyn Error>>;
+
+    /// have this calculate a vec of results for the next turn
     fn inc_turn(&mut self) -> Vec<T>;
 }
 
+/// Spiral hazard algorithm
 #[derive(Debug, Copy, Clone)]
-struct SpiralHazard {
+pub struct SpiralHazard {
     hazard_every_turns: u8,
     seed_cell: Position,
     first_turn_seen: u16,
@@ -57,6 +63,10 @@ fn is_perfect_odd_square(n: u16) -> bool {
 }
 
 impl HazardAlgorithm<Position> for SpiralHazard {
+    /// call this with game states until the seed cell has been observed
+    /// which will usually be on turn 3, once you've seen the seed cell
+    /// you should stop calling observe, and start calling inc_turn to
+    /// calculate forward hazard squares
     fn observe(&mut self, game: &Game) -> Result<(), Box<dyn Error>> {
         if self.first_turn_seen == 0 {
             if game.board.hazards.len() > 1 {
