@@ -201,32 +201,32 @@ impl<T: SimulatorInstruments, N: CN, const BOARD_SIZE: usize, const MAX_SNAKES: 
 impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> NeighborDeterminableGame
     for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
-    fn possible_moves(
-        &self,
+    fn possible_moves<'a>(
+        &'a self,
         pos: &Self::NativePositionType,
-    ) -> Vec<(Move, Self::NativePositionType)> {
+    ) -> Box<(dyn std::iter::Iterator<Item = (Move, CellIndex<T>)> + 'a)> {
         let width = self.embedded.get_actual_width();
+        let head_pos = pos.into_position(width);
 
-        Move::all()
-            .iter()
-            .map(|mv| {
-                let head_pos = pos.into_position(width);
-                let new_head = head_pos.add_vec(mv.to_vector());
-                let ci = self.embedded.as_wrapped_cell_index(new_head);
+        Box::new(
+            Move::all_iter()
+                .map(move |mv| {
+                    let new_head = head_pos.add_vec(mv.to_vector());
+                    let ci = self.embedded.as_wrapped_cell_index(new_head);
 
-                debug_assert!(!self.embedded.off_board(ci.into_position(width)));
+                    debug_assert!(!self.embedded.off_board(ci.into_position(width)));
 
-                (mv, new_head, ci)
-            })
-            .map(|(mv, _, ci)| (*mv, ci))
-            .collect()
+                    (mv, new_head, ci)
+                })
+                .map(|(mv, _, ci)| (mv, ci)),
+        )
     }
 
-    fn neighbors(&self, pos: &Self::NativePositionType) -> std::vec::Vec<Self::NativePositionType> {
-        self.possible_moves(pos)
-            .into_iter()
-            .map(|(_, ci)| ci)
-            .collect()
+    fn neighbors<'a>(
+        &'a self,
+        pos: &Self::NativePositionType,
+    ) -> Box<(dyn Iterator<Item = CellIndex<T>> + 'a)> {
+        Box::new(self.possible_moves(pos).map(|(_, ci)| ci))
     }
 }
 

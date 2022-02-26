@@ -382,13 +382,16 @@ pub trait RandomReasonableMovesGame: SnakeIDGettableGame {
 /// a game for which the neighbors of a given Position can be determined
 pub trait NeighborDeterminableGame: PositionGettableGame {
     /// returns the neighboring positions
-    fn neighbors(&self, pos: &Self::NativePositionType) -> Vec<Self::NativePositionType>;
+    fn neighbors<'a>(
+        &'a self,
+        pos: &Self::NativePositionType,
+    ) -> Box<dyn Iterator<Item = Self::NativePositionType> + 'a>;
 
     /// returns the neighboring positions, and the Move required to get to each
-    fn possible_moves(
-        &self,
+    fn possible_moves<'a>(
+        &'a self,
         pos: &Self::NativePositionType,
-    ) -> Vec<(Move, Self::NativePositionType)>;
+    ) -> Box<dyn Iterator<Item = (Move, Self::NativePositionType)> + 'a>;
 }
 
 /// a game for which each snakes shout can be determined
