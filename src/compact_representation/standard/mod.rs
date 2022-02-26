@@ -390,4 +390,66 @@ mod test {
         assert!(c.get_snake_id().unwrap() == SnakeId(3));
         assert!(c.get_idx() == CellIndex(17));
     }
+
+    #[test]
+    fn test_neighbors_and_possible_moves_start_of_game() {
+        let game_fixture = include_str!("../../../fixtures/start_of_game.json");
+        let g: Result<DEGame, _> = serde_json::from_slice(game_fixture.as_bytes());
+        let g = g.expect("the json literal is valid");
+        let snake_id_mapping = build_snake_id_map(&g);
+        let compact: CellBoard4Snakes11x11 = g.as_cell_board(&snake_id_mapping).unwrap();
+
+        let head = compact.get_head_as_native_position(&SnakeId(0));
+        assert_eq!(head, CellIndex(8 * 11 + 5));
+
+        let expected_possible_moves = vec![
+            (Move::Up, CellIndex(9 * 11 + 5)),
+            (Move::Down, CellIndex(7 * 11 + 5)),
+            (Move::Left, CellIndex(8 * 11 + 4)),
+            (Move::Right, CellIndex(8 * 11 + 6)),
+        ];
+
+        assert_eq!(
+            compact.possible_moves(&head).collect::<Vec<_>>(),
+            expected_possible_moves
+        );
+
+        assert_eq!(
+            compact.neighbors(&head).collect::<Vec<_>>(),
+            expected_possible_moves
+                .into_iter()
+                .map(|(_, pos)| pos)
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn test_neighbors_and_possible_moves_cornered() {
+        let game_fixture = include_str!("../../../fixtures/cornered.json");
+        let g: Result<DEGame, _> = serde_json::from_slice(game_fixture.as_bytes());
+        let g = g.expect("the json literal is valid");
+        let snake_id_mapping = build_snake_id_map(&g);
+        let compact: CellBoard4Snakes11x11 = g.as_cell_board(&snake_id_mapping).unwrap();
+
+        let head = compact.get_head_as_native_position(&SnakeId(0));
+        assert_eq!(head, CellIndex(10 * 11));
+
+        let expected_possible_moves = vec![
+            (Move::Down, CellIndex(9 * 11)),
+            (Move::Right, CellIndex(10 * 11 + 1)),
+        ];
+
+        assert_eq!(
+            compact.possible_moves(&head).collect::<Vec<_>>(),
+            expected_possible_moves
+        );
+
+        assert_eq!(
+            compact.neighbors(&head).collect::<Vec<_>>(),
+            expected_possible_moves
+                .into_iter()
+                .map(|(_, pos)| pos)
+                .collect::<Vec<_>>()
+        );
+    }
 }

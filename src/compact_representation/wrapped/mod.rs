@@ -242,7 +242,8 @@ mod test {
         game_fixture,
         types::{
             build_snake_id_map, HeadGettableGame, HealthGettableGame, Move,
-            RandomReasonableMovesGame, SimulableGame, SimulatorInstruments, SnakeId,
+            NeighborDeterminableGame, RandomReasonableMovesGame, SimulableGame,
+            SimulatorInstruments, SnakeId,
         },
         wire_representation::Position,
     };
@@ -478,5 +479,35 @@ mod test {
             g.assert_consistency();
             g.simulate(&instruments, compact_ids).for_each(drop);
         }
+    }
+
+    #[test]
+    fn test_neighbors_and_possible_moves_cornered() {
+        let g = game_fixture(include_str!("../../../fixtures/cornered_wrapped.json"));
+        let snake_id_mapping = build_snake_id_map(&g);
+        let compact: CellBoard4Snakes11x11 = g.as_wrapped_cell_board(&snake_id_mapping).unwrap();
+
+        let head = compact.get_head_as_native_position(&SnakeId(0));
+        assert_eq!(head, CellIndex(10 * 11));
+
+        let expected_possible_moves = vec![
+            (Move::Up, CellIndex(0)),
+            (Move::Down, CellIndex(9 * 11)),
+            (Move::Left, CellIndex(10 * 11 + 10)),
+            (Move::Right, CellIndex(10 * 11 + 1)),
+        ];
+
+        assert_eq!(
+            compact.possible_moves(&head).collect::<Vec<_>>(),
+            expected_possible_moves
+        );
+
+        assert_eq!(
+            compact.neighbors(&head).collect::<Vec<_>>(),
+            expected_possible_moves
+                .into_iter()
+                .map(|(_, pos)| pos)
+                .collect::<Vec<_>>()
+        );
     }
 }
