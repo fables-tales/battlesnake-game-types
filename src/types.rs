@@ -292,6 +292,15 @@ pub trait FoodQueryableGame: PositionGettableGame {
     fn is_food(&self, pos: &Self::NativePositionType) -> bool;
 }
 
+/// A game where positions can be checked to see if they are a certain snakes Neck piece
+///
+/// A neck is defined as the piece that comes immediately after the head of a snake. If the snake
+/// is fully triple stacked it has no neck piece.
+pub trait NeckQueryableGame: PositionGettableGame + SnakeIDGettableGame {
+    /// Is this position a neck for the given snake?
+    fn is_neck(&self, sid: &Self::SnakeIDType, pos: &Self::NativePositionType) -> bool;
+}
+
 /// A game where positions can have their hazards set and cleared
 pub trait HazardSettableGame: PositionGettableGame {
     /// make this position a hazard
