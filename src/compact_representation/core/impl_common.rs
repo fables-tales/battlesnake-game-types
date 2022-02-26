@@ -192,6 +192,10 @@ macro_rules! impl_common_board_traits {
             fn native_from_position(&self, pos: Position) -> Self::NativePositionType {
                 self.embedded.native_from_position(pos)
             }
+
+            fn off_board(&self, pos: Position) -> bool {
+                self.embedded.off_board(pos)
+            }
         }
     };
 }
