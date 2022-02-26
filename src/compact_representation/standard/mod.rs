@@ -15,7 +15,6 @@ use rand::Rng;
 use std::borrow::Borrow;
 use std::error::Error;
 use std::fmt::Display;
-use std::ops::Deref;
 
 use crate::{
     types::{Move, SimulableGame, SimulatorInstruments},
@@ -34,16 +33,6 @@ pub struct CellBoard<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> {
 }
 
 impl_common_board_traits!(CellBoard);
-
-impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> Deref
-    for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
-{
-    type Target = CCB<T, BOARD_SIZE, MAX_SNAKES>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.embedded
-    }
-}
 
 /// 7x7 board with 4 snakes
 pub type CellBoard4Snakes7x7 = CellBoard<u8, { 7 * 7 }, 4>;
