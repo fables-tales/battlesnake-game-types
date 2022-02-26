@@ -2,7 +2,6 @@
 #[macro_export]
 macro_rules! impl_common_board_traits {
     ($type:tt) => {
-    
         impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> LengthGettableGame
             for $type<T, BOARD_SIZE, MAX_SNAKES>
         {
@@ -102,7 +101,6 @@ macro_rules! impl_common_board_traits {
             }
         }
 
-
         impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> HazardQueryableGame
             for $type<T, BOARD_SIZE, MAX_SNAKES>
         {
@@ -115,11 +113,21 @@ macro_rules! impl_common_board_traits {
             }
         }
 
+        impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> FoodQueryableGame
+            for $type<T, BOARD_SIZE, MAX_SNAKES>
+        {
+            fn is_food(&self, pos: &Self::NativePositionType) -> bool {
+                self.embedded.cell_is_food(*pos)
+            }
+        }
 
         impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> SnakeBodyGettableGame
             for $type<T, BOARD_SIZE, MAX_SNAKES>
         {
-            fn get_snake_body_vec(&self, snake_id: &Self::SnakeIDType) -> Vec<Self::NativePositionType> {
+            fn get_snake_body_vec(
+                &self,
+                snake_id: &Self::SnakeIDType,
+            ) -> Vec<Self::NativePositionType> {
                 self.embedded.get_snake_body_vec(snake_id)
             }
         }
@@ -133,7 +141,6 @@ macro_rules! impl_common_board_traits {
 
             fn get_height(&self) -> u32 {
                 self.embedded.get_height()
-                
             }
         }
 
@@ -171,6 +178,5 @@ macro_rules! impl_common_board_traits {
                 self.embedded.native_from_position(pos)
             }
         }
-
     };
 }

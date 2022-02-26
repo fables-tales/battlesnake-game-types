@@ -195,16 +195,14 @@ pub struct OtherAction<const N_SNAKES: usize> {
     moves: [Option<Move>; N_SNAKES],
 }
 
-impl <const N_SNAKES: usize> Action<N_SNAKES> {
+impl<const N_SNAKES: usize> Action<N_SNAKES> {
     /// create a new action from a given array of moves
     pub fn new(moves: [Option<Move>; N_SNAKES]) -> Self {
-        Self {
-            moves,
-        }
+        Self { moves }
     }
 
     /// collects an action from an iterator of moves
-    pub fn collect_from<'a, T: Iterator<Item = &'a(SnakeId, Move)>>(ids_and_moves: T) -> Self {
+    pub fn collect_from<'a, T: Iterator<Item = &'a (SnakeId, Move)>>(ids_and_moves: T) -> Self {
         let mut moves = [None; N_SNAKES];
         for (id, mv) in ids_and_moves {
             moves[id.as_usize()] = Some(*mv);
@@ -261,6 +259,12 @@ pub trait HazardQueryableGame: PositionGettableGame {
 
     /// how much damage do hazards do?
     fn get_hazard_damage(&self) -> u8;
+}
+
+/// A game where positions can be checked for food
+pub trait FoodQueryableGame: PositionGettableGame {
+    /// Is this position a food?
+    fn is_food(&self, pos: &Self::NativePositionType) -> bool;
 }
 
 /// A game where positions can have their hazards set and cleared
@@ -345,7 +349,8 @@ pub trait HealthGettableGame: SnakeIDGettableGame {
 pub trait RandomReasonableMovesGame: SnakeIDGettableGame {
     #[allow(missing_docs)]
     fn random_reasonable_move_for_each_snake<'a>(
-        &'a self, rng: &'a mut impl Rng,
+        &'a self,
+        rng: &'a mut impl Rng,
     ) -> Box<dyn Iterator<Item = (Self::SnakeIDType, Move)> + 'a>;
 }
 

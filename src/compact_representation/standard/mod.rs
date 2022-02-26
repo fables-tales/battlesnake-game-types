@@ -1,10 +1,10 @@
 use crate::compact_representation::core::CellNum as CN;
 use crate::impl_common_board_traits;
 use crate::types::{
-    build_snake_id_map, FoodGettableGame, HazardQueryableGame, HazardSettableGame,
-    HeadGettableGame, HealthGettableGame, LengthGettableGame, PositionGettableGame,
-    RandomReasonableMovesGame, SizeDeterminableGame, SnakeIDGettableGame, SnakeIDMap, SnakeId,
-    VictorDeterminableGame, YouDeterminableGame, Action,
+    build_snake_id_map, Action, FoodGettableGame, FoodQueryableGame, HazardQueryableGame,
+    HazardSettableGame, HeadGettableGame, HealthGettableGame, LengthGettableGame,
+    PositionGettableGame, RandomReasonableMovesGame, SizeDeterminableGame, SnakeIDGettableGame,
+    SnakeIDMap, SnakeId, VictorDeterminableGame, YouDeterminableGame,
 };
 /// you almost certainly want to use the `convert_from_game` method to
 /// cast from a json represention to a `CellBoard`
@@ -15,15 +15,16 @@ use rand::Rng;
 use std::borrow::Borrow;
 use std::error::Error;
 use std::fmt::Display;
+use std::ops::Deref;
 
 use crate::{
     types::{Move, SimulableGame, SimulatorInstruments},
     wire_representation::Position,
 };
 
-use super::core::{simulate_with_moves, EvaluateMode};
-use super::core::CellIndex;
 use super::core::CellBoard as CCB;
+use super::core::CellIndex;
+use super::core::{simulate_with_moves, EvaluateMode};
 
 /// A compact board representation that is significantly faster for simulation than
 /// `battlesnake_game_types::wire_representation::Game`.
@@ -33,6 +34,16 @@ pub struct CellBoard<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> {
 }
 
 impl_common_board_traits!(CellBoard);
+
+impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> Deref
+    for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
+{
+    type Target = CCB<T, BOARD_SIZE, MAX_SNAKES>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.embedded
+    }
+}
 
 /// 7x7 board with 4 snakes
 pub type CellBoard4Snakes7x7 = CellBoard<u8, { 7 * 7 }, 4>;
@@ -65,9 +76,7 @@ pub enum BestCellBoard {
     Silly(Box<CellBoard16Snakes50x50>),
 }
 
-impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
-    CellBoard<T, BOARD_SIZE, MAX_SNAKES>
-{
+impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> CellBoard<T, BOARD_SIZE, MAX_SNAKES> {
     /// Builds a cellboard from a given game, will return an error if the game doesn't match
     /// the provided BOARD_SIZE or MAX_SNAKES. You are encouraged to use `CellBoard4Snakes11x11`
     /// for the common game layout
@@ -77,9 +86,7 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
         }
 
         let embedded = CCB::convert_from_game(game, snake_ids)?;
-        Ok(CellBoard {
-            embedded,
-        })
+        Ok(CellBoard { embedded })
     }
 
     fn off_board(&self, new_head: Position) -> bool {
@@ -94,11 +101,13 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> RandomReasonableMo
     for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
     fn random_reasonable_move_for_each_snake<'a>(
-        &'a self, rng: &'a mut impl Rng,
+        &'a self,
+        rng: &'a mut impl Rng,
     ) -> Box<dyn std::iter::Iterator<Item = (SnakeId, Move)> + 'a> {
         let width = self.embedded.get_actual_width();
         Box::new(
-            self.embedded.iter_healths()
+            self.embedded
+                .iter_healths()
                 .enumerate()
                 .filter(|(_, health)| **health > 0)
                 .map(move |(idx, _)| {
@@ -109,8 +118,9 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> RandomReasonableMo
                             let new_head = head_pos.add_vec(mv.to_vector());
                             let ci = CellIndex::new(head_pos.add_vec(mv.to_vector()), width);
 
-                            !self.off_board(new_head) &&
-                            !self.embedded.cell_is_body(ci) && !self.embedded.cell_is_snake_head(ci)
+                            !self.off_board(new_head)
+                                && !self.embedded.cell_is_body(ci)
+                                && !self.embedded.cell_is_snake_head(ci)
                         })
                         .choose(rng)
                         .unwrap_or(Move::Up);
@@ -132,10 +142,18 @@ impl<T: SimulatorInstruments, N: CN, const BOARD_SIZE: usize, const MAX_SNAKES: 
     where
         S: Borrow<[Move]>,
     {
-        Box::new(simulate_with_moves(&self.embedded, instruments, snake_ids_and_moves, EvaluateMode::Standard).map(|v| {
-            let (action, board) = v;
-            (action, Self { embedded: board})
-        }))
+        Box::new(
+            simulate_with_moves(
+                &self.embedded,
+                instruments,
+                snake_ids_and_moves,
+                EvaluateMode::Standard,
+            )
+            .map(|v| {
+                let (action, board) = v;
+                (action, Self { embedded: board })
+            }),
+        )
     }
 }
 
@@ -229,9 +247,8 @@ mod test {
 
     use super::*;
     use crate::{
-        game_fixture,
-        types::{build_snake_id_map},
-        wire_representation::Game as DEGame, compact_representation::core::Cell,
+        compact_representation::core::Cell, game_fixture, types::build_snake_id_map,
+        wire_representation::Game as DEGame,
     };
     #[derive(Debug)]
     struct Instruments;
@@ -260,7 +277,6 @@ mod test {
             _ => panic!("expected standard board"),
         }
     }
-
 
     #[test]
     fn test_head_gettable() {
