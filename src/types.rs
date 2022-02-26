@@ -390,4 +390,11 @@ pub trait TurnDeterminableGame {
 pub trait SnakeBodyGettableGame: PositionGettableGame + SnakeIDGettableGame {
     /// return a Vec of the positions for a given snake body, in order from head to tail
     fn get_snake_body_vec(&self, snake_id: &Self::SnakeIDType) -> Vec<Self::NativePositionType>;
+
+    /// return an iterator over all the snake body positions. Order is NOT guaranteed to be from head to tail
+    /// implementations are free to do any order that is efficient for them.
+    fn get_snake_body_iter(
+        &self,
+        snake_id: &Self::SnakeIDType,
+    ) -> Box<dyn Iterator<Item = Self::NativePositionType> + '_>;
 }

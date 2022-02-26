@@ -130,6 +130,13 @@ macro_rules! impl_common_board_traits {
             ) -> Vec<Self::NativePositionType> {
                 self.embedded.get_snake_body_vec(snake_id)
             }
+
+            fn get_snake_body_iter<'s>(
+                &'s self,
+                snake_id: &Self::SnakeIDType,
+            ) -> Box<dyn Iterator<Item = Self::NativePositionType> + 's> {
+                self.embedded.get_snake_body_iter(snake_id)
+            }
         }
 
         impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> SizeDeterminableGame
