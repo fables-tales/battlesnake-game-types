@@ -75,6 +75,11 @@ impl Move {
         [Move::Up, Move::Down, Move::Left, Move::Right]
     }
 
+    /// returns an Iterator of all possible moves
+    pub fn all_iter() -> MoveIter {
+        MoveIter(0)
+    }
+
     /// converts this move to a usize index. indices are the same order as the `Move::all()` method
     pub fn as_index(&self) -> usize {
         match self {
@@ -106,6 +111,26 @@ impl Move {
                 | (Move::Left, Move::Right)
                 | (Move::Right, Move::Left)
         )
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+/// Iterator over all moves. Returned by `Move::all_iter()`
+///
+/// The iterator yields elements in the same order as `Move::all()`
+pub struct MoveIter(usize);
+
+impl Iterator for MoveIter {
+    type Item = Move;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.0 < N_MOVES {
+            let m = Move::from_index(self.0);
+            self.0 += 1;
+            Some(m)
+        } else {
+            None
+        }
     }
 }
 
@@ -397,4 +422,15 @@ pub trait SnakeBodyGettableGame: PositionGettableGame + SnakeIDGettableGame {
         &self,
         snake_id: &Self::SnakeIDType,
     ) -> Box<dyn Iterator<Item = Self::NativePositionType> + '_>;
+}
+
+#[cfg(test)]
+mod test {
+
+    use super::*;
+
+    #[test]
+    fn test_move_all_order_matches_iter() {
+        assert_eq!(Move::all().to_vec(), Move::all_iter().collect::<Vec<_>>());
+    }
 }
