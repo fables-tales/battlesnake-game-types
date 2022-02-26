@@ -121,6 +121,14 @@ macro_rules! impl_common_board_traits {
             }
         }
 
+        impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> NeckQueryableGame
+            for $type<T, BOARD_SIZE, MAX_SNAKES>
+        {
+            fn is_neck(&self, sid: &Self::SnakeIDType, pos: &Self::NativePositionType) -> bool {
+                self.embedded.is_neck(sid, pos)
+            }
+        }
+
         impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> SnakeBodyGettableGame
             for $type<T, BOARD_SIZE, MAX_SNAKES>
         {

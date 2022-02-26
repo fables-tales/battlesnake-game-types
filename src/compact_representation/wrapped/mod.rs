@@ -3,8 +3,8 @@ use crate::impl_common_board_traits;
 use crate::types::{
     build_snake_id_map, FoodGettableGame, FoodQueryableGame, HazardQueryableGame,
     HazardSettableGame, HeadGettableGame, HealthGettableGame, LengthGettableGame,
-    PositionGettableGame, RandomReasonableMovesGame, SizeDeterminableGame, SnakeIDGettableGame,
-    SnakeIDMap, SnakeId, VictorDeterminableGame, YouDeterminableGame,
+    NeckQueryableGame, PositionGettableGame, RandomReasonableMovesGame, SizeDeterminableGame,
+    SnakeIDGettableGame, SnakeIDMap, SnakeId, VictorDeterminableGame, YouDeterminableGame,
 };
 
 /// you almost certainly want to use the `convert_from_game` method to
