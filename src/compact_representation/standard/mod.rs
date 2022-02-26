@@ -285,6 +285,21 @@ mod test {
     }
 
     #[test]
+    fn test_food_queryable() {
+        let game_fixture = include_str!("../../../fixtures/late_stage.json");
+        let g: Result<DEGame, _> = serde_json::from_slice(game_fixture.as_bytes());
+        let g = g.expect("the json literal is valid");
+        let snake_id_mapping = build_snake_id_map(&g);
+        let compact: CellBoard4Snakes11x11 = g.as_cell_board(&snake_id_mapping).unwrap();
+
+        assert!(!compact.is_food(&CellIndex(6 * 11 + 4)));
+
+        assert!(compact.is_food(&CellIndex(2 * 11)));
+        assert!(compact.is_food(&CellIndex(9 * 11)));
+        assert!(compact.is_food(&CellIndex(3 * 11 + 4)));
+    }
+
+    #[test]
     fn test_tail_collision() {
         let game_fixture = include_str!("../../../fixtures/start_of_game.json");
         let g: Result<DEGame, _> = serde_json::from_slice(game_fixture.as_bytes());
