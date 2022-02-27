@@ -6,8 +6,7 @@ use crate::compact_representation::CellNum;
 use crate::compact_representation::StandardCellBoard;
 use crate::types::{
     FoodGettableGame, HazardQueryableGame, HazardSettableGame, HeadGettableGame,
-    HealthGettableGame, LengthGettableGame, Move, PositionGettableGame,
-    ShoutGettableGame,
+    HealthGettableGame, LengthGettableGame, Move, PositionGettableGame, ShoutGettableGame,
     SizeDeterminableGame, SnakeBodyGettableGame, SnakeIDGettableGame, SnakeIDMap,
     TurnDeterminableGame, Vector, VictorDeterminableGame, YouDeterminableGame,
 };
@@ -434,15 +433,23 @@ impl TurnDeterminableGame for Game {
 
 impl SnakeBodyGettableGame for Game {
     fn get_snake_body_vec(&self, snake_id: &Self::SnakeIDType) -> Vec<Self::NativePositionType> {
-        self.board
-            .snakes
-            .iter()
-            .find(|s| &s.id == snake_id)
-            .unwrap()
-            .body
-            .clone()
-            .into_iter()
-            .collect()
+        self.get_snake_body_iter(snake_id).collect()
+    }
+
+    fn get_snake_body_iter(
+        &self,
+        snake_id: &Self::SnakeIDType,
+    ) -> Box<dyn Iterator<Item = Self::NativePositionType> + '_> {
+        Box::new(
+            self.board
+                .snakes
+                .iter()
+                .find(|s| &s.id == snake_id)
+                .unwrap()
+                .body
+                .iter()
+                .cloned(),
+        )
     }
 }
 

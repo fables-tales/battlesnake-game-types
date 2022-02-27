@@ -4,7 +4,7 @@ use crate::types::{
     build_snake_id_map, FoodGettableGame, HazardQueryableGame, HazardSettableGame,
     HeadGettableGame, HealthGettableGame, LengthGettableGame, PositionGettableGame,
     RandomReasonableMovesGame, SizeDeterminableGame, SnakeIDGettableGame, SnakeIDMap, SnakeId,
-    VictorDeterminableGame, YouDeterminableGame, Action,
+    VictorDeterminableGame, YouDeterminableGame, Action, FoodQueryableGame, NeckQueryableGame
 };
 /// you almost certainly want to use the `convert_from_game` method to
 /// cast from a json represention to a `CellBoard`
@@ -142,41 +142,44 @@ impl<T: SimulatorInstruments, N: CN, const BOARD_SIZE: usize, const MAX_SNAKES: 
 impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> NeighborDeterminableGame
     for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
-    fn possible_moves(
-        &self,
+    fn possible_moves<'a>(
+        &'a self,
         pos: &Self::NativePositionType,
-    ) -> Vec<(Move, Self::NativePositionType)> {
+    ) -> Box<(dyn std::iter::Iterator<Item = (Move, CellIndex<T>)> + 'a)> {
         let width = self.embedded.get_actual_width();
+        let head_pos = pos.into_position(width);
 
-        Move::all()
-            .iter()
-            .map(|mv| {
-                let head_pos = pos.into_position(width);
-                let new_head = head_pos.add_vec(mv.to_vector());
-                let ci = CellIndex::new(new_head, width);
+        Box::new(
+            Move::all_iter()
+                .map(move |mv| {
+                    let new_head = head_pos.add_vec(mv.to_vector());
+                    let ci = CellIndex::new(new_head, width);
 
-                (*mv, new_head, ci)
-            })
-            .filter(|(_mv, new_head, _)| !self.off_board(*new_head))
-            .map(|(mv, _, ci)| (mv, ci))
-            .collect()
+                    (mv, new_head, ci)
+                })
+                .filter(move |(_mv, new_head, _)| !self.off_board(*new_head))
+                .map(|(mv, _, ci)| (mv, ci)),
+        )
     }
 
-    fn neighbors(&self, pos: &Self::NativePositionType) -> std::vec::Vec<Self::NativePositionType> {
+    fn neighbors<'a>(
+        &'a self,
+        pos: &Self::NativePositionType,
+    ) -> Box<(dyn Iterator<Item = CellIndex<T>> + 'a)> {
         let width = self.embedded.get_actual_width();
+        let head_pos = pos.into_position(width);
 
-        Move::all()
-            .iter()
-            .map(|mv| {
-                let head_pos = pos.into_position(width);
-                let new_head = head_pos.add_vec(mv.to_vector());
-                let ci = CellIndex::new(new_head, width);
+        Box::new(
+            Move::all_iter()
+                .map(move |mv| {
+                    let new_head = head_pos.add_vec(mv.to_vector());
+                    let ci = CellIndex::new(new_head, width);
 
-                (new_head, ci)
-            })
-            .filter(|(new_head, _)| !self.off_board(*new_head))
-            .map(|(_, ci)| ci)
-            .collect()
+                    (new_head, ci)
+                })
+                .filter(move |(new_head, _)| !self.off_board(*new_head))
+                .map(|(_, ci)| ci),
+        )
     }
 }
 
@@ -366,5 +369,82 @@ mod test {
         assert!(c.is_hazard());
         assert!(c.get_snake_id().unwrap() == SnakeId(3));
         assert!(c.get_idx() == CellIndex(17));
+    }
+    
+    #[test]
+    fn test_food_queryable() {
+        let game_fixture = include_str!("../../../fixtures/late_stage.json");
+        let g: Result<DEGame, _> = serde_json::from_slice(game_fixture.as_bytes());
+        let g = g.expect("the json literal is valid");
+        let snake_id_mapping = build_snake_id_map(&g);
+        let compact: CellBoard4Snakes11x11 = g.as_cell_board(&snake_id_mapping).unwrap();
+
+        assert!(!compact.is_food(&CellIndex(6 * 11 + 4)));
+
+        assert!(compact.is_food(&CellIndex(2 * 11)));
+        assert!(compact.is_food(&CellIndex(9 * 11)));
+        assert!(compact.is_food(&CellIndex(3 * 11 + 4)));
+    }
+
+    #[test]
+    fn test_neighbors_and_possible_moves_start_of_game() {
+        let game_fixture = include_str!("../../../fixtures/start_of_game.json");
+        let g: Result<DEGame, _> = serde_json::from_slice(game_fixture.as_bytes());
+        let g = g.expect("the json literal is valid");
+        let snake_id_mapping = build_snake_id_map(&g);
+        let compact: CellBoard4Snakes11x11 = g.as_cell_board(&snake_id_mapping).unwrap();
+
+        let head = compact.get_head_as_native_position(&SnakeId(0));
+        assert_eq!(head, CellIndex(8 * 11 + 5));
+
+        let expected_possible_moves = vec![
+            (Move::Up, CellIndex(9 * 11 + 5)),
+            (Move::Down, CellIndex(7 * 11 + 5)),
+            (Move::Left, CellIndex(8 * 11 + 4)),
+            (Move::Right, CellIndex(8 * 11 + 6)),
+        ];
+
+        assert_eq!(
+            compact.possible_moves(&head).collect::<Vec<_>>(),
+            expected_possible_moves
+        );
+
+        assert_eq!(
+            compact.neighbors(&head).collect::<Vec<_>>(),
+            expected_possible_moves
+                .into_iter()
+                .map(|(_, pos)| pos)
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn test_neighbors_and_possible_moves_cornered() {
+        let game_fixture = include_str!("../../../fixtures/cornered.json");
+        let g: Result<DEGame, _> = serde_json::from_slice(game_fixture.as_bytes());
+        let g = g.expect("the json literal is valid");
+        let snake_id_mapping = build_snake_id_map(&g);
+        let compact: CellBoard4Snakes11x11 = g.as_cell_board(&snake_id_mapping).unwrap();
+
+        let head = compact.get_head_as_native_position(&SnakeId(0));
+        assert_eq!(head, CellIndex(10 * 11));
+
+        let expected_possible_moves = vec![
+            (Move::Down, CellIndex(9 * 11)),
+            (Move::Right, CellIndex(10 * 11 + 1)),
+        ];
+
+        assert_eq!(
+            compact.possible_moves(&head).collect::<Vec<_>>(),
+            expected_possible_moves
+        );
+
+        assert_eq!(
+            compact.neighbors(&head).collect::<Vec<_>>(),
+            expected_possible_moves
+                .into_iter()
+                .map(|(_, pos)| pos)
+                .collect::<Vec<_>>()
+        );
     }
 }

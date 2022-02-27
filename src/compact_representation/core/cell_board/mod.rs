@@ -26,6 +26,7 @@ mod victor_determinable;
 mod food_gettable;
 mod hazard_queryable;
 mod hazard_settable;
+mod neck_queryable;
 mod eval;
 
 pub use eval::EvaluateMode;
