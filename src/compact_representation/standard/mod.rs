@@ -1,10 +1,10 @@
 use crate::compact_representation::core::CellNum as CN;
 use crate::impl_common_board_traits;
 use crate::types::{
-    build_snake_id_map, Action, FoodGettableGame, FoodQueryableGame, HazardQueryableGame,
-    HazardSettableGame, HeadGettableGame, HealthGettableGame, LengthGettableGame,
-    NeckQueryableGame, PositionGettableGame, RandomReasonableMovesGame, SizeDeterminableGame,
-    SnakeIDGettableGame, SnakeIDMap, SnakeId, VictorDeterminableGame, YouDeterminableGame,
+    build_snake_id_map, FoodGettableGame, HazardQueryableGame, HazardSettableGame,
+    HeadGettableGame, HealthGettableGame, LengthGettableGame, PositionGettableGame,
+    RandomReasonableMovesGame, SizeDeterminableGame, SnakeIDGettableGame, SnakeIDMap, SnakeId,
+    VictorDeterminableGame, YouDeterminableGame, Action, FoodQueryableGame, NeckQueryableGame
 };
 /// you almost certainly want to use the `convert_from_game` method to
 /// cast from a json represention to a `CellBoard`
@@ -21,9 +21,9 @@ use crate::{
     wire_representation::Position,
 };
 
-use super::core::CellBoard as CCB;
-use super::core::CellIndex;
 use super::core::{simulate_with_moves, EvaluateMode};
+use super::core::CellIndex;
+use super::core::CellBoard as CCB;
 
 /// A compact board representation that is significantly faster for simulation than
 /// `battlesnake_game_types::wire_representation::Game`.
@@ -65,7 +65,9 @@ pub enum BestCellBoard {
     Silly(Box<CellBoard16Snakes50x50>),
 }
 
-impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> CellBoard<T, BOARD_SIZE, MAX_SNAKES> {
+impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
+    CellBoard<T, BOARD_SIZE, MAX_SNAKES>
+{
     /// Builds a cellboard from a given game, will return an error if the game doesn't match
     /// the provided BOARD_SIZE or MAX_SNAKES. You are encouraged to use `CellBoard4Snakes11x11`
     /// for the common game layout
@@ -75,7 +77,9 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> CellBoard<T, BOARD
         }
 
         let embedded = CCB::convert_from_game(game, snake_ids)?;
-        Ok(CellBoard { embedded })
+        Ok(CellBoard {
+            embedded,
+        })
     }
 
     fn off_board(&self, new_head: Position) -> bool {
@@ -90,13 +94,11 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> RandomReasonableMo
     for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
 {
     fn random_reasonable_move_for_each_snake<'a>(
-        &'a self,
-        rng: &'a mut impl Rng,
+        &'a self, rng: &'a mut impl Rng,
     ) -> Box<dyn std::iter::Iterator<Item = (SnakeId, Move)> + 'a> {
         let width = self.embedded.get_actual_width();
         Box::new(
-            self.embedded
-                .iter_healths()
+            self.embedded.iter_healths()
                 .enumerate()
                 .filter(|(_, health)| **health > 0)
                 .map(move |(idx, _)| {
@@ -107,9 +109,8 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> RandomReasonableMo
                             let new_head = head_pos.add_vec(mv.to_vector());
                             let ci = CellIndex::new(head_pos.add_vec(mv.to_vector()), width);
 
-                            !self.off_board(new_head)
-                                && !self.embedded.cell_is_body(ci)
-                                && !self.embedded.cell_is_snake_head(ci)
+                            !self.off_board(new_head) &&
+                            !self.embedded.cell_is_body(ci) && !self.embedded.cell_is_snake_head(ci)
                         })
                         .choose(rng)
                         .unwrap_or(Move::Up);
@@ -131,18 +132,10 @@ impl<T: SimulatorInstruments, N: CN, const BOARD_SIZE: usize, const MAX_SNAKES: 
     where
         S: Borrow<[Move]>,
     {
-        Box::new(
-            simulate_with_moves(
-                &self.embedded,
-                instruments,
-                snake_ids_and_moves,
-                EvaluateMode::Standard,
-            )
-            .map(|v| {
-                let (action, board) = v;
-                (action, Self { embedded: board })
-            }),
-        )
+        Box::new(simulate_with_moves(&self.embedded, instruments, snake_ids_and_moves, EvaluateMode::Standard).map(|v| {
+            let (action, board) = v;
+            (action, Self { embedded: board})
+        }))
     }
 }
 
@@ -239,8 +232,9 @@ mod test {
 
     use super::*;
     use crate::{
-        compact_representation::core::Cell, game_fixture, types::build_snake_id_map,
-        wire_representation::Game as DEGame,
+        game_fixture,
+        types::{build_snake_id_map},
+        wire_representation::Game as DEGame, compact_representation::core::Cell,
     };
     #[derive(Debug)]
     struct Instruments;
@@ -270,6 +264,7 @@ mod test {
         }
     }
 
+
     #[test]
     fn test_head_gettable() {
         let game_fixture = include_str!("../../../fixtures/late_stage.json");
@@ -285,21 +280,6 @@ mod test {
             compact.get_head_as_native_position(&SnakeId(0)),
             CellIndex(6 * 11 + 4)
         );
-    }
-
-    #[test]
-    fn test_food_queryable() {
-        let game_fixture = include_str!("../../../fixtures/late_stage.json");
-        let g: Result<DEGame, _> = serde_json::from_slice(game_fixture.as_bytes());
-        let g = g.expect("the json literal is valid");
-        let snake_id_mapping = build_snake_id_map(&g);
-        let compact: CellBoard4Snakes11x11 = g.as_cell_board(&snake_id_mapping).unwrap();
-
-        assert!(!compact.is_food(&CellIndex(6 * 11 + 4)));
-
-        assert!(compact.is_food(&CellIndex(2 * 11)));
-        assert!(compact.is_food(&CellIndex(9 * 11)));
-        assert!(compact.is_food(&CellIndex(3 * 11 + 4)));
     }
 
     #[test]
@@ -389,6 +369,21 @@ mod test {
         assert!(c.is_hazard());
         assert!(c.get_snake_id().unwrap() == SnakeId(3));
         assert!(c.get_idx() == CellIndex(17));
+    }
+    
+    #[test]
+    fn test_food_queryable() {
+        let game_fixture = include_str!("../../../fixtures/late_stage.json");
+        let g: Result<DEGame, _> = serde_json::from_slice(game_fixture.as_bytes());
+        let g = g.expect("the json literal is valid");
+        let snake_id_mapping = build_snake_id_map(&g);
+        let compact: CellBoard4Snakes11x11 = g.as_cell_board(&snake_id_mapping).unwrap();
+
+        assert!(!compact.is_food(&CellIndex(6 * 11 + 4)));
+
+        assert!(compact.is_food(&CellIndex(2 * 11)));
+        assert!(compact.is_food(&CellIndex(9 * 11)));
+        assert!(compact.is_food(&CellIndex(3 * 11 + 4)));
     }
 
     #[test]
