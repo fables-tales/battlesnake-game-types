@@ -12,22 +12,21 @@ use crate::wire_representation::Position;
 use super::Cell;
 use super::CellIndex;
 use super::CellNum as CN;
-use super::{DOUBLE_STACK, TRIPLE_STACK};
+use super::{TRIPLE_STACK, DOUBLE_STACK};
 
-mod eval;
+mod snake_id_gettable;
+mod position_gettable;
+mod size_determinable;
+mod head_gettable;
+mod health_gettable;
+mod you_determinable;
+mod length_gettable;
+mod snake_body_gettable;
+mod victor_determinable;
 mod food_gettable;
 mod hazard_queryable;
 mod hazard_settable;
-mod head_gettable;
-mod health_gettable;
-mod length_gettable;
-mod neck_queryable;
-mod position_gettable;
-mod size_determinable;
-mod snake_body_gettable;
-mod snake_id_gettable;
-mod victor_determinable;
-mod you_determinable;
+mod eval;
 
 pub use eval::EvaluateMode;
 
@@ -54,6 +53,7 @@ fn get_snake_id(
         Some(*snake_ids.get(&snake.id).unwrap())
     }
 }
+
 
 impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> CellBoard<T, BOARD_SIZE, MAX_SNAKES> {
     pub fn iter_healths(&self) -> Iter<'_, u8> {
@@ -160,15 +160,13 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> CellBoard<T, BOARD
             if new_head_position.x < 0 {
                 debug_assert!(new_head_position.x == -1);
                 debug_assert!(
-                    new_head_position.y >= 0
-                        && new_head_position.y < self.get_actual_height() as i32
+                    new_head_position.y >= 0 && new_head_position.y < self.get_actual_height() as i32
                 );
                 new_head_position.x = self.actual_width as i32 - 1;
             } else if new_head_position.x >= self.actual_width as i32 {
                 debug_assert!(new_head_position.x == self.actual_width as i32);
                 debug_assert!(
-                    new_head_position.y >= 0
-                        && new_head_position.y < self.get_actual_height() as i32
+                    new_head_position.y >= 0 && new_head_position.y < self.get_actual_height() as i32
                 );
                 new_head_position.x = 0;
             } else if new_head_position.y < 0 {
@@ -212,9 +210,7 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> CellBoard<T, BOARD
 
         while let Some(i) = current_index {
             current_index = self.get_cell(i).get_next_index();
-            debug_assert!(
-                self.get_cell(i).get_snake_id().unwrap_or(sid).as_usize() == sid.as_usize()
-            );
+            debug_assert!(self.get_cell(i).get_snake_id().unwrap_or(sid).as_usize() == sid.as_usize());
             self.cell_remove(i);
         }
 
@@ -412,7 +408,7 @@ mod tests {
     fn test_assert_consistent() {
         let inconsistent_fixture = include_str!("../../../../fixtures/inconsistent_fixture.json");
         let hm = serde_json::from_str(inconsistent_fixture).unwrap();
-        let game: CellBoard<u8, { 11 * 11 }, 4> = CellBoard::from_packed_hash(&hm);
+        let game: CellBoard<u8, {11*11}, 4> = CellBoard::from_packed_hash(&hm);
         assert!(!game.assert_consistency());
     }
 }
