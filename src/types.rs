@@ -430,6 +430,8 @@ pub trait SnakeBodyGettableGame: PositionGettableGame + SnakeIDGettableGame {
 
     /// return an iterator over all the snake body positions. Order is NOT guaranteed to be from head to tail
     /// implementations are free to do any order that is efficient for them.
+    /// Positions that would be duplicate, due to a snake being double or triple stacked, may be
+    /// omitted
     fn get_snake_body_iter(
         &self,
         snake_id: &Self::SnakeIDType,
