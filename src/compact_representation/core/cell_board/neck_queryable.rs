@@ -38,8 +38,9 @@ mod tests {
             CellBoard4Snakes11x11::convert_from_game(g, &snake_id_mapping).unwrap();
 
         assert!(compact.is_neck(&SnakeId(0), &CellIndex(9 * 11 + 5)));
-        assert!(!compact.is_neck(&SnakeId(0), &CellIndex(8 * 11 + 5)));
-        assert!(!compact.is_neck(&SnakeId(0), &CellIndex(9 * 11 + 6)));
+        for (idx, _) in compact.cells.iter().enumerate().filter(|(idx, _)| *idx != 9 * 11 + 5) {
+            assert!(!compact.is_neck(&SnakeId(0), &CellIndex(idx as u8)));
+        }
 
         assert!(compact.is_neck(&SnakeId(1), &CellIndex(5 * 11 + 1)));
     }
