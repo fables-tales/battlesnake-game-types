@@ -193,5 +193,17 @@ macro_rules! impl_common_board_traits {
                 self.embedded.native_from_position(pos)
             }
         }
+
+        impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> std::convert::TryFrom<Game>
+            for $type<T, BOARD_SIZE, MAX_SNAKES>
+        {
+            type Error = Box<dyn Error>;
+
+            fn try_from(game: Game) -> Result<Self, Box<dyn Error>> {
+                let id_map = crate::types::build_snake_id_map(&game);
+
+                $type::convert_from_game(game, &id_map)
+            }
+        }
     };
 }
