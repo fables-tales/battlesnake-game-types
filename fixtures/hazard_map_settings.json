@@ -1,0 +1,166 @@
+{
+    "game": {
+        "id": "f0a48b4f-f677-4779-a5f6-a84c6317fcef",
+        "ruleset": {
+            "name": "standard",
+            "version": "v1.0.28",
+            "settings": {
+                "foodSpawnChance": 15,
+                "minimumFood": 1,
+                "hazardDamagePerTurn": 14,
+                "hazardMap": "hz_spiral",
+                "hazardMapAuthor": "altersaddle",
+                "royale": {
+                    "shrinkEveryNTurns": 0
+                },
+                "squad": {
+                    "allowBodyCollisions": false,
+                    "sharedElimination": false,
+                    "sharedHealth": false,
+                    "sharedLength": false
+                }
+            }
+        },
+        "timeout": 500,
+        "source": "custom"
+    },
+    "turn": 11,
+    "board": {
+        "height": 11,
+        "width": 11,
+        "snakes": [
+            {
+                "id": "gs_hTFpCXxSDPKPGCf9bBmPdVYT",
+                "name": "Local",
+                "latency": "406",
+                "health": 77,
+                "body": [
+                    {
+                        "x": 5,
+                        "y": 6
+                    },
+                    {
+                        "x": 4,
+                        "y": 6
+                    },
+                    {
+                        "x": 4,
+                        "y": 5
+                    },
+                    {
+                        "x": 4,
+                        "y": 4
+                    }
+                ],
+                "head": {
+                    "x": 5,
+                    "y": 6
+                },
+                "length": 4,
+                "shout": "",
+                "squad": "",
+                "customizations": {
+                    "color": "#da8a1a",
+                    "head": "trans-rights-scarf",
+                    "tail": "flame"
+                }
+            },
+            {
+                "id": "gs_PbRCvpGRwcHb79dqQTF7tw4W",
+                "name": "Local",
+                "latency": "405",
+                "health": 91,
+                "body": [
+                    {
+                        "x": 5,
+                        "y": 4
+                    },
+                    {
+                        "x": 6,
+                        "y": 4
+                    },
+                    {
+                        "x": 6,
+                        "y": 5
+                    },
+                    {
+                        "x": 6,
+                        "y": 6
+                    }
+                ],
+                "head": {
+                    "x": 5,
+                    "y": 4
+                },
+                "length": 4,
+                "shout": "",
+                "squad": "",
+                "customizations": {
+                    "color": "#da8a1a",
+                    "head": "trans-rights-scarf",
+                    "tail": "flame"
+                }
+            }
+        ],
+        "food": [
+            {
+                "x": 5,
+                "y": 5
+            },
+            {
+                "x": 8,
+                "y": 9
+            }
+        ],
+        "hazards": [
+            {
+                "x": 5,
+                "y": 5
+            },
+            {
+                "x": 5,
+                "y": 6
+            },
+            {
+                "x": 6,
+                "y": 6
+            }
+        ]
+    },
+    "you": {
+        "id": "gs_hTFpCXxSDPKPGCf9bBmPdVYT",
+        "name": "Local",
+        "latency": "406",
+        "health": 77,
+        "body": [
+            {
+                "x": 5,
+                "y": 6
+            },
+            {
+                "x": 4,
+                "y": 6
+            },
+            {
+                "x": 4,
+                "y": 5
+            },
+            {
+                "x": 4,
+                "y": 4
+            }
+        ],
+        "head": {
+            "x": 5,
+            "y": 6
+        },
+        "length": 4,
+        "shout": "",
+        "squad": "",
+        "customizations": {
+            "color": "#da8a1a",
+            "head": "trans-rights-scarf",
+            "tail": "flame"
+        }
+    }
+}

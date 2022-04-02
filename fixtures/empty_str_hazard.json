@@ -1,0 +1,129 @@
+{
+    "game": {
+        "id": "9c5dcf09-6583-4217-a438-c09d69fdcb32",
+        "ruleset": {
+            "name": "standard",
+            "version": "v1.0.28",
+            "settings": {
+                "foodSpawnChance": 15,
+                "minimumFood": 1,
+                "hazardDamagePerTurn": 14,
+                "hazardMap": "",
+                "hazardMapAuthor": "",
+                "royale": {
+                    "shrinkEveryNTurns": 0
+                },
+                "squad": {
+                    "allowBodyCollisions": false,
+                    "sharedElimination": false,
+                    "sharedHealth": false,
+                    "sharedLength": false
+                }
+            }
+        },
+        "timeout": 500,
+        "source": "custom"
+    },
+    "turn": 12,
+    "board": {
+        "height": 11,
+        "width": 11,
+        "snakes": [
+            {
+                "id": "gs_34Hp9mHjMfPQ6MvGFBSFMRTQ",
+                "name": "Local",
+                "latency": "406",
+                "health": 100,
+                "body": [
+                    {
+                        "x": 7,
+                        "y": 7
+                    },
+                    {
+                        "x": 6,
+                        "y": 7
+                    },
+                    {
+                        "x": 5,
+                        "y": 7
+                    },
+                    {
+                        "x": 5,
+                        "y": 6
+                    },
+                    {
+                        "x": 5,
+                        "y": 6
+                    }
+                ],
+                "head": {
+                    "x": 7,
+                    "y": 7
+                },
+                "length": 5,
+                "shout": "",
+                "squad": "",
+                "customizations": {
+                    "color": "#da8a1a",
+                    "head": "trans-rights-scarf",
+                    "tail": "flame"
+                }
+            }
+        ],
+        "food": [
+            {
+                "x": 2,
+                "y": 10
+            },
+            {
+                "x": 0,
+                "y": 0
+            },
+            {
+                "x": 9,
+                "y": 2
+            }
+        ],
+        "hazards": []
+    },
+    "you": {
+        "id": "gs_34Hp9mHjMfPQ6MvGFBSFMRTQ",
+        "name": "Local",
+        "latency": "406",
+        "health": 100,
+        "body": [
+            {
+                "x": 7,
+                "y": 7
+            },
+            {
+                "x": 6,
+                "y": 7
+            },
+            {
+                "x": 5,
+                "y": 7
+            },
+            {
+                "x": 5,
+                "y": 6
+            },
+            {
+                "x": 5,
+                "y": 6
+            }
+        ],
+        "head": {
+            "x": 7,
+            "y": 7
+        },
+        "length": 5,
+        "shout": "",
+        "squad": "",
+        "customizations": {
+            "color": "#da8a1a",
+            "head": "trans-rights-scarf",
+            "tail": "flame"
+        }
+    }
+}
