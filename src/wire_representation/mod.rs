@@ -6,6 +6,7 @@ use crate::compact_representation::dimensions::Dimensions;
 use crate::compact_representation::CellNum;
 use crate::compact_representation::StandardCellBoard;
 use crate::types::NeighborDeterminableGame;
+use crate::types::RandomReasonableMovesGame;
 use crate::types::{
     FoodGettableGame, HazardQueryableGame, HazardSettableGame, HeadGettableGame,
     HealthGettableGame, LengthGettableGame, Move, PositionGettableGame, ShoutGettableGame,
@@ -13,7 +14,6 @@ use crate::types::{
     TurnDeterminableGame, Vector, VictorDeterminableGame, YouDeterminableGame,
 };
 use rand::prelude::IteratorRandom;
-use rand::thread_rng;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::convert::TryInto;
@@ -214,6 +214,7 @@ impl Game {
             panic!("Cannot convert a non-wrapped game to a wrapped game")
         }
     }
+
     pub fn off_board(&self, position: Position) -> bool {
         position.x < 0
             || position.x >= self.board.width as i32
@@ -229,34 +230,41 @@ impl Game {
             .collect::<Vec<_>>()
     }
 
-    pub fn random_reasonable_move_for_each_snake(&self) -> Vec<(String, Move)> {
-        self.board
-            .snakes
-            .iter()
-            .map(|s| {
-                let all_moves = Move::all();
-                let moves = all_moves.iter().filter(|mv| {
-                    let new_head = s.head.add_vec(mv.to_vector());
-                    let unreasonable = self.off_board(new_head)
-                        || self.board.snakes.iter().any(|s| s.body.contains(&new_head));
-                    !unreasonable
-                });
-                (
-                    s.id.clone(),
-                    moves.choose(&mut thread_rng()).copied().unwrap_or_else(|| {
-                        Move::all()
-                            .iter()
-                            .filter(|mv| {
-                                let new_head = s.head.add_vec(mv.to_vector());
-                                new_head != s.body[1]
-                            })
-                            .choose(&mut thread_rng())
-                            .copied()
-                            .unwrap()
-                    }),
-                )
-            })
-            .collect()
+    /// Returns a boolean indicating whether this game is using the wrapped ruleset
+    pub fn is_wrapped(&self) -> bool {
+        self.game.ruleset.name == "wrapped"
+    }
+}
+
+impl RandomReasonableMovesGame for Game {
+    // TODO: Get wrapped support added
+    fn random_reasonable_move_for_each_snake<'a>(
+        &'a self,
+        rng: &'a mut impl rand::Rng,
+    ) -> Box<dyn Iterator<Item = (Self::SnakeIDType, Move)> + 'a> {
+        Box::new(self.board.snakes.iter().map(move |s| {
+            let all_moves = Move::all();
+            let moves = all_moves.iter().filter(|mv| {
+                let new_head = s.head.add_vec(mv.to_vector());
+                let unreasonable = self.off_board(new_head)
+                    || self.board.snakes.iter().any(|s| s.body.contains(&new_head));
+                !unreasonable
+            });
+            (
+                s.id.clone(),
+                moves.choose(rng).copied().unwrap_or_else(|| {
+                    Move::all()
+                        .iter()
+                        .filter(|mv| {
+                            let new_head = s.head.add_vec(mv.to_vector());
+                            new_head != s.body[1]
+                        })
+                        .choose(rng)
+                        .copied()
+                        .unwrap()
+                }),
+            )
+        }))
     }
 
     /// Returns a boolean indicating whether this game is using the wrapped ruleset
@@ -526,9 +534,24 @@ impl NeighborDeterminableGame for Game {
         Box::new(Move::all_iter().filter_map(move |m| {
             let v = m.to_vector();
 
-            let new_pos = clone.add_vec(v);
+            let mut new_pos = clone.add_vec(v);
+
+            if self.is_wrapped() {
+                let wrapped_x = new_pos.x.rem_euclid(self.get_width() as i32);
+                let wrapped_y = new_pos.y.rem_euclid(self.get_height() as i32);
+
+                new_pos = Position {
+                    x: wrapped_x,
+                    y: wrapped_y,
+                };
+            }
 
             if self.off_board(new_pos) {
+                debug_assert!(
+                    !self.is_wrapped(),
+                    "Wrapped board should not have off-board positions"
+                );
+
                 return None;
             }
 
@@ -667,6 +690,44 @@ mod tests {
 
         let expected = vec![
             (Move::Up, Position { x: 0, y: 1 }),
+            (Move::Right, Position { x: 1, y: 0 }),
+        ];
+        assert_eq!(possible_moves, expected);
+    }
+
+    #[test]
+    fn test_edge_of_wrapped_board_neighbors() {
+        let game_fixture = include_str!("../../fixtures/wrapped_fixture.json");
+        let g: Result<Game, _> = serde_json::from_slice(game_fixture.as_bytes());
+        let g = g.expect("the json literal is valid");
+
+        let pos = Position { x: 0, y: 0 };
+
+        let neighbors = g.neighbors(&pos).collect_vec();
+
+        let expected = vec![
+            Position { x: 0, y: 1 },
+            Position { x: 0, y: 10 },
+            Position { x: 10, y: 0 },
+            Position { x: 1, y: 0 },
+        ];
+        assert_eq!(neighbors, expected);
+    }
+
+    #[test]
+    fn test_edge_of_board_wrapped_possible_moves() {
+        let game_fixture = include_str!("../../fixtures/wrapped_fixture.json");
+        let g: Result<Game, _> = serde_json::from_slice(game_fixture.as_bytes());
+        let g = g.expect("the json literal is valid");
+
+        let pos = Position { x: 0, y: 0 };
+
+        let possible_moves = g.possible_moves(&pos).collect_vec();
+
+        let expected = vec![
+            (Move::Up, Position { x: 0, y: 1 }),
+            (Move::Down, Position { x: 0, y: 10 }),
+            (Move::Left, Position { x: 10, y: 0 }),
             (Move::Right, Position { x: 1, y: 0 }),
         ];
         assert_eq!(possible_moves, expected);
