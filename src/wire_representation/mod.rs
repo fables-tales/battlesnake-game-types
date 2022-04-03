@@ -5,6 +5,7 @@ use crate::compact_representation;
 use crate::compact_representation::dimensions::Dimensions;
 use crate::compact_representation::CellNum;
 use crate::compact_representation::StandardCellBoard;
+use crate::types::NeighborDeterminableGame;
 use crate::types::{
     FoodGettableGame, HazardQueryableGame, HazardSettableGame, HeadGettableGame,
     HealthGettableGame, LengthGettableGame, Move, PositionGettableGame, ShoutGettableGame,
@@ -509,8 +510,36 @@ impl HazardSettableGame for Game {
     }
 }
 
+impl NeighborDeterminableGame for Game {
+    fn neighbors<'a>(
+        &'a self,
+        pos: &Self::NativePositionType,
+    ) -> Box<dyn Iterator<Item = Self::NativePositionType> + 'a> {
+        let clone = *pos;
+        Box::new(Move::all_iter().map(move |m| {
+            let v = m.to_vector();
+
+            clone.add_vec(v)
+        }))
+    }
+
+    fn possible_moves<'a>(
+        &'a self,
+        pos: &Self::NativePositionType,
+    ) -> Box<dyn Iterator<Item = (Move, Self::NativePositionType)> + 'a> {
+        let clone = *pos;
+        Box::new(Move::all_iter().map(move |m| {
+            let v = m.to_vector();
+
+            (m, clone.add_vec(v))
+        }))
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use itertools::Itertools;
+
     use super::*;
 
     fn fixture() -> Game {
@@ -579,5 +608,48 @@ mod tests {
             ],
             g.snake_ids()
         );
+    }
+
+    #[test]
+    fn test_center_of_board_neighbors() {
+        let g = fixture();
+
+        let pos = Position { x: 5, y: 5 };
+
+        let neighbors = g.neighbors(&pos).collect_vec();
+
+        assert_eq!(neighbors.len(), 4);
+
+        let expected = vec![
+            Position { x: 4, y: 5 },
+            Position { x: 6, y: 5 },
+            Position { x: 5, y: 4 },
+            Position { x: 5, y: 6 },
+        ];
+
+        for e in expected {
+            assert!(neighbors.contains(&e));
+        }
+    }
+
+    #[test]
+    fn test_center_of_board_possible_moves() {
+        let g = fixture();
+
+        let pos = Position { x: 5, y: 5 };
+
+        let possible_moves = g.possible_moves(&pos).collect_vec();
+
+        assert_eq!(possible_moves.len(), 4);
+
+        let expected = vec![
+            (Move::Left, Position { x: 4, y: 5 }),
+            (Move::Right, Position { x: 6, y: 5 }),
+            (Move::Down, Position { x: 5, y: 4 }),
+            (Move::Up, Position { x: 5, y: 6 }),
+        ];
+        for e in expected {
+            assert!(possible_moves.contains(&e));
+        }
     }
 }
