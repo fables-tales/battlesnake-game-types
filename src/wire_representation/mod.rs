@@ -515,12 +515,7 @@ impl NeighborDeterminableGame for Game {
         &'a self,
         pos: &Self::NativePositionType,
     ) -> Box<dyn Iterator<Item = Self::NativePositionType> + 'a> {
-        let clone = *pos;
-        Box::new(Move::all_iter().map(move |m| {
-            let v = m.to_vector();
-
-            clone.add_vec(v)
-        }))
+        Box::new(self.possible_moves(pos).map(|(_m, pos)| pos))
     }
 
     fn possible_moves<'a>(
