@@ -523,10 +523,16 @@ impl NeighborDeterminableGame for Game {
         pos: &Self::NativePositionType,
     ) -> Box<dyn Iterator<Item = (Move, Self::NativePositionType)> + 'a> {
         let clone = *pos;
-        Box::new(Move::all_iter().map(move |m| {
+        Box::new(Move::all_iter().filter_map(move |m| {
             let v = m.to_vector();
 
-            (m, clone.add_vec(v))
+            let new_pos = clone.add_vec(v);
+
+            if self.off_board(new_pos) {
+                return None;
+            }
+
+            Some((m, new_pos))
         }))
     }
 }
@@ -613,18 +619,13 @@ mod tests {
 
         let neighbors = g.neighbors(&pos).collect_vec();
 
-        assert_eq!(neighbors.len(), 4);
-
         let expected = vec![
+            Position { x: 5, y: 6 },
+            Position { x: 5, y: 4 },
             Position { x: 4, y: 5 },
             Position { x: 6, y: 5 },
-            Position { x: 5, y: 4 },
-            Position { x: 5, y: 6 },
         ];
-
-        for e in expected {
-            assert!(neighbors.contains(&e));
-        }
+        assert_eq!(neighbors, expected);
     }
 
     #[test]
@@ -635,16 +636,39 @@ mod tests {
 
         let possible_moves = g.possible_moves(&pos).collect_vec();
 
-        assert_eq!(possible_moves.len(), 4);
-
         let expected = vec![
+            (Move::Up, Position { x: 5, y: 6 }),
+            (Move::Down, Position { x: 5, y: 4 }),
             (Move::Left, Position { x: 4, y: 5 }),
             (Move::Right, Position { x: 6, y: 5 }),
-            (Move::Down, Position { x: 5, y: 4 }),
-            (Move::Up, Position { x: 5, y: 6 }),
         ];
-        for e in expected {
-            assert!(possible_moves.contains(&e));
-        }
+        assert_eq!(possible_moves, expected);
+    }
+
+    #[test]
+    fn test_edge_of_non_wrapped_board_neighbors() {
+        let g = fixture();
+
+        let pos = Position { x: 0, y: 0 };
+
+        let neighbors = g.neighbors(&pos).collect_vec();
+
+        let expected = vec![Position { x: 0, y: 1 }, Position { x: 1, y: 0 }];
+        assert_eq!(neighbors, expected);
+    }
+
+    #[test]
+    fn test_edge_of_board_non_wrapped_possible_moves() {
+        let g = fixture();
+
+        let pos = Position { x: 0, y: 0 };
+
+        let possible_moves = g.possible_moves(&pos).collect_vec();
+
+        let expected = vec![
+            (Move::Up, Position { x: 0, y: 1 }),
+            (Move::Right, Position { x: 1, y: 0 }),
+        ];
+        assert_eq!(possible_moves, expected);
     }
 }
