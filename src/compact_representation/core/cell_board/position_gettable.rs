@@ -22,4 +22,8 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> PositionGetta
     fn native_from_position(&self, pos: Position) -> Self::NativePositionType {
         Self::NativePositionType::new(pos, self.actual_width)
     }
+
+    fn off_board(&self, pos: Position) -> bool {
+        pos.x < 0 || pos.x >= self.get_actual_width() as i32 || pos.y < 0 || pos.y >= self.get_actual_height() as i32
+    }
 }

@@ -345,6 +345,10 @@ impl PositionGettableGame for Game {
     fn native_from_position(&self, pos: Position) -> Self::NativePositionType {
         pos
     }
+
+    fn off_board(&self, pos: Position) -> bool {
+        self.off_board(pos)
+    }
 }
 
 impl FoodGettableGame for Game {

@@ -323,6 +323,9 @@ pub trait PositionGettableGame {
 
     /// Convert a position to the native type
     fn native_from_position(&self, pos: Position) -> Self::NativePositionType;
+
+    /// checks if a given position is not on this board
+    fn off_board(&self, pos: Position) -> bool;
 }
 
 /// A game for which the head of the current snake can be got.
