@@ -1,9 +1,12 @@
-use crate::{compact_representation::CellNum, types::HealthGettableGame};
+use crate::{
+    compact_representation::{core::dimensions::Dimensions, CellNum},
+    types::HealthGettableGame,
+};
 
 use super::CellBoard;
 
-impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> HealthGettableGame
-    for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
+impl<T: CellNum, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize> HealthGettableGame
+    for CellBoard<T, D, BOARD_SIZE, MAX_SNAKES>
 {
     type HealthType = u8;
     const ZERO: Self::HealthType = 0;

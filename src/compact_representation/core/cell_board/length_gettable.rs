@@ -1,11 +1,18 @@
 use std::fmt::Display;
 
-use crate::{compact_representation::{CellNum, core::CellIndex}, types::LengthGettableGame, wire_representation::Position};
+use crate::{
+    compact_representation::{
+        core::{dimensions::Dimensions, CellIndex},
+        CellNum,
+    },
+    types::LengthGettableGame,
+    wire_representation::Position,
+};
 
 use super::CellBoard;
 
-impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> LengthGettableGame
-    for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
+impl<T: CellNum, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize> LengthGettableGame
+    for CellBoard<T, D, BOARD_SIZE, MAX_SNAKES>
 {
     type LengthType = u16;
 
@@ -17,11 +24,11 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> LengthGettabl
         self.get_length(*snake_id) as i64
     }
 }
-impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> Display
-    for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
+impl<T: CellNum, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize> Display
+    for CellBoard<T, D, BOARD_SIZE, MAX_SNAKES>
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let width = self.actual_width;
+        let width = self.get_actual_width();
         let height = self.get_actual_height();
         writeln!(f)?;
         for y in 0..height {

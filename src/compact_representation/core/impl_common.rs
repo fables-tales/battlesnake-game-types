@@ -2,8 +2,8 @@
 #[macro_export]
 macro_rules! impl_common_board_traits {
     ($type:tt) => {
-        impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> LengthGettableGame
-            for $type<T, BOARD_SIZE, MAX_SNAKES>
+        impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
+            LengthGettableGame for $type<T, D, BOARD_SIZE, MAX_SNAKES>
         {
             type LengthType = u16;
 
@@ -16,8 +16,8 @@ macro_rules! impl_common_board_traits {
             }
         }
 
-        impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> HealthGettableGame
-            for $type<T, BOARD_SIZE, MAX_SNAKES>
+        impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
+            HealthGettableGame for $type<T, D, BOARD_SIZE, MAX_SNAKES>
         {
             type HealthType = u8;
             const ZERO: Self::HealthType = 0;
@@ -31,8 +31,8 @@ macro_rules! impl_common_board_traits {
             }
         }
 
-        impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> VictorDeterminableGame
-            for $type<T, BOARD_SIZE, MAX_SNAKES>
+        impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
+            VictorDeterminableGame for $type<T, D, BOARD_SIZE, MAX_SNAKES>
         {
             fn is_over(&self) -> bool {
                 self.embedded.is_over()
@@ -47,8 +47,8 @@ macro_rules! impl_common_board_traits {
             }
         }
 
-        impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> YouDeterminableGame
-            for $type<T, BOARD_SIZE, MAX_SNAKES>
+        impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
+            YouDeterminableGame for $type<T, D, BOARD_SIZE, MAX_SNAKES>
         {
             fn is_you(&self, snake_id: &Self::SnakeIDType) -> bool {
                 self.embedded.is_you(snake_id)
@@ -59,8 +59,8 @@ macro_rules! impl_common_board_traits {
             }
         }
 
-        impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> FoodGettableGame
-            for $type<T, BOARD_SIZE, MAX_SNAKES>
+        impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
+            FoodGettableGame for $type<T, D, BOARD_SIZE, MAX_SNAKES>
         {
             fn get_all_food_as_positions(&self) -> Vec<crate::wire_representation::Position> {
                 self.embedded.get_all_food_as_positions()
@@ -71,8 +71,8 @@ macro_rules! impl_common_board_traits {
             }
         }
 
-        impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> HeadGettableGame
-            for $type<T, BOARD_SIZE, MAX_SNAKES>
+        impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
+            HeadGettableGame for $type<T, D, BOARD_SIZE, MAX_SNAKES>
         {
             fn get_head_as_position(
                 &self,
@@ -89,8 +89,8 @@ macro_rules! impl_common_board_traits {
             }
         }
 
-        impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> HazardSettableGame
-            for $type<T, BOARD_SIZE, MAX_SNAKES>
+        impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
+            HazardSettableGame for $type<T, D, BOARD_SIZE, MAX_SNAKES>
         {
             fn set_hazard(&mut self, pos: Self::NativePositionType) {
                 self.embedded.set_hazard(pos)
@@ -101,8 +101,8 @@ macro_rules! impl_common_board_traits {
             }
         }
 
-        impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> HazardQueryableGame
-            for $type<T, BOARD_SIZE, MAX_SNAKES>
+        impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
+            HazardQueryableGame for $type<T, D, BOARD_SIZE, MAX_SNAKES>
         {
             fn is_hazard(&self, pos: &Self::NativePositionType) -> bool {
                 self.embedded.is_hazard(pos)
@@ -113,24 +113,24 @@ macro_rules! impl_common_board_traits {
             }
         }
 
-        impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> FoodQueryableGame
-            for $type<T, BOARD_SIZE, MAX_SNAKES>
+        impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
+            FoodQueryableGame for $type<T, D, BOARD_SIZE, MAX_SNAKES>
         {
             fn is_food(&self, pos: &Self::NativePositionType) -> bool {
                 self.embedded.cell_is_food(*pos)
             }
         }
 
-        impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> NeckQueryableGame
-            for $type<T, BOARD_SIZE, MAX_SNAKES>
+        impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
+            NeckQueryableGame for $type<T, D, BOARD_SIZE, MAX_SNAKES>
         {
             fn is_neck(&self, sid: &Self::SnakeIDType, pos: &Self::NativePositionType) -> bool {
                 self.embedded.is_neck(sid, pos)
             }
         }
 
-        impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> SnakeBodyGettableGame
-            for $type<T, BOARD_SIZE, MAX_SNAKES>
+        impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
+            SnakeBodyGettableGame for $type<T, D, BOARD_SIZE, MAX_SNAKES>
         {
             fn get_snake_body_vec(
                 &self,
@@ -147,8 +147,8 @@ macro_rules! impl_common_board_traits {
             }
         }
 
-        impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> SizeDeterminableGame
-            for $type<T, BOARD_SIZE, MAX_SNAKES>
+        impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
+            SizeDeterminableGame for $type<T, D, BOARD_SIZE, MAX_SNAKES>
         {
             fn get_width(&self) -> u32 {
                 self.embedded.get_width()
@@ -159,15 +159,15 @@ macro_rules! impl_common_board_traits {
             }
         }
 
-        impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> Display
-            for $type<T, BOARD_SIZE, MAX_SNAKES>
+        impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize> Display
+            for $type<T, D, BOARD_SIZE, MAX_SNAKES>
         {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 self.embedded.fmt(f)
             }
         }
-        impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> SnakeIDGettableGame
-            for $type<T, BOARD_SIZE, MAX_SNAKES>
+        impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
+            SnakeIDGettableGame for $type<T, D, BOARD_SIZE, MAX_SNAKES>
         {
             type SnakeIDType = SnakeId;
 
@@ -176,8 +176,8 @@ macro_rules! impl_common_board_traits {
             }
         }
 
-        impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> PositionGettableGame
-            for $type<T, BOARD_SIZE, MAX_SNAKES>
+        impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
+            PositionGettableGame for $type<T, D, BOARD_SIZE, MAX_SNAKES>
         {
             type NativePositionType = CellIndex<T>;
 

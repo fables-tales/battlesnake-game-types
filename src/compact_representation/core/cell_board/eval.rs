@@ -2,9 +2,12 @@ use std::borrow::Borrow;
 
 use itertools::Itertools;
 
-use crate::{types::{SnakeId, N_MOVES, Move, self, HeadGettableGame}, compact_representation::CellNum};
+use crate::{
+    compact_representation::{core::dimensions::Dimensions, CellNum},
+    types::{self, HeadGettableGame, Move, SnakeId, N_MOVES},
+};
 
-use super::{CellIndex, CellBoard};
+use super::{CellBoard, CellIndex};
 
 /// Which mode to evaluate in
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -61,8 +64,8 @@ impl<T: CellNum> SinglePlayerMoveResult<T> {
     }
 }
 
-impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
-    CellBoard<T, BOARD_SIZE, MAX_SNAKES>
+impl<T: CellNum, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
+    CellBoard<T, D, BOARD_SIZE, MAX_SNAKES>
 {
     pub fn generate_state<'a, S: 'a>(
         &self,
@@ -95,11 +98,13 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
                     old_head.into_position(Self::width()).add_vec(m.to_vector());
                 let new_head = match mode {
                     EvaluateMode::Wrapped => self.as_wrapped_cell_index(new_head_position),
-                    EvaluateMode::Standard => if self.off_board(new_head_position) {
-                        continue;
-                    } else { 
-                        CellIndex::<T>::new(new_head_position, Self::width()) 
-                    },
+                    EvaluateMode::Standard => {
+                        if self.off_board(new_head_position) {
+                            continue;
+                        } else {
+                            CellIndex::<T>::new(new_head_position, Self::width())
+                        }
+                    }
                 };
 
                 // TWe calculate the 'neck' so that we can avoid the 'instant death'

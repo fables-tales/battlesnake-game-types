@@ -2,18 +2,26 @@ use std::{borrow::Borrow, time::Instant};
 
 use itertools::Itertools;
 
-use crate::types::{SimulatorInstruments, SnakeId, Action, Move, N_MOVES};
+use crate::types::{Action, Move, SimulatorInstruments, SnakeId, N_MOVES};
 
-use super::{CellBoard, CellNum, cell_board::EvaluateMode};
+use super::{cell_board::EvaluateMode, dimensions::Dimensions, CellBoard, CellNum};
 
-pub fn simulate_with_moves<'a, S, I: SimulatorInstruments, T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>(
-    board: &'a CellBoard<T, BOARD_SIZE, MAX_SNAKES>,
+pub fn simulate_with_moves<
+    'a,
+    S,
+    I: SimulatorInstruments,
+    T: CellNum,
+    D: Dimensions,
+    const BOARD_SIZE: usize,
+    const MAX_SNAKES: usize,
+>(
+    board: &'a CellBoard<T, D, BOARD_SIZE, MAX_SNAKES>,
     instruments: &I,
     snake_ids_and_moves: impl IntoIterator<Item = (SnakeId, S)>,
     evaluate_mode: EvaluateMode,
-) -> Box<dyn Iterator<Item = (Action<MAX_SNAKES>, CellBoard<T, BOARD_SIZE, MAX_SNAKES>)> + 'a>
-    where
-        S: Borrow<[Move]>,
+) -> Box<dyn Iterator<Item = (Action<MAX_SNAKES>, CellBoard<T, D, BOARD_SIZE, MAX_SNAKES>)> + 'a>
+where
+    S: Borrow<[Move]>,
 {
     let start = Instant::now();
     let snake_ids_and_moves = snake_ids_and_moves.into_iter().collect_vec();

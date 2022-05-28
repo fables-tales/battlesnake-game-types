@@ -2,6 +2,7 @@
 //! types to match the battlesnake wire representation
 
 use crate::compact_representation;
+use crate::compact_representation::dimensions::Dimensions;
 use crate::compact_representation::CellNum;
 use crate::compact_representation::StandardCellBoard;
 use crate::types::{
@@ -182,23 +183,31 @@ impl Game {
         }
     }
 
-    pub fn as_cell_board<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>(
-        &self,
-        snake_ids: &SnakeIDMap,
-    ) -> Result<StandardCellBoard<T, BOARD_SIZE, MAX_SNAKES>, Box<dyn Error>> {
-        StandardCellBoard::convert_from_game(self.clone(), snake_ids)
-    }
-
-    pub fn as_wrapped_cell_board<
-        T: compact_representation::CellNum,
+    pub fn as_cell_board<
+        T: CellNum,
+        D: Dimensions,
         const BOARD_SIZE: usize,
         const MAX_SNAKES: usize,
     >(
         &self,
         snake_ids: &SnakeIDMap,
-    ) -> Result<compact_representation::wrapped::CellBoard<T, BOARD_SIZE, MAX_SNAKES>, Box<dyn Error>>
-    {
-        if self.game.ruleset.name == "wrapped" {
+    ) -> Result<StandardCellBoard<T, D, BOARD_SIZE, MAX_SNAKES>, Box<dyn Error>> {
+        StandardCellBoard::convert_from_game(self.clone(), snake_ids)
+    }
+
+    pub fn as_wrapped_cell_board<
+        T: compact_representation::CellNum,
+        D: Dimensions,
+        const BOARD_SIZE: usize,
+        const MAX_SNAKES: usize,
+    >(
+        &self,
+        snake_ids: &SnakeIDMap,
+    ) -> Result<
+        compact_representation::wrapped::CellBoard<T, D, BOARD_SIZE, MAX_SNAKES>,
+        Box<dyn Error>,
+    > {
+        if self.is_wrapped() {
             compact_representation::wrapped::CellBoard::convert_from_game(self.clone(), snake_ids)
         } else {
             panic!("Cannot convert a non-wrapped game to a wrapped game")

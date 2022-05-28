@@ -1,10 +1,10 @@
 use crate::compact_representation::core::CellNum as CN;
 use crate::impl_common_board_traits;
 use crate::types::{
-    build_snake_id_map, FoodGettableGame, HazardQueryableGame, HazardSettableGame,
-    HeadGettableGame, HealthGettableGame, LengthGettableGame, PositionGettableGame,
-    RandomReasonableMovesGame, SizeDeterminableGame, SnakeIDGettableGame, SnakeIDMap, SnakeId,
-    VictorDeterminableGame, YouDeterminableGame, Action, FoodQueryableGame, NeckQueryableGame
+    build_snake_id_map, Action, FoodGettableGame, FoodQueryableGame, HazardQueryableGame,
+    HazardSettableGame, HeadGettableGame, HealthGettableGame, LengthGettableGame,
+    NeckQueryableGame, PositionGettableGame, RandomReasonableMovesGame, SizeDeterminableGame,
+    SnakeIDGettableGame, SnakeIDMap, SnakeId, VictorDeterminableGame, YouDeterminableGame,
 };
 /// you almost certainly want to use the `convert_from_game` method to
 /// cast from a json represention to a `CellBoard`
@@ -21,34 +21,35 @@ use crate::{
     wire_representation::Position,
 };
 
-use super::core::{simulate_with_moves, EvaluateMode};
-use super::core::CellIndex;
 use super::core::CellBoard as CCB;
+use super::core::CellIndex;
+use super::core::{simulate_with_moves, EvaluateMode};
+use super::dimensions::{Dimensions, Square};
 
 /// A compact board representation that is significantly faster for simulation than
 /// `battlesnake_game_types::wire_representation::Game`.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct CellBoard<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> {
-    embedded: CCB<T, BOARD_SIZE, MAX_SNAKES>,
+pub struct CellBoard<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize> {
+    embedded: CCB<T, D, BOARD_SIZE, MAX_SNAKES>,
 }
 
 impl_common_board_traits!(CellBoard);
 
 /// 7x7 board with 4 snakes
-pub type CellBoard4Snakes7x7 = CellBoard<u8, { 7 * 7 }, 4>;
+pub type CellBoard4Snakes7x7 = CellBoard<u8, Square, { 7 * 7 }, 4>;
 
 /// Used to represent the standard 11x11 game with up to 4 snakes.
-pub type CellBoard4Snakes11x11 = CellBoard<u8, { 11 * 11 }, 4>;
+pub type CellBoard4Snakes11x11 = CellBoard<u8, Square, { 11 * 11 }, 4>;
 
 /// Used to represent the a 15x15 board with up to 4 snakes. This is the biggest board size that
 /// can still use u8s
-pub type CellBoard8Snakes15x15 = CellBoard<u8, { 15 * 15 }, 8>;
+pub type CellBoard8Snakes15x15 = CellBoard<u8, Square, { 15 * 15 }, 8>;
 
 /// Used to represent the largest UI Selectable board with 8 snakes.
-pub type CellBoard8Snakes25x25 = CellBoard<u16, { 25 * 25 }, 8>;
+pub type CellBoard8Snakes25x25 = CellBoard<u16, Square, { 25 * 25 }, 8>;
 
 /// Used to represent an absolutely silly game board
-pub type CellBoard16Snakes50x50 = CellBoard<u16, { 50 * 50 }, 16>;
+pub type CellBoard16Snakes50x50 = CellBoard<u16, Square, { 50 * 50 }, 16>;
 
 /// Enum that holds a Cell Board sized right for the given game
 #[derive(Debug)]
@@ -65,8 +66,8 @@ pub enum BestCellBoard {
     Silly(Box<CellBoard16Snakes50x50>),
 }
 
-impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
-    CellBoard<T, BOARD_SIZE, MAX_SNAKES>
+impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
+    CellBoard<T, D, BOARD_SIZE, MAX_SNAKES>
 {
     /// Builds a cellboard from a given game, will return an error if the game doesn't match
     /// the provided BOARD_SIZE or MAX_SNAKES. You are encouraged to use `CellBoard4Snakes11x11`
@@ -77,9 +78,7 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
         }
 
         let embedded = CCB::convert_from_game(game, snake_ids)?;
-        Ok(CellBoard {
-            embedded,
-        })
+        Ok(CellBoard { embedded })
     }
 
     fn off_board(&self, new_head: Position) -> bool {
@@ -90,15 +89,17 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
     }
 }
 
-impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> RandomReasonableMovesGame
-    for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
+impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
+    RandomReasonableMovesGame for CellBoard<T, D, BOARD_SIZE, MAX_SNAKES>
 {
     fn random_reasonable_move_for_each_snake<'a>(
-        &'a self, rng: &'a mut impl Rng,
+        &'a self,
+        rng: &'a mut impl Rng,
     ) -> Box<dyn std::iter::Iterator<Item = (SnakeId, Move)> + 'a> {
         let width = self.embedded.get_actual_width();
         Box::new(
-            self.embedded.iter_healths()
+            self.embedded
+                .iter_healths()
                 .enumerate()
                 .filter(|(_, health)| **health > 0)
                 .map(move |(idx, _)| {
@@ -109,8 +110,9 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> RandomReasonableMo
                             let new_head = head_pos.add_vec(mv.to_vector());
                             let ci = CellIndex::new(head_pos.add_vec(mv.to_vector()), width);
 
-                            !self.off_board(new_head) &&
-                            !self.embedded.cell_is_body(ci) && !self.embedded.cell_is_snake_head(ci)
+                            !self.off_board(new_head)
+                                && !self.embedded.cell_is_body(ci)
+                                && !self.embedded.cell_is_snake_head(ci)
                         })
                         .choose(rng)
                         .unwrap_or(Move::Up);
@@ -120,8 +122,13 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> RandomReasonableMo
     }
 }
 
-impl<T: SimulatorInstruments, N: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
-    SimulableGame<T, MAX_SNAKES> for CellBoard<N, BOARD_SIZE, MAX_SNAKES>
+impl<
+        T: SimulatorInstruments,
+        D: Dimensions,
+        N: CN,
+        const BOARD_SIZE: usize,
+        const MAX_SNAKES: usize,
+    > SimulableGame<T, MAX_SNAKES> for CellBoard<N, D, BOARD_SIZE, MAX_SNAKES>
 {
     #[allow(clippy::type_complexity)]
     fn simulate_with_moves<S>(
@@ -132,15 +139,23 @@ impl<T: SimulatorInstruments, N: CN, const BOARD_SIZE: usize, const MAX_SNAKES: 
     where
         S: Borrow<[Move]>,
     {
-        Box::new(simulate_with_moves(&self.embedded, instruments, snake_ids_and_moves, EvaluateMode::Standard).map(|v| {
-            let (action, board) = v;
-            (action, Self { embedded: board})
-        }))
+        Box::new(
+            simulate_with_moves(
+                &self.embedded,
+                instruments,
+                snake_ids_and_moves,
+                EvaluateMode::Standard,
+            )
+            .map(|v| {
+                let (action, board) = v;
+                (action, Self { embedded: board })
+            }),
+        )
     }
 }
 
-impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> NeighborDeterminableGame
-    for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
+impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
+    NeighborDeterminableGame for CellBoard<T, D, BOARD_SIZE, MAX_SNAKES>
 {
     fn possible_moves<'a>(
         &'a self,
@@ -232,9 +247,8 @@ mod test {
 
     use super::*;
     use crate::{
-        game_fixture,
-        types::{build_snake_id_map},
-        wire_representation::Game as DEGame, compact_representation::core::Cell,
+        compact_representation::core::Cell, game_fixture, types::build_snake_id_map,
+        wire_representation::Game as DEGame,
     };
     #[derive(Debug)]
     struct Instruments;
@@ -263,7 +277,6 @@ mod test {
             _ => panic!("expected standard board"),
         }
     }
-
 
     #[test]
     fn test_head_gettable() {
@@ -370,7 +383,7 @@ mod test {
         assert!(c.get_snake_id().unwrap() == SnakeId(3));
         assert!(c.get_idx() == CellIndex(17));
     }
-    
+
     #[test]
     fn test_food_queryable() {
         let game_fixture = include_str!("../../../fixtures/late_stage.json");
