@@ -24,7 +24,7 @@ use crate::{
 use super::core::CellBoard as CCB;
 use super::core::CellIndex;
 use super::core::{simulate_with_moves, EvaluateMode};
-use super::dimensions::{Dimensions, Square};
+use super::dimensions::{Dimensions, Fixed, Square};
 
 /// A compact board representation that is significantly faster for simulation than
 /// `battlesnake_game_types::wire_representation::Game`.
@@ -50,21 +50,6 @@ pub type CellBoard8Snakes25x25 = CellBoard<u16, Square, { 25 * 25 }, 8>;
 
 /// Used to represent an absolutely silly game board
 pub type CellBoard16Snakes50x50 = CellBoard<u16, Square, { 50 * 50 }, 16>;
-
-/// Enum that holds a Cell Board sized right for the given game
-#[derive(Debug)]
-pub enum BestCellBoard {
-    #[allow(missing_docs)]
-    Tiny(Box<CellBoard4Snakes7x7>),
-    #[allow(missing_docs)]
-    Standard(Box<CellBoard4Snakes11x11>),
-    #[allow(missing_docs)]
-    LargestU8(Box<CellBoard8Snakes15x15>),
-    #[allow(missing_docs)]
-    Large(Box<CellBoard8Snakes25x25>),
-    #[allow(missing_docs)]
-    Silly(Box<CellBoard16Snakes50x50>),
-}
 
 impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
     CellBoard<T, D, BOARD_SIZE, MAX_SNAKES>
@@ -198,6 +183,29 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
     }
 }
 
+/// Enum that holds a Cell Board sized right for the given game
+#[derive(Debug)]
+pub enum BestCellBoard {
+    /// A game that can have a max height and width of 7x7 and 4 snakes
+    Tiny(Box<CellBoard4Snakes7x7>),
+    /// A exactly 7x7 board with 4 snakes
+    SmallExact(Box<CellBoard<u8, Fixed<7, 7>, { 7 * 7 }, 4>>),
+    /// A game that can have a max height and width of 11x11 and 4 snakes
+    Standard(Box<CellBoard4Snakes11x11>),
+    /// A exactly 11x11 board with 4 snakes
+    MediumExact(Box<CellBoard<u8, Fixed<11, 11>, { 11 * 11 }, 4>>),
+    /// A game that can have a max height and width of 15x15 and 4 snakes
+    LargestU8(Box<CellBoard8Snakes15x15>),
+    /// A exactly 19x19 board with 4 snakes
+    LargeExact(Box<CellBoard<u16, Fixed<19, 19>, { 19 * 19 }, 4>>),
+    /// A board that fits the Arcade Maze map
+    ArcadeMaze(Box<CellBoard<u16, ArcadeMaze, { 19 * 21 }, 4>>),
+    /// A game that can have a max height and width of 25x25 and 8 snakes
+    Large(Box<CellBoard8Snakes25x25>),
+    /// A game that can have a max height and width of 50x50 and 16 snakes
+    Silly(Box<CellBoard16Snakes50x50>),
+}
+
 /// Trait to get the best sized cellboard for the given game. It returns the smallest Compact board
 /// that has enough room to fit the given Wire game. If the game can't fit in any of our Compact
 /// boards we panic. However the largest board available is MUCH larger than the biggest selectable
@@ -209,30 +217,27 @@ pub trait ToBestCellBoard {
 
 impl ToBestCellBoard for Game {
     fn to_best_cell_board(self) -> Result<BestCellBoard, Box<dyn Error>> {
-        let dimension = self.board.width;
+        let width = self.board.width;
+        let height = self.board.height;
         let num_snakes = self.board.snakes.len();
         let id_map = build_snake_id_map(&self);
 
-        let best_board = if dimension <= 7 && num_snakes <= 4 {
-            BestCellBoard::Tiny(Box::new(CellBoard4Snakes7x7::convert_from_game(
-                self, &id_map,
-            )?))
-        } else if dimension <= 11 && num_snakes <= 4 {
-            BestCellBoard::Standard(Box::new(CellBoard4Snakes11x11::convert_from_game(
-                self, &id_map,
-            )?))
-        } else if dimension <= 15 && num_snakes <= 8 {
-            BestCellBoard::LargestU8(Box::new(CellBoard8Snakes15x15::convert_from_game(
-                self, &id_map,
-            )?))
-        } else if dimension <= 25 && num_snakes <= 8 {
-            BestCellBoard::Large(Box::new(CellBoard8Snakes25x25::convert_from_game(
-                self, &id_map,
-            )?))
-        } else if dimension <= 50 && num_snakes <= 16 {
-            BestCellBoard::Silly(Box::new(CellBoard16Snakes50x50::convert_from_game(
-                self, &id_map,
-            )?))
+        let best_board = if width == 7 && height == 7 && num_snakes <= 4 {
+            BestCellBoard::SmallExact(Box::new(CellBoard::convert_from_game(self, &id_map)?))
+        } else if width <= 7 && height <= 7 && num_snakes <= 4 {
+            BestCellBoard::Tiny(Box::new(CellBoard::convert_from_game(self, &id_map)?))
+        } else if width == 11 && height == 11 && num_snakes <= 4 {
+            BestCellBoard::MediumExact(Box::new(CellBoard::convert_from_game(self, &id_map)?))
+        } else if width <= 11 && num_snakes <= 4 {
+            BestCellBoard::Standard(Box::new(CellBoard::convert_from_game(self, &id_map)?))
+        } else if width <= 15 && num_snakes <= 8 {
+            BestCellBoard::LargestU8(Box::new(CellBoard::convert_from_game(self, &id_map)?))
+        } else if width == 19 && height == 19 && num_snakes <= 4 {
+            BestCellBoard::LargeExact(Box::new(CellBoard::convert_from_game(self, &id_map)?))
+        } else if width <= 25 && num_snakes <= 8 {
+            BestCellBoard::Large(Box::new(CellBoard::convert_from_game(self, &id_map)?))
+        } else if width <= 50 && num_snakes <= 16 {
+            BestCellBoard::Silly(Box::new(CellBoard::convert_from_game(self, &id_map)?))
         } else {
             panic!("No board was big enough")
         };
@@ -240,6 +245,7 @@ impl ToBestCellBoard for Game {
         Ok(best_board)
     }
 }
+
 #[cfg(test)]
 mod test {
 

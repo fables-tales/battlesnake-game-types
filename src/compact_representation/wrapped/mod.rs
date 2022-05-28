@@ -25,7 +25,7 @@ use crate::{
 
 use super::core::{simulate_with_moves, EvaluateMode};
 use super::core::{CellBoard as CCB, CellIndex};
-use super::dimensions::{Dimensions, Square};
+use super::dimensions::{ArcadeMaze, Dimensions, Fixed, Square};
 use super::CellNum as CN;
 
 /// A compact board representation that is significantly faster for simulation than
@@ -68,34 +68,42 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
 }
 
 /// 7x7 board with 4 snakes
-pub type CellBoard4Snakes7x7 = CellBoard<u8, Square, { 7 * 7 }, 4>;
+pub type CellBoard4SnakesSquare7x7 = CellBoard<u8, Square, { 7 * 7 }, 4>;
 
 /// Used to represent the standard 11x11 game with up to 4 snakes.
-pub type CellBoard4Snakes11x11 = CellBoard<u8, Square, { 11 * 11 }, 4>;
+pub type CellBoard4SnakesSquare11x11 = CellBoard<u8, Square, { 11 * 11 }, 4>;
 
 /// Used to represent the a 15x15 board with up to 4 snakes. This is the biggest board size that
 /// can still use u8s
-pub type CellBoard8Snakes15x15 = CellBoard<u8, Square, { 15 * 15 }, 8>;
+pub type CellBoard8SnakesSquare15x15 = CellBoard<u8, Square, { 15 * 15 }, 8>;
 
 /// Used to represent the largest UI Selectable board with 8 snakes.
-pub type CellBoard8Snakes25x25 = CellBoard<u16, Square, { 25 * 25 }, 8>;
+pub type CellBoard8SnakesSquare25x25 = CellBoard<u16, Square, { 25 * 25 }, 8>;
 
 /// Used to represent an absolutely silly game board
-pub type CellBoard16Snakes50x50 = CellBoard<u16, Square, { 50 * 50 }, 16>;
+pub type CellBoard16SnakesSquare50x50 = CellBoard<u16, Square, { 50 * 50 }, 16>;
 
 /// Enum that holds a Cell Board sized right for the given game
 #[derive(Debug)]
 pub enum BestCellBoard {
-    #[allow(missing_docs)]
-    Tiny(Box<CellBoard4Snakes7x7>),
-    #[allow(missing_docs)]
-    Standard(Box<CellBoard4Snakes11x11>),
-    #[allow(missing_docs)]
-    LargestU8(Box<CellBoard8Snakes15x15>),
-    #[allow(missing_docs)]
-    Large(Box<CellBoard8Snakes25x25>),
-    #[allow(missing_docs)]
-    Silly(Box<CellBoard16Snakes50x50>),
+    /// A game that can have a max height and width of 7x7 and 4 snakes
+    Tiny(Box<CellBoard4SnakesSquare7x7>),
+    /// A exactly 7x7 board with 4 snakes
+    SmallExact(Box<CellBoard<u8, Fixed<7, 7>, { 7 * 7 }, 4>>),
+    /// A game that can have a max height and width of 11x11 and 4 snakes
+    Standard(Box<CellBoard4SnakesSquare11x11>),
+    /// A exactly 11x11 board with 4 snakes
+    MediumExact(Box<CellBoard<u8, Fixed<11, 11>, { 11 * 11 }, 4>>),
+    /// A game that can have a max height and width of 15x15 and 4 snakes
+    LargestU8(Box<CellBoard8SnakesSquare15x15>),
+    /// A exactly 19x19 board with 4 snakes
+    LargeExact(Box<CellBoard<u16, Fixed<19, 19>, { 19 * 19 }, 4>>),
+    /// A board that fits the Arcade Maze map
+    ArcadeMaze(Box<CellBoard<u16, ArcadeMaze, { 19 * 21 }, 4>>),
+    /// A game that can have a max height and width of 25x25 and 8 snakes
+    Large(Box<CellBoard8SnakesSquare25x25>),
+    /// A game that can have a max height and width of 50x50 and 16 snakes
+    Silly(Box<CellBoard16SnakesSquare50x50>),
 }
 
 /// Trait to get the best sized cellboard for the given game. It returns the smallest Compact board
@@ -109,30 +117,27 @@ pub trait ToBestCellBoard {
 
 impl ToBestCellBoard for Game {
     fn to_best_cell_board(self) -> Result<BestCellBoard, Box<dyn Error>> {
-        let dimension = self.board.width;
+        let width = self.board.width;
+        let height = self.board.height;
         let num_snakes = self.board.snakes.len();
         let id_map = build_snake_id_map(&self);
 
-        let best_board = if dimension <= 7 && num_snakes <= 4 {
-            BestCellBoard::Tiny(Box::new(CellBoard4Snakes7x7::convert_from_game(
-                self, &id_map,
-            )?))
-        } else if dimension <= 11 && num_snakes <= 4 {
-            BestCellBoard::Standard(Box::new(CellBoard4Snakes11x11::convert_from_game(
-                self, &id_map,
-            )?))
-        } else if dimension <= 15 && num_snakes <= 8 {
-            BestCellBoard::LargestU8(Box::new(CellBoard8Snakes15x15::convert_from_game(
-                self, &id_map,
-            )?))
-        } else if dimension <= 25 && num_snakes <= 8 {
-            BestCellBoard::Large(Box::new(CellBoard8Snakes25x25::convert_from_game(
-                self, &id_map,
-            )?))
-        } else if dimension <= 50 && num_snakes <= 16 {
-            BestCellBoard::Silly(Box::new(CellBoard16Snakes50x50::convert_from_game(
-                self, &id_map,
-            )?))
+        let best_board = if width == 7 && height == 7 && num_snakes <= 4 {
+            BestCellBoard::SmallExact(Box::new(CellBoard::convert_from_game(self, &id_map)?))
+        } else if width <= 7 && height <= 7 && num_snakes <= 4 {
+            BestCellBoard::Tiny(Box::new(CellBoard::convert_from_game(self, &id_map)?))
+        } else if width == 11 && height == 11 && num_snakes <= 4 {
+            BestCellBoard::MediumExact(Box::new(CellBoard::convert_from_game(self, &id_map)?))
+        } else if width <= 11 && num_snakes <= 4 {
+            BestCellBoard::Standard(Box::new(CellBoard::convert_from_game(self, &id_map)?))
+        } else if width <= 15 && num_snakes <= 8 {
+            BestCellBoard::LargestU8(Box::new(CellBoard::convert_from_game(self, &id_map)?))
+        } else if width == 19 && height == 19 && num_snakes <= 4 {
+            BestCellBoard::LargeExact(Box::new(CellBoard::convert_from_game(self, &id_map)?))
+        } else if width <= 25 && num_snakes <= 8 {
+            BestCellBoard::Large(Box::new(CellBoard::convert_from_game(self, &id_map)?))
+        } else if width <= 50 && num_snakes <= 16 {
+            BestCellBoard::Silly(Box::new(CellBoard::convert_from_game(self, &id_map)?))
         } else {
             panic!("No board was big enough")
         };
@@ -256,7 +261,7 @@ mod test {
         wire_representation::Position,
     };
 
-    use super::{CellBoard4Snakes11x11, CellIndex};
+    use super::{CellBoard4SnakesSquare11x11, CellIndex};
 
     #[derive(Debug)]
     struct Instruments {}
@@ -270,16 +275,19 @@ mod test {
         let g = game_fixture(include_str!("../../../fixtures/wrapped_fixture.json"));
         eprintln!("{}", g.board);
         let snake_ids = build_snake_id_map(&g);
-        let orig_wrapped_cell: CellBoard4Snakes11x11 = g.as_wrapped_cell_board(&snake_ids).unwrap();
+        let orig_wrapped_cell: CellBoard4SnakesSquare11x11 =
+            g.as_wrapped_cell_board(&snake_ids).unwrap();
         let hash = orig_wrapped_cell.pack_as_hash();
         eprintln!("{}", serde_json::to_string(&hash).unwrap());
         eprintln!(
             "{}",
-            serde_json::to_string(&CellBoard4Snakes11x11::from_packed_hash(&hash).pack_as_hash())
-                .unwrap()
+            serde_json::to_string(
+                &CellBoard4SnakesSquare11x11::from_packed_hash(&hash).pack_as_hash()
+            )
+            .unwrap()
         );
         assert_eq!(
-            CellBoard4Snakes11x11::from_packed_hash(&hash),
+            CellBoard4SnakesSquare11x11::from_packed_hash(&hash),
             orig_wrapped_cell
         );
     }
@@ -297,7 +305,8 @@ mod test {
         let g = game_fixture(include_str!("../../../fixtures/wrapped_fixture.json"));
         eprintln!("{}", g.board);
         let snake_ids = build_snake_id_map(&g);
-        let orig_wrapped_cell: CellBoard4Snakes11x11 = g.as_wrapped_cell_board(&snake_ids).unwrap();
+        let orig_wrapped_cell: CellBoard4SnakesSquare11x11 =
+            g.as_wrapped_cell_board(&snake_ids).unwrap();
         let mut rng = rand::thread_rng();
         run_move_test(
             orig_wrapped_cell,
@@ -368,7 +377,7 @@ mod test {
     }
 
     fn run_move_test(
-        orig_wrapped_cell: super::CellBoard4Snakes11x11,
+        orig_wrapped_cell: super::CellBoard4SnakesSquare11x11,
         snake_ids: HashMap<String, SnakeId>,
         rollout: i32,
         inc_x: i32,
@@ -421,7 +430,7 @@ mod test {
             // this json fixture is the frame at which we crashed, and it comes from a deep forward simulation of orig_crash_game
             let json_hash = include_str!("../../../fixtures/crash_json_hash.json");
             let hm = serde_json::from_str(json_hash).unwrap();
-            let game = super::CellBoard4Snakes11x11::from_packed_hash(&hm);
+            let game = super::CellBoard4SnakesSquare11x11::from_packed_hash(&hm);
             eprintln!("{}", orig_crash_game.board);
             dbg!(&compact_ids);
             let snakes_and_moves = compact_ids.iter().map(|id| (*id, vec![Move::Up]));
@@ -444,7 +453,7 @@ mod test {
             ];
             let json_hash = include_str!("../../../fixtures/another_wraped_panic_serialized.json");
             let hm = serde_json::from_str(json_hash).unwrap();
-            let game = super::CellBoard4Snakes11x11::from_packed_hash(&hm);
+            let game = super::CellBoard4SnakesSquare11x11::from_packed_hash(&hm);
             game.assert_consistency();
             eprintln!(
                 "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!1\n{}",
@@ -468,7 +477,7 @@ mod test {
             ];
             let json_hash = include_str!("../../../fixtures/another_wrapped_panic.json");
             let hm = serde_json::from_str(json_hash).unwrap();
-            let game = super::CellBoard4Snakes11x11::from_packed_hash(&hm);
+            let game = super::CellBoard4SnakesSquare11x11::from_packed_hash(&hm);
             game.assert_consistency();
             eprintln!(
                 "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!1\n{}",
@@ -493,7 +502,8 @@ mod test {
     fn test_neighbors_and_possible_moves_cornered() {
         let g = game_fixture(include_str!("../../../fixtures/cornered_wrapped.json"));
         let snake_id_mapping = build_snake_id_map(&g);
-        let compact: CellBoard4Snakes11x11 = g.as_wrapped_cell_board(&snake_id_mapping).unwrap();
+        let compact: CellBoard4SnakesSquare11x11 =
+            g.as_wrapped_cell_board(&snake_id_mapping).unwrap();
 
         let head = compact.get_head_as_native_position(&SnakeId(0));
         assert_eq!(head, CellIndex(10 * 11));
