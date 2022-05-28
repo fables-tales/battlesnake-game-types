@@ -128,15 +128,17 @@ impl ToBestCellBoard for Game {
             BestCellBoard::Tiny(Box::new(CellBoard::convert_from_game(self, &id_map)?))
         } else if width == 11 && height == 11 && num_snakes <= 4 {
             BestCellBoard::MediumExact(Box::new(CellBoard::convert_from_game(self, &id_map)?))
-        } else if width <= 11 && num_snakes <= 4 {
+        } else if width <= 11 && height <= 11 && num_snakes <= 4 {
             BestCellBoard::Standard(Box::new(CellBoard::convert_from_game(self, &id_map)?))
-        } else if width <= 15 && num_snakes <= 8 {
+        } else if width <= 15 && height <= 15 && num_snakes <= 8 {
             BestCellBoard::LargestU8(Box::new(CellBoard::convert_from_game(self, &id_map)?))
         } else if width == 19 && height == 19 && num_snakes <= 4 {
             BestCellBoard::LargeExact(Box::new(CellBoard::convert_from_game(self, &id_map)?))
-        } else if width <= 25 && num_snakes <= 8 {
+        } else if width == 19 && height == 21 && num_snakes <= 4 {
+            BestCellBoard::ArcadeMaze(Box::new(CellBoard::convert_from_game(self, &id_map)?))
+        } else if width <= 25 && height < 25 && num_snakes <= 8 {
             BestCellBoard::Large(Box::new(CellBoard::convert_from_game(self, &id_map)?))
-        } else if width <= 50 && num_snakes <= 16 {
+        } else if width <= 50 && height <= 50 && num_snakes <= 16 {
             BestCellBoard::Silly(Box::new(CellBoard::convert_from_game(self, &id_map)?))
         } else {
             panic!("No board was big enough")
