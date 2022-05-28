@@ -1,3 +1,4 @@
+//! A compact board representation that is efficient for simulation
 use crate::compact_representation::core::CellNum as CN;
 use crate::impl_common_board_traits;
 use crate::types::{

@@ -1,6 +1,6 @@
 //! A compact board representation that is efficient for simulation
 mod core;
-mod standard;
+pub mod standard;
 pub mod wrapped;
 
 pub use self::core::CellIndex;
