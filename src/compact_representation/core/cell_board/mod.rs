@@ -9,38 +9,44 @@ use crate::types::SnakeId;
 use crate::wire_representation::Game;
 use crate::wire_representation::Position;
 
+use super::dimensions::Dimensions;
 use super::Cell;
 use super::CellIndex;
 use super::CellNum as CN;
-use super::{TRIPLE_STACK, DOUBLE_STACK};
+use super::{DOUBLE_STACK, TRIPLE_STACK};
 
-mod snake_id_gettable;
-mod position_gettable;
-mod size_determinable;
-mod head_gettable;
-mod health_gettable;
-mod you_determinable;
-mod length_gettable;
-mod snake_body_gettable;
-mod victor_determinable;
+mod eval;
 mod food_gettable;
 mod hazard_queryable;
 mod hazard_settable;
+mod head_gettable;
+mod health_gettable;
+mod length_gettable;
 mod neck_queryable;
-mod eval;
+mod position_gettable;
+mod size_determinable;
+mod snake_body_gettable;
+mod snake_id_gettable;
+mod victor_determinable;
+mod you_determinable;
 
 pub use eval::EvaluateMode;
 
 /// A compact board representation that is significantly faster for simulation than
 /// `battlesnake_game_types::wire_representation::Game`.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct CellBoard<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> {
+pub struct CellBoard<
+    T: CN,
+    DimensionsType: Dimensions,
+    const BOARD_SIZE: usize,
+    const MAX_SNAKES: usize,
+> {
     hazard_damage: u8,
     cells: [Cell<T>; BOARD_SIZE],
     healths: [u8; MAX_SNAKES],
     heads: [CellIndex<T>; MAX_SNAKES],
     lengths: [u16; MAX_SNAKES],
-    actual_width: u8,
+    dimensions: DimensionsType,
 }
 
 #[allow(dead_code)]
@@ -55,8 +61,9 @@ fn get_snake_id(
     }
 }
 
-
-impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> CellBoard<T, BOARD_SIZE, MAX_SNAKES> {
+impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
+    CellBoard<T, D, BOARD_SIZE, MAX_SNAKES>
+{
     pub fn iter_healths(&self) -> Iter<'_, u8> {
         self.healths.iter()
     }
@@ -98,7 +105,10 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> CellBoard<T, BOARD
     pub fn pack_as_hash(&self) -> HashMap<String, Vec<u32>> {
         let mut hash = HashMap::new();
         hash.insert("hazard_damage".to_string(), vec![self.hazard_damage as u32]);
-        hash.insert("actual_width".to_string(), vec![self.actual_width as u32]);
+        hash.insert(
+            "actual_width".to_string(),
+            vec![self.get_actual_width() as u32],
+        );
         hash.insert(
             "healths".to_string(),
             self.healths.iter().map(|x| *x as u32).collect(),
@@ -122,6 +132,11 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> CellBoard<T, BOARD
     pub fn from_packed_hash(hash: &HashMap<String, Vec<u32>>) -> Self {
         let hazard_damage = hash.get("hazard_damage").unwrap()[0] as u8;
         let actual_width = hash.get("actual_width").unwrap()[0] as u8;
+        let actual_height = hash
+            .get("actual_height")
+            .map(|h| h[0] as u8)
+            .unwrap_or(actual_width);
+
         let mut healths = [0; MAX_SNAKES];
         let healths_iter = hash.get("healths").unwrap().iter().map(|x| *x as u8);
         for (idx, health) in healths_iter.enumerate() {
@@ -146,13 +161,15 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> CellBoard<T, BOARD
             cells[idx] = Cell::<T>::from_u32(cell);
         }
 
+        let dimensions = D::from_dimensions(actual_width, actual_height);
+
         CellBoard {
             hazard_damage,
             cells,
             healths,
             heads,
             lengths,
-            actual_width,
+            dimensions,
         }
     }
 
@@ -161,25 +178,29 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> CellBoard<T, BOARD
             if new_head_position.x < 0 {
                 debug_assert!(new_head_position.x == -1);
                 debug_assert!(
-                    new_head_position.y >= 0 && new_head_position.y < self.get_actual_height() as i32
+                    new_head_position.y >= 0
+                        && new_head_position.y < self.get_actual_height() as i32
                 );
-                new_head_position.x = self.actual_width as i32 - 1;
-            } else if new_head_position.x >= self.actual_width as i32 {
-                debug_assert!(new_head_position.x == self.actual_width as i32);
+                new_head_position.x = self.get_actual_width() as i32 - 1;
+            } else if new_head_position.x >= self.get_actual_width() as i32 {
+                debug_assert!(new_head_position.x == self.get_actual_width() as i32);
                 debug_assert!(
-                    new_head_position.y >= 0 && new_head_position.y < self.get_actual_height() as i32
+                    new_head_position.y >= 0
+                        && new_head_position.y < self.get_actual_height() as i32
                 );
                 new_head_position.x = 0;
             } else if new_head_position.y < 0 {
                 debug_assert!(new_head_position.y == -1);
                 debug_assert!(
-                    new_head_position.x >= 0 && new_head_position.x < self.actual_width as i32
+                    new_head_position.x >= 0
+                        && new_head_position.x < self.get_actual_width() as i32
                 );
                 new_head_position.y = self.get_actual_height() as i32 - 1;
             } else if new_head_position.y >= self.get_actual_height() as i32 {
                 debug_assert!(new_head_position.y == self.get_actual_height() as i32);
                 debug_assert!(
-                    new_head_position.x >= 0 && new_head_position.x < self.actual_width as i32
+                    new_head_position.x >= 0
+                        && new_head_position.x < self.get_actual_width() as i32
                 );
                 new_head_position.y = 0;
             } else {
@@ -192,11 +213,11 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> CellBoard<T, BOARD
     }
 
     pub fn get_actual_width(&self) -> u8 {
-        self.actual_width
+        self.dimensions.width()
     }
 
     pub fn get_actual_height(&self) -> u8 {
-        self.actual_width
+        self.dimensions.height()
     }
 
     fn kill(&mut self, sid: SnakeId) {
@@ -211,7 +232,9 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> CellBoard<T, BOARD
 
         while let Some(i) = current_index {
             current_index = self.get_cell(i).get_next_index();
-            debug_assert!(self.get_cell(i).get_snake_id().unwrap_or(sid).as_usize() == sid.as_usize());
+            debug_assert!(
+                self.get_cell(i).get_snake_id().unwrap_or(sid).as_usize() == sid.as_usize()
+            );
             self.cell_remove(i);
         }
 
@@ -237,6 +260,7 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> CellBoard<T, BOARD
             }
         }
         let width = game.board.width as u8;
+        let height = game.board.height as u8;
 
         let mut cells = [Cell::empty(); BOARD_SIZE];
         let mut healths: [u8; MAX_SNAKES] = [0; MAX_SNAKES];
@@ -282,8 +306,8 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> CellBoard<T, BOARD
                 next_index = cell_idx;
             }
         }
-        for y in 0..game.board.height {
-            for x in 0..game.board.width {
+        for y in 0..height {
+            for x in 0..width {
                 let position = Position {
                     x: x as i32,
                     y: y as i32,
@@ -298,12 +322,14 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> CellBoard<T, BOARD
             }
         }
 
+        let dimensions = D::from_dimensions(width, height);
+
         Ok(CellBoard {
             cells,
             heads,
             healths,
             lengths,
-            actual_width: game.board.width as u8,
+            dimensions,
             hazard_damage: game
                 .game
                 .ruleset
@@ -320,7 +346,7 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> CellBoard<T, BOARD
     /// determines if a given position is not on the board
     pub fn off_board(&self, position: Position) -> bool {
         position.x < 0
-            || position.x >= self.actual_width as i32
+            || position.x >= self.get_actual_width() as i32
             || position.y < 0
             || position.y >= self.get_actual_height() as i32
     }
@@ -404,12 +430,14 @@ impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> CellBoard<T, BOARD
 
 #[cfg(test)]
 mod tests {
+    use crate::compact_representation::dimensions::Square;
+
     use super::CellBoard;
     #[test]
     fn test_assert_consistent() {
         let inconsistent_fixture = include_str!("../../../../fixtures/inconsistent_fixture.json");
         let hm = serde_json::from_str(inconsistent_fixture).unwrap();
-        let game: CellBoard<u8, {11*11}, 4> = CellBoard::from_packed_hash(&hm);
+        let game = CellBoard::<u8, Square, { 11 * 11 }, 4>::from_packed_hash(&hm);
         assert!(!game.assert_consistency());
     }
 }

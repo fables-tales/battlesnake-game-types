@@ -1,15 +1,15 @@
 mod cell_board;
 mod cell_num;
-mod simulate;
 mod impl_common;
+mod simulate;
 
 use crate::{
     types::{Move, SnakeId},
     wire_representation::Position,
 };
 
-pub use cell_num::CellNum;
 pub use cell_board::{CellBoard, EvaluateMode};
+pub use cell_num::CellNum;
 pub use simulate::simulate_with_moves;
 
 /// wrapper type for an index in to the board
@@ -68,6 +68,8 @@ const IS_HAZARD: u8 = 0x10;
 
 pub const TRIPLE_STACK: usize = 3;
 pub const DOUBLE_STACK: usize = 2;
+
+use super::dimensions;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Cell<T: CellNum> {

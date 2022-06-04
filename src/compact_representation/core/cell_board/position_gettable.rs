@@ -1,9 +1,16 @@
-use crate::{types::PositionGettableGame, compact_representation::{core::CellIndex, CellNum}, wire_representation::Position};
+use crate::{
+    compact_representation::{
+        core::{dimensions::Dimensions, CellIndex},
+        CellNum,
+    },
+    types::PositionGettableGame,
+    wire_representation::Position,
+};
 
 use super::CellBoard;
 
-impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> PositionGettableGame
-    for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
+impl<T: CellNum, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
+    PositionGettableGame for CellBoard<T, D, BOARD_SIZE, MAX_SNAKES>
 {
     type NativePositionType = CellIndex<T>;
 
@@ -14,13 +21,13 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> PositionGetta
     }
 
     fn position_from_native(&self, pos: Self::NativePositionType) -> Position {
-        let width = self.actual_width;
+        let width = self.get_actual_width();
 
         pos.into_position(width)
     }
 
     fn native_from_position(&self, pos: Position) -> Self::NativePositionType {
-        Self::NativePositionType::new(pos, self.actual_width)
+        Self::NativePositionType::new(pos, self.get_actual_width())
     }
 
     fn off_board(&self, pos: Position) -> bool {

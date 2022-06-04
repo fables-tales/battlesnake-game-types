@@ -1,12 +1,14 @@
 use itertools::Itertools;
 
-use crate::{types::{SnakeIDGettableGame, SnakeId}, compact_representation::CellNum};
+use crate::{
+    compact_representation::{core::dimensions::Dimensions, CellNum},
+    types::{SnakeIDGettableGame, SnakeId},
+};
 
 use super::CellBoard;
 
-
-impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> SnakeIDGettableGame
-    for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
+impl<T: CellNum, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
+    SnakeIDGettableGame for CellBoard<T, D, BOARD_SIZE, MAX_SNAKES>
 {
     type SnakeIDType = SnakeId;
 

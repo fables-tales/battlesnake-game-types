@@ -1,11 +1,14 @@
 use itertools::Itertools;
 
-use crate::{compact_representation::CellNum, types::{VictorDeterminableGame, SnakeId}};
+use crate::{
+    compact_representation::{core::dimensions::Dimensions, CellNum},
+    types::{SnakeId, VictorDeterminableGame},
+};
 
 use super::CellBoard;
 
-impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> VictorDeterminableGame
-    for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
+impl<T: CellNum, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
+    VictorDeterminableGame for CellBoard<T, D, BOARD_SIZE, MAX_SNAKES>
 {
     fn is_over(&self) -> bool {
         self.healths[0] == 0 || self.healths.iter().filter(|h| **h != 0).count() <= 1

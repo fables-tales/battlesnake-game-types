@@ -2,6 +2,7 @@
 //! types to match the battlesnake wire representation
 
 use crate::compact_representation;
+use crate::compact_representation::dimensions::Dimensions;
 use crate::compact_representation::CellNum;
 use crate::compact_representation::StandardCellBoard;
 use crate::types::{
@@ -127,7 +128,12 @@ pub struct Ruleset {
     pub settings: Option<Settings>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+fn non_empty_str<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<String>, D::Error> {
+    let o: Option<String> = Option::deserialize(d)?;
+    Ok(o.filter(|s| !s.is_empty()))
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Settings {
     #[serde(rename = "foodSpawnChance")]
     pub food_spawn_chance: i32,
@@ -135,6 +141,14 @@ pub struct Settings {
     pub minimum_food: i32,
     #[serde(rename = "hazardDamagePerTurn")]
     pub hazard_damage_per_turn: i32,
+    #[serde(default, rename = "hazardMap", deserialize_with = "non_empty_str")]
+    pub hazard_map: Option<String>,
+    #[serde(
+        default,
+        rename = "hazardMapAuthor",
+        deserialize_with = "non_empty_str"
+    )]
+    pub hazard_map_author: Option<String>,
     pub royale: Option<RoyaleSettings>,
 }
 
@@ -169,23 +183,31 @@ impl Game {
         }
     }
 
-    pub fn as_cell_board<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize>(
-        &self,
-        snake_ids: &SnakeIDMap,
-    ) -> Result<StandardCellBoard<T, BOARD_SIZE, MAX_SNAKES>, Box<dyn Error>> {
-        StandardCellBoard::convert_from_game(self.clone(), snake_ids)
-    }
-
-    pub fn as_wrapped_cell_board<
-        T: compact_representation::CellNum,
+    pub fn as_cell_board<
+        T: CellNum,
+        D: Dimensions,
         const BOARD_SIZE: usize,
         const MAX_SNAKES: usize,
     >(
         &self,
         snake_ids: &SnakeIDMap,
-    ) -> Result<compact_representation::wrapped::CellBoard<T, BOARD_SIZE, MAX_SNAKES>, Box<dyn Error>>
-    {
-        if self.game.ruleset.name == "wrapped" {
+    ) -> Result<StandardCellBoard<T, D, BOARD_SIZE, MAX_SNAKES>, Box<dyn Error>> {
+        StandardCellBoard::convert_from_game(self.clone(), snake_ids)
+    }
+
+    pub fn as_wrapped_cell_board<
+        T: compact_representation::CellNum,
+        D: Dimensions,
+        const BOARD_SIZE: usize,
+        const MAX_SNAKES: usize,
+    >(
+        &self,
+        snake_ids: &SnakeIDMap,
+    ) -> Result<
+        compact_representation::wrapped::CellBoard<T, D, BOARD_SIZE, MAX_SNAKES>,
+        Box<dyn Error>,
+    > {
+        if self.is_wrapped() {
             compact_representation::wrapped::CellBoard::convert_from_game(self.clone(), snake_ids)
         } else {
             panic!("Cannot convert a non-wrapped game to a wrapped game")
@@ -234,6 +256,11 @@ impl Game {
                 )
             })
             .collect()
+    }
+
+    /// Returns a boolean indicating whether this game is using the wrapped ruleset
+    pub fn is_wrapped(&self) -> bool {
+        self.game.ruleset.name == "wrapped"
     }
 }
 
@@ -466,6 +493,7 @@ impl HazardQueryableGame for Game {
         self.game
             .ruleset
             .settings
+            .as_ref()
             .map(|settings| settings.hazard_damage_per_turn)
             .unwrap_or(15) as u8
     }
@@ -489,6 +517,47 @@ mod tests {
         let game_fixture = include_str!("../../fixtures/4_snake_game.json");
         let g: Result<Game, _> = serde_json::from_slice(game_fixture.as_bytes());
         g.expect("the json literal is valid")
+    }
+
+    #[test]
+    fn test_hazard_deserialization() {
+        let empty_string_hazard = include_str!("../../fixtures/empty_str_hazard.json");
+        let empty_string_hazard: Game =
+            serde_json::from_str(empty_string_hazard).expect("the json literal is valid");
+
+        assert_eq!(
+            None,
+            empty_string_hazard
+                .game
+                .ruleset
+                .settings
+                .unwrap()
+                .hazard_map
+        );
+
+        let with_hazard_settings = include_str!("../../fixtures/hazard_map_settings.json");
+        let with_hazard_settings: Game =
+            serde_json::from_str(with_hazard_settings).expect("the json literal is valid");
+
+        assert_eq!(
+            Some("hz_spiral".to_string()),
+            with_hazard_settings
+                .game
+                .ruleset
+                .settings
+                .as_ref()
+                .unwrap()
+                .hazard_map
+        );
+        assert_eq!(
+            Some("altersaddle".to_string()),
+            with_hazard_settings
+                .game
+                .ruleset
+                .settings
+                .unwrap()
+                .hazard_map_author
+        );
     }
 
     #[test]

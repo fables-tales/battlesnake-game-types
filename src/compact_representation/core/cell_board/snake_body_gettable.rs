@@ -1,12 +1,12 @@
 use crate::{
-    compact_representation::CellNum,
+    compact_representation::{core::dimensions::Dimensions, CellNum},
     types::{HeadGettableGame, SnakeBodyGettableGame},
 };
 
 use super::CellBoard;
 
-impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> SnakeBodyGettableGame
-    for CellBoard<T, BOARD_SIZE, MAX_SNAKES>
+impl<T: CellNum, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
+    SnakeBodyGettableGame for CellBoard<T, D, BOARD_SIZE, MAX_SNAKES>
 {
     fn get_snake_body_vec(&self, snake_id: &Self::SnakeIDType) -> Vec<Self::NativePositionType> {
         let mut body = vec![];
@@ -56,14 +56,14 @@ impl<T: CellNum, const BOARD_SIZE: usize, const MAX_SNAKES: usize> SnakeBodyGett
 #[cfg(test)]
 mod tests {
     use crate::{
-        compact_representation::CellIndex,
+        compact_representation::{core::dimensions::Custom, CellIndex},
         types::{build_snake_id_map, SnakeId},
         wire_representation::Game,
     };
 
     use super::*;
 
-    type CellBoard4Snakes11x11 = CellBoard<u8, { 11 * 11 }, 4>;
+    type CellBoard4Snakes11x11 = CellBoard<u8, Custom, { 11 * 11 }, 4>;
 
     #[test]
     fn test_body_stacking() {
