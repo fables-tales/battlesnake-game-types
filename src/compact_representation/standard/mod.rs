@@ -273,7 +273,7 @@ mod test {
         assert!(converted.is_ok());
         let u = converted.unwrap();
         match u {
-            BestCellBoard::Standard(_) => {}
+            BestCellBoard::MediumExact(_) => {}
             _ => panic!("expected standard board"),
         }
 
@@ -282,7 +282,17 @@ mod test {
         assert!(converted.is_ok());
         let u = converted.unwrap();
         match u {
-            BestCellBoard::Tiny(_) => {}
+            BestCellBoard::SmallExact(_) => {}
+            _ => panic!("expected standard board"),
+        }
+
+        let non_standard_small_board =
+            game_fixture(include_str!("../../../fixtures/8x8board.json"));
+        let converted = Game::to_best_cell_board(non_standard_small_board);
+        assert!(converted.is_ok());
+        let u = converted.unwrap();
+        match u {
+            BestCellBoard::Standard(_) => {}
             _ => panic!("expected standard board"),
         }
     }

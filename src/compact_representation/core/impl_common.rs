@@ -198,8 +198,8 @@ macro_rules! impl_common_board_traits {
             }
         }
 
-        impl<T: CN, const BOARD_SIZE: usize, const MAX_SNAKES: usize> std::convert::TryFrom<Game>
-            for $type<T, BOARD_SIZE, MAX_SNAKES>
+        impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
+            std::convert::TryFrom<Game> for $type<T, D, BOARD_SIZE, MAX_SNAKES>
         {
             type Error = Box<dyn Error>;
 

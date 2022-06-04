@@ -257,6 +257,11 @@ impl Game {
             })
             .collect()
     }
+
+    /// Returns a boolean indicating whether this game is using the wrapped ruleset
+    pub fn is_wrapped(&self) -> bool {
+        self.game.ruleset.name == "wrapped"
+    }
 }
 
 impl Display for Game {
