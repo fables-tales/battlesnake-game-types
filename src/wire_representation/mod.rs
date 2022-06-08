@@ -237,7 +237,6 @@ impl Game {
 }
 
 impl RandomReasonableMovesGame for Game {
-    // TODO: Get wrapped support added
     fn random_reasonable_move_for_each_snake<'a>(
         &'a self,
         rng: &'a mut impl rand::Rng,
@@ -245,7 +244,18 @@ impl RandomReasonableMovesGame for Game {
         Box::new(self.board.snakes.iter().map(move |s| {
             let all_moves = Move::all();
             let moves = all_moves.iter().filter(|mv| {
-                let new_head = s.head.add_vec(mv.to_vector());
+                let mut new_head = s.head.add_vec(mv.to_vector());
+
+                if self.is_wrapped() {
+                    let wrapped_x = new_head.x.rem_euclid(self.get_width() as i32);
+                    let wrapped_y = new_head.y.rem_euclid(self.get_height() as i32);
+
+                    new_head = Position {
+                        x: wrapped_x,
+                        y: wrapped_y,
+                    };
+                }
+
                 let unreasonable = self.off_board(new_head)
                     || self.board.snakes.iter().any(|s| s.body.contains(&new_head));
                 !unreasonable
@@ -265,11 +275,6 @@ impl RandomReasonableMovesGame for Game {
                 }),
             )
         }))
-    }
-
-    /// Returns a boolean indicating whether this game is using the wrapped ruleset
-    pub fn is_wrapped(&self) -> bool {
-        self.game.ruleset.name == "wrapped"
     }
 }
 
