@@ -120,6 +120,10 @@ pub struct NestedGame {
     pub id: String,
     pub ruleset: Ruleset,
     pub timeout: i64,
+    #[serde(default, deserialize_with = "non_empty_str")]
+    pub map: Option<String>,
+    #[serde(default, deserialize_with = "non_empty_str")]
+    pub source: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -233,6 +237,10 @@ impl Game {
     /// Returns a boolean indicating whether this game is using the wrapped ruleset
     pub fn is_wrapped(&self) -> bool {
         self.game.ruleset.name == "wrapped"
+    }
+
+    pub fn is_arcade_maze_map(&self) -> bool {
+        self.game.map == Some("arcade_maze".to_owned())
     }
 }
 
@@ -736,5 +744,14 @@ mod tests {
             (Move::Right, Position { x: 1, y: 0 }),
         ];
         assert_eq!(possible_moves, expected);
+    }
+
+    #[test]
+    fn test_map_json() {
+        let game_fixture = include_str!("../../fixtures/arcade_maze_map.json");
+        let g: Result<Game, _> = serde_json::from_slice(game_fixture.as_bytes());
+        let g = g.expect("the json literal is valid");
+
+        assert!(g.is_arcade_maze_map());
     }
 }
