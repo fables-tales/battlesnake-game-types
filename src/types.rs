@@ -207,7 +207,8 @@ pub trait VictorDeterminableGame: std::fmt::Debug + SnakeIDGettableGame {
     /// How many snakes are alive
     fn alive_snake_count(&self) -> usize;
 }
-#[derive(Debug, Copy, Clone)]
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[repr(transparent)]
 /// Represents moves taken for a given simulation
 pub struct Action<const N_SNAKES: usize> {
