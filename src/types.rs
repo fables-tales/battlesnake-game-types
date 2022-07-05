@@ -246,6 +246,11 @@ impl<const N_SNAKES: usize> Action<N_SNAKES> {
         new_moves[0] = None;
         OtherAction { moves: new_moves }
     }
+
+    /// Get the inner array back
+    pub fn into_inner(self) -> [Option<Move>; N_SNAKES] {
+        self.moves
+    }
 }
 
 /// a game for which future states can be simulated
