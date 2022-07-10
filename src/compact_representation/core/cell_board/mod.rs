@@ -34,7 +34,7 @@ pub use eval::EvaluateMode;
 
 /// A compact board representation that is significantly faster for simulation than
 /// `battlesnake_game_types::wire_representation::Game`.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct CellBoard<
     T: CN,
     DimensionsType: Dimensions,

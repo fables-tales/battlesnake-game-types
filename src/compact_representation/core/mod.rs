@@ -71,7 +71,7 @@ pub const DOUBLE_STACK: usize = 2;
 
 use super::dimensions;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Cell<T: CellNum> {
     flags: u8,
     id: SnakeId,
