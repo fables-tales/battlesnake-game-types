@@ -3,7 +3,7 @@ use crate::compact_representation::core::CellNum as CN;
 use crate::impl_common_board_traits;
 use crate::types::{
     build_snake_id_map, Action, FoodGettableGame, FoodQueryableGame, HazardQueryableGame,
-    HazardSettableGame, HeadGettableGame, HealthGettableGame, LengthGettableGame,
+    HazardSettableGame, HeadGettableGame, HealthGettableGame, LengthGettableGame, MaxSnakes,
     NeckQueryableGame, PositionGettableGame, RandomReasonableMovesGame, SizeDeterminableGame,
     SnakeIDGettableGame, SnakeIDMap, SnakeId, VictorDeterminableGame, YouDeterminableGame,
 };
