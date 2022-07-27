@@ -264,8 +264,12 @@ impl RandomReasonableMovesGame for Game {
                     };
                 }
 
+                let hazard_damage: i32 = self.get_hazard_damage().into();
+
                 let unreasonable = self.off_board(new_head)
-                    || self.board.snakes.iter().any(|s| s.body.contains(&new_head));
+                    || self.board.snakes.iter().any(|s| s.body.contains(&new_head))
+                    || (self.board.hazards.contains(&new_head) && hazard_damage >= s.health);
+
                 !unreasonable
             });
             (
