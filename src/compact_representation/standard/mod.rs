@@ -25,7 +25,7 @@ use crate::{
 use super::core::CellBoard as CCB;
 use super::core::CellIndex;
 use super::core::{simulate_with_moves, EvaluateMode};
-use super::dimensions::{ArcadeMaze, Dimensions, Fixed, Square};
+use super::dimensions::{ArcadeMaze, Custom, Dimensions, Fixed, Square};
 
 /// A compact board representation that is significantly faster for simulation than
 /// `battlesnake_game_types::wire_representation::Game`.
@@ -47,10 +47,10 @@ pub type CellBoard4Snakes11x11 = CellBoard<u8, Square, { 11 * 11 }, 4>;
 pub type CellBoard8Snakes15x15 = CellBoard<u8, Square, { 15 * 15 }, 8>;
 
 /// Used to represent the largest UI Selectable board with 8 snakes.
-pub type CellBoard8Snakes25x25 = CellBoard<u16, Square, { 25 * 25 }, 8>;
+pub type CellBoard8Snakes25x25 = CellBoard<u16, Custom, { 25 * 25 }, 8>;
 
 /// Used to represent an absolutely silly game board
-pub type CellBoard16Snakes50x50 = CellBoard<u16, Square, { 50 * 50 }, 16>;
+pub type CellBoard16Snakes50x50 = CellBoard<u16, Custom, { 50 * 50 }, 16>;
 
 impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
     CellBoard<T, D, BOARD_SIZE, MAX_SNAKES>
@@ -201,6 +201,8 @@ pub enum BestCellBoard {
     LargeExact(Box<CellBoard<u16, Fixed<19, 19>, { 19 * 19 }, 4>>),
     /// A board that fits the Arcade Maze map
     ArcadeMaze(Box<CellBoard<u16, ArcadeMaze, { 19 * 21 }, 4>>),
+    /// A board that fits the Arcade Maze map
+    ArcadeMaze8Snake(Box<CellBoard<u16, ArcadeMaze, { 19 * 21 }, 8>>),
     /// A game that can have a max height and width of 25x25 and 8 snakes
     Large(Box<CellBoard8Snakes25x25>),
     /// A game that can have a max height and width of 50x50 and 16 snakes
@@ -237,6 +239,8 @@ impl ToBestCellBoard for Game {
             BestCellBoard::LargeExact(Box::new(CellBoard::convert_from_game(self, &id_map)?))
         } else if width == 19 && height == 21 && num_snakes <= 4 {
             BestCellBoard::ArcadeMaze(Box::new(CellBoard::convert_from_game(self, &id_map)?))
+        } else if width == 19 && height == 21 && num_snakes <= 8 {
+            BestCellBoard::ArcadeMaze8Snake(Box::new(CellBoard::convert_from_game(self, &id_map)?))
         } else if width <= 25 && height < 25 && num_snakes <= 8 {
             BestCellBoard::Large(Box::new(CellBoard::convert_from_game(self, &id_map)?))
         } else if width <= 50 && height <= 50 && num_snakes <= 16 {
