@@ -139,7 +139,11 @@ impl<T: CellNum, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize
                 let mut new_health = self.healths[id.as_usize()];
                 new_health = new_health.saturating_sub(1);
                 if self.get_cell(new_head).is_hazard() {
-                    new_health = new_health.saturating_sub(self.hazard_damage);
+                    new_health = if self.hazard_damage.is_negative() {
+                        new_health.saturating_add(self.hazard_damage.unsigned_abs() as u8)
+                    } else {
+                        new_health.saturating_sub(self.hazard_damage as u8)
+                    };
                 }
 
                 let ate_food = self.get_cell(new_head).is_food();

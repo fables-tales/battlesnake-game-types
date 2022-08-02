@@ -508,13 +508,13 @@ impl HazardQueryableGame for Game {
         self.board.hazards.contains(pos)
     }
 
-    fn get_hazard_damage(&self) -> u8 {
+    fn get_hazard_damage(&self) -> i8 {
         self.game
             .ruleset
             .settings
             .as_ref()
             .map(|settings| settings.hazard_damage_per_turn)
-            .unwrap_or(15) as u8
+            .unwrap_or(15) as i8
     }
 
     fn get_hazard_count(&self, pos: &Self::NativePositionType) -> u8 {

@@ -116,7 +116,7 @@ macro_rules! impl_common_board_traits {
                 self.embedded.get_hazard_count(pos)
             }
 
-            fn get_hazard_damage(&self) -> u8 {
+            fn get_hazard_damage(&self) -> i8 {
                 self.embedded.get_hazard_damage()
             }
         }

@@ -438,6 +438,26 @@ mod test {
     }
 
     #[test]
+    fn test_negative_hazards() {
+        let game_fixture = include_str!("../../../fixtures/negative_hazard.json");
+        let g: Result<DEGame, _> = serde_json::from_slice(game_fixture.as_bytes());
+        let g = g.expect("the json literal is valid");
+        let snake_id_mapping = build_snake_id_map(&g);
+        let compact: CellBoard4Snakes11x11 = g.as_cell_board(&snake_id_mapping).unwrap();
+
+        let moves = vec![(SnakeId(0), [Move::Down])];
+        let res = compact
+            .simulate_with_moves(&Instruments, moves)
+            .collect_vec()
+            .first()
+            .unwrap()
+            .1;
+
+        let new_health = res.get_health(&SnakeId(0));
+        assert_eq!(new_health, 99);
+    }
+
+    #[test]
     fn test_neighbors_and_possible_moves_start_of_game() {
         let game_fixture = include_str!("../../../fixtures/start_of_game.json");
         let g: Result<DEGame, _> = serde_json::from_slice(game_fixture.as_bytes());

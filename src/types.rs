@@ -289,14 +289,14 @@ pub trait HazardQueryableGame: PositionGettableGame {
     fn is_hazard(&self, pos: &Self::NativePositionType) -> bool;
 
     /// how much damage do hazards do?
-    fn get_hazard_damage(&self) -> u8;
+    fn get_hazard_damage(&self) -> i8;
 
     /// How many times is the hazards damage stacked here?
     fn get_hazard_count(&self, pos: &Self::NativePositionType) -> u8;
 
     /// How much damage does this specific hazards square do?
-    fn get_hazard_total_damage(&self, pos: &Self::NativePositionType) -> u8 {
-        self.get_hazard_damage() * self.get_hazard_count(pos)
+    fn get_hazard_total_damage(&self, pos: &Self::NativePositionType) -> i8 {
+        self.get_hazard_damage() * (self.get_hazard_count(pos) as i8)
     }
 }
 

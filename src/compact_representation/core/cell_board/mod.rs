@@ -42,7 +42,7 @@ pub struct CellBoard<
     const BOARD_SIZE: usize,
     const MAX_SNAKES: usize,
 > {
-    hazard_damage: u8,
+    hazard_damage: i8,
     cells: [Cell<T>; BOARD_SIZE],
     healths: [u8; MAX_SNAKES],
     heads: [CellIndex<T>; MAX_SNAKES],
@@ -131,7 +131,7 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
 
     /// unpacks a packed hash repr back in to a CellBoard
     pub fn from_packed_hash(hash: &HashMap<String, Vec<u32>>) -> Self {
-        let hazard_damage = hash.get("hazard_damage").unwrap()[0] as u8;
+        let hazard_damage = hash.get("hazard_damage").unwrap()[0] as i8;
         let actual_width = hash.get("actual_width").unwrap()[0] as u8;
         let actual_height = hash
             .get("actual_height")
@@ -337,7 +337,7 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
                 .settings
                 .as_ref()
                 .map(|s| s.hazard_damage_per_turn)
-                .unwrap_or(15) as u8,
+                .unwrap_or(15) as i8,
         })
     }
     fn get_cell(&self, cell_index: CellIndex<T>) -> Cell<T> {
