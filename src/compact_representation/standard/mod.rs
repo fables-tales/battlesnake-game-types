@@ -1,12 +1,7 @@
 //! A compact board representation that is efficient for simulation
 use crate::compact_representation::core::CellNum as CN;
 use crate::impl_common_board_traits;
-use crate::types::{
-    build_snake_id_map, Action, FoodGettableGame, FoodQueryableGame, HazardQueryableGame,
-    HazardSettableGame, HeadGettableGame, HealthGettableGame, LengthGettableGame,
-    NeckQueryableGame, PositionGettableGame, RandomReasonableMovesGame, SizeDeterminableGame,
-    SnakeIDGettableGame, SnakeIDMap, SnakeId, VictorDeterminableGame, YouDeterminableGame,
-};
+use crate::types::*;
 /// you almost certainly want to use the `convert_from_game` method to
 /// cast from a json represention to a `CellBoard`
 use crate::types::{NeighborDeterminableGame, SnakeBodyGettableGame};
@@ -401,6 +396,26 @@ mod test {
         assert!(c.is_hazard());
         assert!(c.get_snake_id().unwrap() == SnakeId(3));
         assert!(c.get_idx() == CellIndex(17));
+    }
+
+    #[test]
+    fn test_hazard_queryable() {
+        let game_fixture = include_str!("../../../fixtures/late_stage.json");
+        let g: Result<DEGame, _> = serde_json::from_slice(game_fixture.as_bytes());
+        let g = g.expect("the json literal is valid");
+        let snake_id_mapping = build_snake_id_map(&g);
+        let compact: CellBoard4Snakes11x11 = g.as_cell_board(&snake_id_mapping).unwrap();
+
+        assert!(!compact.is_hazard(&CellIndex(6 * 11 + 4)));
+
+        assert!(compact.is_hazard(&CellIndex(0)));
+        assert_eq!(compact.get_hazard_count(&CellIndex(0)), 2);
+
+        assert!(compact.is_hazard(&CellIndex(11)));
+        assert_eq!(compact.get_hazard_count(&CellIndex(11)), 1);
+
+        assert!(compact.is_hazard(&CellIndex(11 + 11)));
+        assert_eq!(compact.get_hazard_count(&CellIndex(11 + 11)), 1);
     }
 
     #[test]

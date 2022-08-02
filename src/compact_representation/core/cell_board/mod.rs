@@ -4,6 +4,7 @@ use std::slice::Iter;
 
 use itertools::Itertools;
 
+use crate::types::HazardQueryableGame;
 use crate::types::SnakeIDMap;
 use crate::types::SnakeId;
 use crate::wire_representation::Game;
@@ -313,9 +314,9 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
                     y: y as i32,
                 };
                 let cell_idx: CellIndex<T> = CellIndex::new(position, width);
-                if game.board.hazards.contains(&position) {
-                    cells[cell_idx.0.as_usize()].set_hazard();
-                }
+
+                cells[cell_idx.0.as_usize()].set_hazard_count(game.get_hazard_count(&position));
+
                 if game.board.food.contains(&position) {
                     cells[cell_idx.0.as_usize()].set_food();
                 }

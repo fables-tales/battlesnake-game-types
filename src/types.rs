@@ -284,6 +284,14 @@ pub trait HazardQueryableGame: PositionGettableGame {
 
     /// how much damage do hazards do?
     fn get_hazard_damage(&self) -> u8;
+
+    /// How many times is the hazards damage stacked here?
+    fn get_hazard_count(&self, pos: &Self::NativePositionType) -> u8;
+
+    /// How much damage does this specific hazards square do?
+    fn get_hazard_total_damage(&self, pos: &Self::NativePositionType) -> u8 {
+        self.get_hazard_damage() * self.get_hazard_count(pos)
+    }
 }
 
 /// A game where positions can be checked for food
@@ -305,6 +313,9 @@ pub trait NeckQueryableGame: PositionGettableGame + SnakeIDGettableGame {
 pub trait HazardSettableGame: PositionGettableGame {
     /// make this position a hazard
     fn set_hazard(&mut self, pos: Self::NativePositionType);
+
+    /// make this position a hazard with the specified number of counts
+    fn set_hazard_count(&mut self, pos: Self::NativePositionType, count: u8);
 
     /// clear this position of being a hazard
     fn clear_hazard(&mut self, pos: Self::NativePositionType);
