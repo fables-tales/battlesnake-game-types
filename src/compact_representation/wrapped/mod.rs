@@ -1,11 +1,6 @@
 //! A compact board representation that is efficient for simulation
 use crate::impl_common_board_traits;
-use crate::types::{
-    build_snake_id_map, FoodGettableGame, FoodQueryableGame, HazardQueryableGame,
-    HazardSettableGame, HeadGettableGame, HealthGettableGame, LengthGettableGame, MaxSnakes,
-    NeckQueryableGame, PositionGettableGame, RandomReasonableMovesGame, SizeDeterminableGame,
-    SnakeIDGettableGame, SnakeIDMap, SnakeId, VictorDeterminableGame, YouDeterminableGame,
-};
+use crate::types::*;
 
 /// you almost certainly want to use the `convert_from_game` method to
 /// cast from a json represention to a `CellBoard`

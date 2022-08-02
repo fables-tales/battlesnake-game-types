@@ -96,6 +96,10 @@ macro_rules! impl_common_board_traits {
                 self.embedded.set_hazard(pos)
             }
 
+            fn set_hazard_count(&mut self, pos: Self::NativePositionType, count: u8) {
+                self.embedded.set_hazard_count(pos, count)
+            }
+
             fn clear_hazard(&mut self, pos: Self::NativePositionType) {
                 self.embedded.clear_hazard(pos)
             }
@@ -106,6 +110,10 @@ macro_rules! impl_common_board_traits {
         {
             fn is_hazard(&self, pos: &Self::NativePositionType) -> bool {
                 self.embedded.is_hazard(pos)
+            }
+
+            fn get_hazard_count(&self, pos: &Self::NativePositionType) -> u8 {
+                self.embedded.get_hazard_count(pos)
             }
 
             fn get_hazard_damage(&self) -> u8 {

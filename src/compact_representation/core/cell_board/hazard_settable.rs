@@ -12,6 +12,10 @@ impl<T: CellNum, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize
         self.cells[pos.0.as_usize()].set_hazard();
     }
 
+    fn set_hazard_count(&mut self, pos: Self::NativePositionType, count: u8) {
+        self.cells[pos.0.as_usize()].set_hazard_count(count);
+    }
+
     fn clear_hazard(&mut self, pos: Self::NativePositionType) {
         self.cells[pos.0.as_usize()].clear_hazard();
     }

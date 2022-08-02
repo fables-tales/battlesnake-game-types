@@ -56,24 +56,26 @@ impl<T: CellNum> CellIndex<T> {
     }
 }
 
-const SNAKE_HEAD: u8 = 0x06;
-const SNAKE_BODY_PIECE: u8 = 0x01;
-const DOUBLE_STACKED_PIECE: u8 = 0x02;
-const TRIPLE_STACKED_PIECE: u8 = 0x03;
-const FOOD: u8 = 0x04;
-const EMPTY: u8 = 0x05;
-const KIND_MASK: u8 = 0x07;
-
-const IS_HAZARD: u8 = 0x10;
-
 pub const TRIPLE_STACK: usize = 3;
 pub const DOUBLE_STACK: usize = 2;
 
 use super::dimensions;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[repr(u8)]
+enum CellFlag {
+    Empty = 0x05,
+    SnakeHead = 0x06,
+    SnakeBodyPiece = 0x01,
+    DoubleStackedPiece = 0x02,
+    TripleStackedPiece = 0x03,
+    Food = 0x04,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Cell<T: CellNum> {
-    flags: u8,
+    flags: CellFlag,
+    hazard_count: u8,
     id: SnakeId,
     idx: CellIndex<T>,
 }
@@ -103,14 +105,20 @@ impl<T: CellNum> Cell<T> {
     }
 
     pub fn from_u32(value: u32) -> Self {
-        let flags = (value & 0xff) as u8;
+        let flags = unsafe { std::mem::transmute::<_, CellFlag>((value & 0xff) as u8) };
         let id = SnakeId(((value >> 8) & 0xff) as u8);
         let idx = CellIndex::from_u32((value >> 16) & 0xffff);
-        Self { flags, id, idx }
+
+        Self {
+            flags,
+            id,
+            idx,
+            hazard_count: 0,
+        }
     }
 
     pub fn is_empty(&self) -> bool {
-        self.flags & KIND_MASK == EMPTY
+        self.flags == CellFlag::Empty
     }
 
     pub fn get_next_index(&self) -> Option<CellIndex<T>> {
@@ -122,19 +130,24 @@ impl<T: CellNum> Cell<T> {
     }
 
     pub fn is_food(&self) -> bool {
-        self.flags & KIND_MASK == FOOD
+        self.flags == CellFlag::Food
     }
 
     pub fn set_hazard(&mut self) {
-        self.flags |= IS_HAZARD
+        self.hazard_count = 1;
+    }
+
+    #[allow(dead_code)]
+    pub fn set_hazard_count(&mut self, count: u8) {
+        self.hazard_count = count;
     }
 
     pub fn clear_hazard(&mut self) {
-        self.flags &= !IS_HAZARD
+        self.hazard_count = 0;
     }
 
     pub fn is_hazard(&self) -> bool {
-        self.flags & IS_HAZARD != 0
+        self.hazard_count > 0
     }
 
     pub fn is_body_segment(&self) -> bool {
@@ -144,13 +157,12 @@ impl<T: CellNum> Cell<T> {
     }
 
     pub fn is_head(&self) -> bool {
-        self.flags & KIND_MASK == SNAKE_HEAD || self.is_triple_stacked_piece()
+        self.flags == CellFlag::SnakeHead || self.is_triple_stacked_piece()
     }
 
     /// resets a cell to empty preserving the cell's hazard status
     pub fn remove(&mut self) {
-        let reset_to_empty = (self.flags & !KIND_MASK) | EMPTY;
-        self.flags = reset_to_empty;
+        self.flags = CellFlag::Empty;
         self.id = SnakeId(0);
         self.idx = CellIndex(T::from_i32(0));
     }
@@ -161,7 +173,8 @@ impl<T: CellNum> Cell<T> {
 
     pub fn empty() -> Self {
         Cell {
-            flags: EMPTY,
+            flags: CellFlag::Empty,
+            hazard_count: 0,
             id: SnakeId(0),
             idx: CellIndex(T::from_i32(0)),
         }
@@ -169,70 +182,76 @@ impl<T: CellNum> Cell<T> {
 
     pub fn make_snake_head(sid: SnakeId, tail_index: CellIndex<T>) -> Self {
         Cell {
-            flags: SNAKE_HEAD,
+            flags: CellFlag::SnakeHead,
             id: sid,
             idx: tail_index,
+            hazard_count: 0,
         }
     }
 
     pub fn make_body_piece(sid: SnakeId, next_index: CellIndex<T>) -> Self {
         Cell {
-            flags: SNAKE_BODY_PIECE,
+            flags: CellFlag::SnakeBodyPiece,
             id: sid,
             idx: next_index,
+            hazard_count: 0,
         }
     }
 
     pub fn make_double_stacked_piece(sid: SnakeId, next_index: CellIndex<T>) -> Self {
         Cell {
-            flags: DOUBLE_STACKED_PIECE,
+            flags: CellFlag::DoubleStackedPiece,
             id: sid,
             idx: next_index,
+            hazard_count: 0,
         }
     }
 
     pub fn make_triple_stacked_piece(sid: SnakeId) -> Self {
         Cell {
-            flags: TRIPLE_STACKED_PIECE,
+            flags: CellFlag::TripleStackedPiece,
             id: sid,
             idx: CellIndex(T::from_i32(0)),
+            hazard_count: 0,
         }
     }
 
     pub fn is_snake_body_piece(&self) -> bool {
-        self.flags & KIND_MASK == SNAKE_BODY_PIECE
+        self.flags == CellFlag::SnakeBodyPiece
     }
 
     pub fn is_double_stacked_piece(&self) -> bool {
-        self.flags & KIND_MASK == DOUBLE_STACKED_PIECE
+        self.flags == CellFlag::DoubleStackedPiece
     }
 
     pub fn is_triple_stacked_piece(&self) -> bool {
-        self.flags & KIND_MASK == TRIPLE_STACKED_PIECE
+        self.flags == CellFlag::TripleStackedPiece
     }
 
     pub fn is_body(&self) -> bool {
-        self.flags & KIND_MASK == SNAKE_BODY_PIECE || self.flags & KIND_MASK == DOUBLE_STACKED_PIECE
+        self.is_snake_body_piece()
+            || self.is_double_stacked_piece()
+            || self.is_triple_stacked_piece()
     }
 
     pub fn set_food(&mut self) {
-        self.flags = (self.flags & !KIND_MASK) | FOOD;
+        self.flags = CellFlag::Food;
     }
 
     pub fn set_head(&mut self, sid: SnakeId, tail_index: CellIndex<T>) {
-        self.flags = (self.flags & !KIND_MASK) | SNAKE_HEAD;
+        self.flags = CellFlag::SnakeHead;
         self.id = sid;
         self.idx = tail_index;
     }
 
     pub fn set_body_piece(&mut self, sid: SnakeId, next_pos: CellIndex<T>) {
-        self.flags = (self.flags & !KIND_MASK) | SNAKE_BODY_PIECE;
+        self.flags = CellFlag::SnakeBodyPiece;
         self.id = sid;
         self.idx = next_pos;
     }
 
     pub fn set_double_stacked(&mut self, sid: SnakeId, next_pos: CellIndex<T>) {
-        self.flags = (self.flags & !KIND_MASK) | DOUBLE_STACKED_PIECE;
+        self.flags = CellFlag::DoubleStackedPiece;
         self.id = sid;
         self.idx = next_pos;
     }

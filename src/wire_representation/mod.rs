@@ -5,14 +5,7 @@ use crate::compact_representation;
 use crate::compact_representation::dimensions::Dimensions;
 use crate::compact_representation::CellNum;
 use crate::compact_representation::StandardCellBoard;
-use crate::types::NeighborDeterminableGame;
-use crate::types::RandomReasonableMovesGame;
-use crate::types::{
-    FoodGettableGame, HazardQueryableGame, HazardSettableGame, HeadGettableGame,
-    HealthGettableGame, LengthGettableGame, Move, PositionGettableGame, ShoutGettableGame,
-    SizeDeterminableGame, SnakeBodyGettableGame, SnakeIDGettableGame, SnakeIDMap,
-    TurnDeterminableGame, Vector, VictorDeterminableGame, YouDeterminableGame,
-};
+use crate::types::*;
 use rand::prelude::IteratorRandom;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
@@ -523,6 +516,16 @@ impl HazardQueryableGame for Game {
             .map(|settings| settings.hazard_damage_per_turn)
             .unwrap_or(15) as u8
     }
+
+    fn get_hazard_count(&self, pos: &Self::NativePositionType) -> u8 {
+        self.board
+            .hazards
+            .iter()
+            .filter(|p| *p == pos)
+            .count()
+            .try_into()
+            .unwrap()
+    }
 }
 
 impl HazardSettableGame for Game {
@@ -532,6 +535,20 @@ impl HazardSettableGame for Game {
 
     fn clear_hazard(&mut self, pos: Self::NativePositionType) {
         self.board.hazards.retain(|p| p != &pos);
+    }
+
+    fn set_hazard_count(&mut self, pos: Self::NativePositionType, count: u8) {
+        let mut new_hazards: Vec<Position> = self
+            .board
+            .hazards
+            .iter()
+            .filter(|p| *p != &pos)
+            .cloned()
+            .collect();
+        for _ in 0..count {
+            new_hazards.push(pos);
+        }
+        self.board.hazards = new_hazards;
     }
 }
 
