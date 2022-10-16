@@ -1,0 +1,114 @@
+{
+  "you": {
+    "id": "gs_9VWrMjTwtvp9RqF4qf67Jmbc",
+    "name": "Hovering Hobbs",
+    "head": {
+      "x": 1,
+      "y": 1
+    },
+    "body": [
+      {
+        "x": 1,
+        "y": 1
+      },
+      {
+        "x": 1,
+        "y": 1
+      },
+      {
+        "x": 1,
+        "y": 1
+      }
+    ],
+    "health": 100,
+    "shout": ""
+  },
+  "board": {
+    "height": 11,
+    "width": 11,
+    "food": [
+      {
+        "x": 0,
+        "y": 2
+      },
+      {
+        "x": 10,
+        "y": 2
+      },
+      {
+        "x": 5,
+        "y": 5
+      }
+    ],
+    "snakes": [
+      {
+        "id": "gs_9VWrMjTwtvp9RqF4qf67Jmbc",
+        "name": "Hovering Hobbs",
+        "head": {
+          "x": 1,
+          "y": 1
+        },
+        "body": [
+          {
+            "x": 1,
+            "y": 1
+          },
+          {
+            "x": 1,
+            "y": 1
+          },
+          {
+            "x": 1,
+            "y": 1
+          }
+        ],
+        "health": 100,
+        "shout": ""
+      },
+      {
+        "id": "gs_84gHytVR4CRrBhpRyQqhTy3S",
+        "name": "TBD MCTS",
+        "head": {
+          "x": 9,
+          "y": 1
+        },
+        "body": [
+          {
+            "x": 9,
+            "y": 1
+          },
+          {
+            "x": 9,
+            "y": 1
+          },
+          {
+            "x": 9,
+            "y": 1
+          }
+        ],
+        "health": 100,
+        "shout": ""
+      }
+    ],
+    "hazards": []
+  },
+  "turn": 0,
+  "game": {
+    "id": "e80b70e7-a916-40ca-82d2-ad76e074efe1",
+    "ruleset": {
+      "name": "standard",
+      "version": "No version in frames",
+      "settings": {
+        "foodSpawnChance": 15,
+        "minimumFood": 1,
+        "hazardDamagePerTurn": 14,
+        "hazardMap": null,
+        "hazardMapAuthor": null,
+        "royale": null
+      }
+    },
+    "timeout": 500,
+    "map": "standard",
+    "source": "custom"
+  }
+}
