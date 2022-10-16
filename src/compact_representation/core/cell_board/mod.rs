@@ -3,9 +3,14 @@ use std::error::Error;
 use std::slice::Iter;
 
 use itertools::Itertools;
+use rand::seq::IteratorRandom;
 
+use crate::types::EmptyCellGettableGame;
+use crate::types::FoodGettableGame;
+use crate::types::HazardQueryableGame;
 use crate::types::SnakeIDMap;
 use crate::types::SnakeId;
+use crate::types::StandardFoodPlaceableGame;
 use crate::wire_representation::Game;
 use crate::wire_representation::Position;
 
@@ -425,6 +430,50 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
     /// determin the width of the CellBoard
     pub fn width() -> u8 {
         (BOARD_SIZE as f32).sqrt() as u8
+    }
+}
+
+impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize> EmptyCellGettableGame
+    for CellBoard<T, D, BOARD_SIZE, MAX_SNAKES>
+{
+    fn get_empty_cells(&self) -> Box<dyn Iterator<Item = Self::NativePositionType> + '_> {
+        Box::new(
+            self.cells
+                .iter()
+                .enumerate()
+                .filter(|(_, cell)| cell.is_empty())
+                .map(|(idx, _)| CellIndex::from_usize(idx)),
+        )
+    }
+}
+
+impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
+    StandardFoodPlaceableGame for CellBoard<T, D, BOARD_SIZE, MAX_SNAKES>
+{
+    fn place_food(&mut self, rng: &mut impl rand::Rng) {
+        // TODO: Get these constants from the game
+        let min_food = 1;
+        let food_spawn_chance = 0.15;
+
+        let current_food_count = self.get_all_food_as_native_positions().len();
+
+        let food_to_add = if current_food_count < min_food {
+            min_food - current_food_count
+        } else if rng.gen_bool(food_spawn_chance) {
+            1
+        } else {
+            0
+        };
+
+        if food_to_add == 0 {
+            return;
+        }
+
+        let empty = self.get_empty_cells();
+        let random = empty.choose_multiple(rng, food_to_add);
+        for pos in random {
+            self.cells[pos.0.as_usize()].set_food();
+        }
     }
 }
 

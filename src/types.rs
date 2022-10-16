@@ -441,6 +441,9 @@ pub trait SnakeBodyGettableGame: PositionGettableGame + SnakeIDGettableGame {
     ) -> Box<dyn Iterator<Item = Self::NativePositionType> + '_>;
 }
 
+/// A marker trait that can be used to specify the number of snakes this board can support
+pub trait MaxSnakes<const MAX_SNAKES: usize> {}
+
 #[cfg(test)]
 mod test {
 

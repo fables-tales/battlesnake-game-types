@@ -209,5 +209,26 @@ macro_rules! impl_common_board_traits {
                 $type::convert_from_game(game, &id_map)
             }
         }
+
+        impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
+            MaxSnakes<MAX_SNAKES> for $type<T, D, BOARD_SIZE, MAX_SNAKES>
+        {
+        }
+
+        impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
+            EmptyCellGettableGame for $type<T, D, BOARD_SIZE, MAX_SNAKES>
+        {
+            fn get_empty_cells(&self) -> Box<dyn Iterator<Item = Self::NativePositionType> + '_> {
+                self.embedded.get_empty_cells()
+            }
+        }
+
+        impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
+            StandardFoodPlaceableGame for $type<T, D, BOARD_SIZE, MAX_SNAKES>
+        {
+            fn place_food(&mut self, rng: &mut impl rand::Rng) {
+                self.embedded.place_food(rng)
+            }
+        }
     };
 }

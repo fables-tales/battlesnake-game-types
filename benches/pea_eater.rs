@@ -6,7 +6,8 @@ use std::{
 use battlesnake_game_types::{
     compact_representation::StandardCellBoard4Snakes11x11,
     types::{
-        RandomReasonableMovesGame, SimulableGame, SimulatorInstruments, VictorDeterminableGame,
+        RandomReasonableMovesGame, SimulableGame, SimulatorInstruments, StandardFoodPlaceableGame,
+        VictorDeterminableGame,
     },
 };
 use rand::{rngs::SmallRng, Rng, SeedableRng};
@@ -39,6 +40,8 @@ fn run_from_fixture_till_end(
             .unwrap()
             .1;
         game = new_game;
+
+        game.place_food(rng);
 
         iterations += 1;
     }
