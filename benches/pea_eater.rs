@@ -10,7 +10,10 @@ use battlesnake_game_types::{
         SnakeId, VictorDeterminableGame,
     },
 };
-use rand::{rngs::ThreadRng, thread_rng};
+use rand::{
+    rngs::{SmallRng, ThreadRng},
+    thread_rng, Rng, SeedableRng,
+};
 
 #[derive(Debug)]
 struct Instruments {}
@@ -20,7 +23,7 @@ impl SimulatorInstruments for Instruments {
 }
 
 fn run_from_fixture_till_end(
-    rng: &mut ThreadRng,
+    rng: &mut impl Rng,
     instrument: Instruments,
     initial_game: StandardCellBoard4Snakes11x11,
 ) -> u64 {
@@ -64,7 +67,7 @@ fn main() {
         .build()
         .unwrap();
 
-    let mut rng = thread_rng();
+    let mut rng = SmallRng::from_entropy();
     let mut total_iterations = 0;
     let mut game_lengths = Vec::new();
 
