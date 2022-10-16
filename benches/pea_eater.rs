@@ -6,14 +6,10 @@ use std::{
 use battlesnake_game_types::{
     compact_representation::StandardCellBoard4Snakes11x11,
     types::{
-        HealthGettableGame, RandomReasonableMovesGame, SimulableGame, SimulatorInstruments,
-        SnakeId, VictorDeterminableGame,
+        RandomReasonableMovesGame, SimulableGame, SimulatorInstruments, VictorDeterminableGame,
     },
 };
-use rand::{
-    rngs::{SmallRng, ThreadRng},
-    thread_rng, Rng, SeedableRng,
-};
+use rand::{rngs::SmallRng, Rng, SeedableRng};
 
 #[derive(Debug)]
 struct Instruments {}
