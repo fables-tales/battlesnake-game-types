@@ -69,6 +69,11 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
             || new_head.y < 0
             || new_head.y >= self.embedded.get_actual_height() as i32
     }
+
+    /// Return an iterator over all the empty cells on the board
+    pub fn get_all_empty(&self) -> impl Iterator<Item = CellIndex<T>> + '_ {
+        self.embedded.get_empty_cells()
+    }
 }
 
 impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
