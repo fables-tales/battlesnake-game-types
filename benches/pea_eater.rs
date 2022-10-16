@@ -1,3 +1,5 @@
+use std::time::{Duration, Instant};
+
 use battlesnake_game_types::types::{
     HealthGettableGame, RandomReasonableMovesGame, SimulableGame, SimulatorInstruments, SnakeId,
     VictorDeterminableGame,
@@ -11,16 +13,21 @@ impl SimulatorInstruments for Instruments {
     fn observe_simulation(&self, _: std::time::Duration) {}
 }
 
-fn run_from_fixture_till_end(rng: &mut ThreadRng, instrument: Instruments) {
+fn run_from_fixture_till_end(rng: &mut ThreadRng, instrument: Instruments) -> u64 {
+    let mut iterations = 0;
+
+    // TODO: Instead of relying on a static fixture, we should generate a random game state
     let fixture_string = include_str!("../fixtures/e80b70e7-a916-40ca-82d2-ad76e074efe1_0.json");
     let wire =
         serde_json::from_str::<battlesnake_game_types::wire_representation::Game>(fixture_string)
             .unwrap();
+
     let id_map = battlesnake_game_types::types::build_snake_id_map(&wire);
     let initial_game = battlesnake_game_types::compact_representation::StandardCellBoard4Snakes11x11::convert_from_game(wire, &id_map).unwrap();
 
     let mut game = initial_game;
 
+    // TODO: Add Food Spawing here somewhere
     while !game.is_over() {
         let next_move = game
             .random_reasonable_move_for_each_snake(rng)
@@ -33,14 +40,35 @@ fn run_from_fixture_till_end(rng: &mut ThreadRng, instrument: Instruments) {
             .1;
         game = new_game;
 
-        dbg!(game.get_health(&SnakeId(0)));
+        iterations += 1;
     }
+
+    iterations
 }
+
 fn main() {
-    let instrument = Instruments {};
     let mut rng = thread_rng();
+    let mut total_iterations = 0;
+    let mut game_lengths = Vec::new();
 
-    run_from_fixture_till_end(&mut rng, instrument);
+    let runtime = Duration::from_secs(10);
 
-    println!("Hello, world!");
+    let start = Instant::now();
+
+    while start.elapsed() < runtime {
+        let length = run_from_fixture_till_end(&mut rng, Instruments {});
+        total_iterations += length;
+        game_lengths.push(length);
+    }
+    let total_time = start.elapsed();
+
+    let seconds = total_time.as_secs_f64();
+    let iterations_per_second = total_iterations as f64 / seconds;
+
+    let average_game_length = game_lengths.iter().sum::<u64>() as f64 / game_lengths.len() as f64;
+
+    println!("Total iterations: {}", total_iterations);
+    println!("Total time: {:?}", total_time);
+    println!("Iterations per second: {}", iterations_per_second);
+    println!("Average game length: {}", average_game_length);
 }
