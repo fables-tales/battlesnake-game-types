@@ -1,8 +1,14 @@
-use std::time::{Duration, Instant};
+use std::{
+    fs::File,
+    time::{Duration, Instant},
+};
 
-use battlesnake_game_types::types::{
-    HealthGettableGame, RandomReasonableMovesGame, SimulableGame, SimulatorInstruments, SnakeId,
-    VictorDeterminableGame,
+use battlesnake_game_types::{
+    compact_representation::StandardCellBoard4Snakes11x11,
+    types::{
+        HealthGettableGame, RandomReasonableMovesGame, SimulableGame, SimulatorInstruments,
+        SnakeId, VictorDeterminableGame,
+    },
 };
 use rand::{rngs::ThreadRng, thread_rng};
 
@@ -13,17 +19,12 @@ impl SimulatorInstruments for Instruments {
     fn observe_simulation(&self, _: std::time::Duration) {}
 }
 
-fn run_from_fixture_till_end(rng: &mut ThreadRng, instrument: Instruments) -> u64 {
+fn run_from_fixture_till_end(
+    rng: &mut ThreadRng,
+    instrument: Instruments,
+    initial_game: StandardCellBoard4Snakes11x11,
+) -> u64 {
     let mut iterations = 0;
-
-    // TODO: Instead of relying on a static fixture, we should generate a random game state
-    let fixture_string = include_str!("../fixtures/e80b70e7-a916-40ca-82d2-ad76e074efe1_0.json");
-    let wire =
-        serde_json::from_str::<battlesnake_game_types::wire_representation::Game>(fixture_string)
-            .unwrap();
-
-    let id_map = battlesnake_game_types::types::build_snake_id_map(&wire);
-    let initial_game = battlesnake_game_types::compact_representation::StandardCellBoard4Snakes11x11::convert_from_game(wire, &id_map).unwrap();
 
     let mut game = initial_game;
 
@@ -47,6 +48,22 @@ fn run_from_fixture_till_end(rng: &mut ThreadRng, instrument: Instruments) -> u6
 }
 
 fn main() {
+    // Initial Setup to happen once
+    // TODO: Instead of relying on a static fixture, we should generate a random game state
+    let fixture_string = include_str!("../fixtures/e80b70e7-a916-40ca-82d2-ad76e074efe1_0.json");
+    let wire =
+        serde_json::from_str::<battlesnake_game_types::wire_representation::Game>(fixture_string)
+            .unwrap();
+
+    let id_map = battlesnake_game_types::types::build_snake_id_map(&wire);
+    let initial_game = battlesnake_game_types::compact_representation::StandardCellBoard4Snakes11x11::convert_from_game(wire, &id_map).unwrap();
+
+    let guard = pprof::ProfilerGuardBuilder::default()
+        .frequency(70_000)
+        .blocklist(&["libc", "libgcc", "pthread", "vdso"])
+        .build()
+        .unwrap();
+
     let mut rng = thread_rng();
     let mut total_iterations = 0;
     let mut game_lengths = Vec::new();
@@ -56,7 +73,7 @@ fn main() {
     let start = Instant::now();
 
     while start.elapsed() < runtime {
-        let length = run_from_fixture_till_end(&mut rng, Instruments {});
+        let length = run_from_fixture_till_end(&mut rng, Instruments {}, initial_game);
         total_iterations += length;
         game_lengths.push(length);
     }
@@ -71,4 +88,9 @@ fn main() {
     println!("Total time: {:?}", total_time);
     println!("Iterations per second: {}", iterations_per_second);
     println!("Average game length: {}", average_game_length);
+
+    if let Ok(report) = guard.report().build() {
+        let file = File::create("target/flamegraph.svg").unwrap();
+        report.flamegraph(file).unwrap();
+    };
 }
