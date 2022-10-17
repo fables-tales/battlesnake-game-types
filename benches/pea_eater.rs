@@ -28,7 +28,6 @@ fn run_from_fixture_till_end(
 
     let mut game = initial_game;
 
-    // TODO: Add Food Spawing here somewhere
     while !game.is_over() {
         let next_move = game
             .random_reasonable_move_for_each_snake(rng)
