@@ -429,16 +429,19 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
         self.get_cell(cell_idx).is_body()
     }
 
-    /// determins if this cell is a single stacked snake tail
-    pub(crate) fn cell_is_single_tail(&self, cell_idx: CellIndex<T>) -> bool {
+    pub fn cell_is_single_tail(&self, cell_idx: CellIndex<T>) -> bool {
         let cell = self.get_cell(cell_idx);
-        let snake_id = cell.get_snake_id();
+        if !cell.is_snake_body_piece()
+            || cell.is_double_stacked_piece()
+            || cell.is_triple_stacked_piece()
+        {
+            return false;
+        }
 
-        if let Some(sid) = snake_id {
-            let head_idx = self.get_head_as_native_position(&sid);
-            let tail = self.get_cell(head_idx).get_tail_position(head_idx);
+        if let Some(sid) = cell.get_snake_id() {
+            let head = self.heads[sid.0 as usize];
 
-            Some(cell_idx) == tail
+            self.get_cell(head).get_tail_position(head) == Some(cell_idx)
         } else {
             false
         }
