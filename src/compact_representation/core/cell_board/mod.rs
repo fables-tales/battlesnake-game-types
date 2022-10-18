@@ -426,6 +426,24 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
         self.get_cell(cell_idx).is_body()
     }
 
+    pub fn cell_is_single_tail(&self, cell_idx: CellIndex<T>) -> bool {
+        let cell = self.get_cell(cell_idx);
+        if !cell.is_snake_body_piece()
+            || cell.is_double_stacked_piece()
+            || cell.is_triple_stacked_piece()
+        {
+            return false;
+        }
+
+        if let Some(sid) = cell.get_snake_id() {
+            let head = self.heads[sid.0 as usize];
+
+            self.get_cell(head).get_tail_position(head) == Some(cell_idx)
+        } else {
+            false
+        }
+    }
+
     /// determin the width of the CellBoard
     pub fn width() -> u8 {
         (BOARD_SIZE as f32).sqrt() as u8

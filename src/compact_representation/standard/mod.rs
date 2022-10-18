@@ -102,7 +102,7 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
                             let ci = CellIndex::new(head_pos.add_vec(mv.to_vector()), width);
 
                             !self.off_board(new_head)
-                                && !self.embedded.cell_is_body(ci)
+                                && (!self.embedded.cell_is_body(ci) || self.embedded.cell_is_single_tail(ci))
                                 && !self.embedded.cell_is_snake_head(ci)
                         })
                         .choose(rng)
