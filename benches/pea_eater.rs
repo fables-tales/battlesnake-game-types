@@ -11,6 +11,8 @@ use battlesnake_game_types::{
     },
 };
 use rand::{rngs::SmallRng, Rng, SeedableRng};
+use tracing_flame::FlameLayer;
+use tracing_subscriber::{prelude::*, fmt::Layer, Registry};
 
 #[derive(Debug)]
 struct Instruments {}
@@ -59,11 +61,19 @@ fn main() {
     let id_map = battlesnake_game_types::types::build_snake_id_map(&wire);
     let initial_game = battlesnake_game_types::compact_representation::StandardCellBoard4Snakes11x11::convert_from_game(wire, &id_map).unwrap();
 
-    let guard = pprof::ProfilerGuardBuilder::default()
-        .frequency(70_000)
-        .blocklist(&["libc", "libgcc", "pthread", "vdso"])
-        .build()
-        .unwrap();
+    let fmt_layer = Layer::default();
+
+    let (flame_layer, _guard) = FlameLayer::with_file("./tracing.folded").unwrap();
+
+    let subscriber = Registry::default().with(fmt_layer).with(flame_layer);
+
+    tracing::subscriber::set_global_default(subscriber).expect("Could not set global default");
+
+    // let guard = pprof::ProfilerGuardBuilder::default()
+    //     .frequency(70_000)
+    //     .blocklist(&["libc", "libgcc", "pthread", "vdso"])
+    //     .build()
+    //     .unwrap();
 
     let mut rng = SmallRng::from_entropy();
     let mut total_iterations = 0;
@@ -90,8 +100,8 @@ fn main() {
     println!("Iterations per second: {}", iterations_per_second);
     println!("Average game length: {}", average_game_length);
 
-    if let Ok(report) = guard.report().build() {
-        let file = File::create("target/flamegraph.svg").unwrap();
-        report.flamegraph(file).unwrap();
-    };
+    // if let Ok(report) = guard.report().build() {
+    //     let file = File::create("target/flamegraph.svg").unwrap();
+    //     report.flamegraph(file).unwrap();
+    // };
 }

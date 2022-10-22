@@ -12,6 +12,7 @@ use rand::Rng;
 use std::borrow::Borrow;
 use std::error::Error;
 use std::fmt::Display;
+use tracing::instrument;
 
 use crate::{
     types::{Move, SimulableGame, SimulatorInstruments},
@@ -133,6 +134,7 @@ impl<
     > SimulableGame<T, MAX_SNAKES> for CellBoard<N, D, BOARD_SIZE, MAX_SNAKES>
 {
     #[allow(clippy::type_complexity)]
+    #[instrument(skip_all)]
     fn simulate_with_moves<S>(
         &self,
         instruments: &T,
