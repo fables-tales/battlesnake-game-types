@@ -16,6 +16,7 @@ use rand::Rng;
 use std::borrow::Borrow;
 use std::error::Error;
 use std::fmt::Display;
+use tracing::instrument;
 
 use crate::{
     types::{Move, SimulableGame, SimulatorInstruments},
@@ -102,7 +103,8 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
                             let ci = CellIndex::new(head_pos.add_vec(mv.to_vector()), width);
 
                             !self.off_board(new_head)
-                                && (!self.embedded.cell_is_body(ci) || self.embedded.cell_is_single_tail(ci))
+                                && (!self.embedded.cell_is_body(ci)
+                                    || self.embedded.cell_is_single_tail(ci))
                                 && !self.embedded.cell_is_snake_head(ci)
                         })
                         .choose(rng)
@@ -122,6 +124,7 @@ impl<
     > SimulableGame<T, MAX_SNAKES> for CellBoard<N, D, BOARD_SIZE, MAX_SNAKES>
 {
     #[allow(clippy::type_complexity)]
+    #[instrument(skip_all)]
     fn simulate_with_moves<S>(
         &self,
         instruments: &T,
