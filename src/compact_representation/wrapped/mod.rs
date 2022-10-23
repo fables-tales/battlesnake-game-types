@@ -6,7 +6,8 @@ use crate::types::*;
 /// cast from a json represention to a `CellBoard`
 use crate::types::{NeighborDeterminableGame, SnakeBodyGettableGame};
 use crate::wire_representation::Game;
-use rand::prelude::IteratorRandom;
+use itertools::Itertools;
+use rand::seq::SliceRandom;
 use rand::Rng;
 use std::borrow::Borrow;
 use std::collections::HashMap;
@@ -146,6 +147,7 @@ impl ToBestCellBoard for Game {
         Ok(best_board)
     }
 }
+
 impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
     RandomReasonableMovesGame for CellBoard<T, D, BOARD_SIZE, MAX_SNAKES>
 {
@@ -153,6 +155,19 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
         &'a self,
         rng: &'a mut impl Rng,
     ) -> Box<dyn std::iter::Iterator<Item = (SnakeId, Move)> + 'a> {
+        Box::new(
+            self.reasonable_moves_for_each_snake()
+                .map(move |(sid, mvs)| (sid, *mvs.choose(rng).unwrap())),
+        )
+    }
+}
+
+impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize> ReasonableMovesGame
+    for CellBoard<T, D, BOARD_SIZE, MAX_SNAKES>
+{
+    fn reasonable_moves_for_each_snake(
+        &self,
+    ) -> Box<dyn std::iter::Iterator<Item = (SnakeId, Vec<Move>)> + '_> {
         let width = self.embedded.get_actual_width();
         Box::new(
             self.embedded
@@ -160,21 +175,21 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
                 .enumerate()
                 .filter(|(_, health)| **health > 0)
                 .map(move |(idx, _)| {
-                    let head = self.get_head_as_native_position(&SnakeId(idx as u8));
-                    let head_pos = head.into_position(width);
+                    let head_pos = self.get_head_as_position(&SnakeId(idx as u8));
 
-                    let mv = Move::all()
-                        .iter()
+                    let mvs = IntoIterator::into_iter(Move::all())
                         .filter(|mv| {
                             let new_head = head_pos.add_vec(mv.to_vector());
-                            let ci = self.embedded.as_wrapped_cell_index(new_head);
+                            let ci = CellIndex::new(head_pos.add_vec(mv.to_vector()), width);
 
-                            !self.embedded.cell_is_body(ci) && !self.embedded.cell_is_snake_head(ci)
+                            !self.off_board(new_head)
+                                && !self.embedded.cell_is_body(ci)
+                                && !self.embedded.cell_is_snake_head(ci)
                         })
-                        .choose(rng)
-                        .copied()
-                        .unwrap_or(Move::Up);
-                    (SnakeId(idx as u8), mv)
+                        .collect_vec();
+                    let mvs = if mvs.is_empty() { vec![Move::Up] } else { mvs };
+
+                    (SnakeId(idx as u8), mvs)
                 }),
         )
     }

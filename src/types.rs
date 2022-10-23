@@ -408,6 +408,14 @@ pub trait RandomReasonableMovesGame: SnakeIDGettableGame {
     ) -> Box<dyn Iterator<Item = (Self::SnakeIDType, Move)> + 'a>;
 }
 
+/// a game for which reasonable moves for a given snake can be determined. e.g. do not collide with yourself
+pub trait ReasonableMovesGame: SnakeIDGettableGame {
+    #[allow(missing_docs)]
+    fn reasonable_moves_for_each_snake(
+        &self,
+    ) -> Box<dyn Iterator<Item = (Self::SnakeIDType, Vec<Move>)> + '_>;
+}
+
 /// a game for which the neighbors of a given Position can be determined
 pub trait NeighborDeterminableGame: PositionGettableGame {
     /// returns the neighboring positions
