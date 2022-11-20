@@ -1,7 +1,4 @@
-use std::{
-    fs::File,
-    time::{Duration, Instant},
-};
+use std::time::{Duration, Instant};
 
 use battlesnake_game_types::{
     compact_representation::StandardCellBoard4Snakes11x11,
@@ -12,7 +9,7 @@ use battlesnake_game_types::{
 };
 use rand::{rngs::SmallRng, Rng, SeedableRng};
 use tracing_flame::FlameLayer;
-use tracing_subscriber::{prelude::*, fmt::Layer, Registry};
+use tracing_subscriber::{fmt::Layer, prelude::*, Registry};
 
 #[derive(Debug)]
 struct Instruments {}

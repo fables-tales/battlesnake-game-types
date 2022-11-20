@@ -6,7 +6,6 @@ use itertools::Itertools;
 use rand::seq::IteratorRandom;
 
 use crate::types::EmptyCellGettableGame;
-use crate::types::HazardQueryableGame;
 use crate::types::SnakeIDMap;
 use crate::types::SnakeId;
 use crate::types::StandardFoodPlaceableGame;
@@ -476,10 +475,8 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
         // so we can short circuit on the first food we find
         let food_to_add = if !self.cells.iter().any(|c| c.is_food()) {
             min_food
-        } else if rng.gen_bool(food_spawn_chance) {
-            1
         } else {
-            0
+            usize::from(rng.gen_bool(food_spawn_chance))
         };
 
         if food_to_add == 0 {
