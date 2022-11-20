@@ -594,6 +594,48 @@ impl NeighborDeterminableGame for Game {
     }
 }
 
+impl NeighborDeterminableGame for Game {
+    fn neighbors<'a>(
+        &'a self,
+        pos: &Self::NativePositionType,
+    ) -> Box<dyn Iterator<Item = Self::NativePositionType> + 'a> {
+        Box::new(self.possible_moves(pos).map(|(_m, pos)| pos))
+    }
+
+    fn possible_moves<'a>(
+        &'a self,
+        pos: &Self::NativePositionType,
+    ) -> Box<dyn Iterator<Item = (Move, Self::NativePositionType)> + 'a> {
+        let clone = *pos;
+        Box::new(Move::all_iter().filter_map(move |m| {
+            let v = m.to_vector();
+
+            let mut new_pos = clone.add_vec(v);
+
+            if self.is_wrapped() {
+                let wrapped_x = new_pos.x.rem_euclid(self.get_width() as i32);
+                let wrapped_y = new_pos.y.rem_euclid(self.get_height() as i32);
+
+                new_pos = Position {
+                    x: wrapped_x,
+                    y: wrapped_y,
+                };
+            }
+
+            if self.off_board(new_pos) {
+                debug_assert!(
+                    !self.is_wrapped(),
+                    "Wrapped board should not have off-board positions"
+                );
+
+                return None;
+            }
+
+            Some((m, new_pos))
+        }))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use itertools::Itertools;
