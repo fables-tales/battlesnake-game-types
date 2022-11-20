@@ -458,6 +458,24 @@ pub trait SnakeBodyGettableGame: PositionGettableGame + SnakeIDGettableGame {
 /// A marker trait that can be used to specify the number of snakes this board can support
 pub trait MaxSnakes<const MAX_SNAKES: usize> {}
 
+/// A game where we can get all the empty cells
+pub trait EmptyCellGettableGame: PositionGettableGame {
+    /// get the empty cells on the board
+    fn get_empty_cells(&self) -> Box<dyn Iterator<Item = Self::NativePositionType> + '_>;
+}
+
+/// A game that can place food following the standard rules
+///
+/// - If the number of Food on the board is less than the minimum spawn enough food to reach the miniumum.
+/// - Otherwise there is a 15% chance of spawning a single food
+/// - Otherwise no food spawns
+///
+/// - When food spawns place it randomly on the empty cells of the board
+pub trait StandardFoodPlaceableGame {
+    /// place food on the board according to the standard rules
+    fn place_food(&mut self, rng: &mut impl Rng);
+}
+
 #[cfg(test)]
 mod test {
 
