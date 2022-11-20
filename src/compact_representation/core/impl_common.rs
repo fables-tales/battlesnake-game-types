@@ -62,7 +62,7 @@ macro_rules! impl_common_board_traits {
         impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
             FoodGettableGame for $type<T, D, BOARD_SIZE, MAX_SNAKES>
         {
-            fn get_all_food_as_positions(&self) -> Vec<crate::wire_representation::Position> {
+            fn get_all_food_as_positions(&self) -> Vec<$crate::wire_representation::Position> {
                 self.embedded.get_all_food_as_positions()
             }
 
@@ -77,7 +77,7 @@ macro_rules! impl_common_board_traits {
             fn get_head_as_position(
                 &self,
                 snake_id: &Self::SnakeIDType,
-            ) -> crate::wire_representation::Position {
+            ) -> $crate::wire_representation::Position {
                 self.embedded.get_head_as_position(snake_id)
             }
 
@@ -204,7 +204,7 @@ macro_rules! impl_common_board_traits {
             type Error = Box<dyn Error>;
 
             fn try_from(game: Game) -> Result<Self, Box<dyn Error>> {
-                let id_map = crate::types::build_snake_id_map(&game);
+                let id_map = $crate::types::build_snake_id_map(&game);
 
                 $type::convert_from_game(game, &id_map)
             }
