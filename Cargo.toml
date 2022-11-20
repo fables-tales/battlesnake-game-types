@@ -1,7 +1,7 @@
 [package]
 name = "battlesnake-game-types"
 version = "0.15.0"
-authors = ["Penelope Phippen <penelope@hey.com>"]
+authors = ["Penelope Phippen <penelope@hey.com>", "Corey Alexander <coreyja@gmail.com>"]
 edition = "2018"
 description = "game types for play.battlesnake.com"
 license = "Apache-2.0"
