@@ -8,8 +8,6 @@ use battlesnake_game_types::{
     },
 };
 use rand::{rngs::SmallRng, Rng, SeedableRng};
-use tracing_flame::FlameLayer;
-use tracing_subscriber::{fmt::Layer, prelude::*, Registry};
 
 #[derive(Debug)]
 struct Instruments {}
@@ -58,13 +56,15 @@ fn main() {
     let id_map = battlesnake_game_types::types::build_snake_id_map(&wire);
     let initial_game = battlesnake_game_types::compact_representation::StandardCellBoard4Snakes11x11::convert_from_game(wire, &id_map).unwrap();
 
-    let fmt_layer = Layer::default();
+    // use tracing_flame::FlameLayer;
+    // use tracing_subscriber::{fmt::Layer, prelude::*, Registry};
+    // let fmt_layer = Layer::default();
 
-    let (flame_layer, _guard) = FlameLayer::with_file("./tracing.folded").unwrap();
+    // let (flame_layer, _guard) = FlameLayer::with_file("./tracing.folded").unwrap();
 
-    let subscriber = Registry::default().with(fmt_layer).with(flame_layer);
+    // let subscriber = Registry::default().with(fmt_layer).with(flame_layer);
 
-    tracing::subscriber::set_global_default(subscriber).expect("Could not set global default");
+    // tracing::subscriber::set_global_default(subscriber).expect("Could not set global default");
 
     // let guard = pprof::ProfilerGuardBuilder::default()
     //     .frequency(70_000)
