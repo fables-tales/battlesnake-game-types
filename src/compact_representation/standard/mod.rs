@@ -103,11 +103,12 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize> Rea
                     let mvs = IntoIterator::into_iter(Move::all())
                         .filter(|mv| {
                             let new_head = head_pos.add_vec(mv.to_vector());
-                            let ci = CellIndex::new(head_pos.add_vec(mv.to_vector()), width);
+                            let ci = CellIndex::new(new_head, width);
 
                             !self.off_board(new_head)
-                                && !self.embedded.cell_is_body(ci)
-                                && !self.embedded.cell_is_snake_head(ci)
+                                && ((!self.embedded.cell_is_body(ci)
+                                    && !self.embedded.cell_is_snake_head(ci))
+                                    || self.embedded.cell_is_single_tail(ci))
                         })
                         .collect_vec();
                     let mvs = if mvs.is_empty() { vec![Move::Up] } else { mvs };
