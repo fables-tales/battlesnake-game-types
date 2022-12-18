@@ -179,12 +179,25 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize> Rea
 
                     let mvs = IntoIterator::into_iter(Move::all())
                         .filter(|mv| {
-                            let new_head = head_pos.add_vec(mv.to_vector());
-                            let ci = CellIndex::new(head_pos.add_vec(mv.to_vector()), width);
+                            let mut new_head = head_pos.add_vec(mv.to_vector());
+                            let wrapped_x = new_head.x.rem_euclid(self.get_width() as i32);
+                            let wrapped_y = new_head.y.rem_euclid(self.get_height() as i32);
+
+                            new_head = Position {
+                                x: wrapped_x,
+                                y: wrapped_y,
+                            };
+
+                            let ci = CellIndex::new(new_head, width);
+
+                            if self.off_board(new_head) {
+                                return false;
+                            };
 
                             !self.off_board(new_head)
-                                && !self.embedded.cell_is_body(ci)
-                                && !self.embedded.cell_is_snake_head(ci)
+                                && ((!self.embedded.cell_is_body(ci)
+                                    && !self.embedded.cell_is_snake_head(ci))
+                                    || self.embedded.cell_is_single_tail(ci))
                         })
                         .collect_vec();
                     let mvs = if mvs.is_empty() { vec![Move::Up] } else { mvs };
@@ -271,8 +284,8 @@ mod test {
         game_fixture,
         types::{
             build_snake_id_map, HeadGettableGame, HealthGettableGame, Move,
-            NeighborDeterminableGame, RandomReasonableMovesGame, SimulableGame,
-            SimulatorInstruments, SnakeId,
+            NeighborDeterminableGame, RandomReasonableMovesGame, ReasonableMovesGame,
+            SimulableGame, SimulatorInstruments, SnakeId,
         },
         wire_representation::Position,
     };
@@ -542,6 +555,24 @@ mod test {
                 .into_iter()
                 .map(|(_, pos)| pos)
                 .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn reasonable_moves_for_each_snake_mojave_12_18_12_34() {
+        let g = game_fixture(include_str!("../../../fixtures/mojave_12_18_12_34.json"));
+        let snake_id_mapping = build_snake_id_map(&g);
+        let compact: CellBoard4SnakesSquare11x11 =
+            g.as_wrapped_cell_board(&snake_id_mapping).unwrap();
+
+        let moves = compact.reasonable_moves_for_each_snake().collect_vec();
+
+        assert_eq!(
+            moves,
+            vec![
+                (SnakeId(0), vec![Move::Up, Move::Down]),
+                (SnakeId(1), vec![Move::Down, Move::Left, Move::Right]),
+            ]
         );
     }
 }

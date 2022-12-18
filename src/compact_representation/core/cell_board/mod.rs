@@ -5,6 +5,7 @@ use std::slice::Iter;
 use itertools::Itertools;
 
 use crate::types::HazardQueryableGame;
+use crate::types::HeadGettableGame;
 use crate::types::SnakeIDMap;
 use crate::types::SnakeId;
 use crate::wire_representation::Game;
@@ -421,6 +422,21 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
     /// determines if this cell is a snake body piece (including double stacked)
     pub fn cell_is_body(&self, cell_idx: CellIndex<T>) -> bool {
         self.get_cell(cell_idx).is_body()
+    }
+
+    /// determins if this cell is a single stacked snake tail
+    pub(crate) fn cell_is_single_tail(&self, cell_idx: CellIndex<T>) -> bool {
+        let cell = self.get_cell(cell_idx);
+        let snake_id = cell.get_snake_id();
+
+        if let Some(sid) = snake_id {
+            let head_idx = self.get_head_as_native_position(&sid);
+            let tail = self.get_cell(head_idx).get_tail_position(head_idx);
+
+            Some(cell_idx) == tail
+        } else {
+            false
+        }
     }
 
     /// determin the width of the CellBoard
