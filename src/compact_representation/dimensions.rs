@@ -13,7 +13,12 @@ pub trait Dimensions: Debug + Copy + Hash {
     fn from_dimensions(width: u8, height: u8) -> Self;
 
     /// Get the width of this dimension
-    fn width(&self) -> u8;
+    fn actual_width(&self) -> u8;
+
+    /// Get the width of the board used to store positions in the CellBoard
+    /// There are times we want this to differ from the actual width so that instead of doing expensive
+    /// multplication and division we can do cheaper bit shifts
+    fn stored_width(&self) -> u8;
 
     /// Get the height of this dimension
     fn height(&self) -> u8;
@@ -22,13 +27,18 @@ pub trait Dimensions: Debug + Copy + Hash {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 /// A square board
 ///
-/// We only store the width of the game and assume the height matches
+/// We only store the width of the game and assume the height matches.
+/// We use the actual width of the board as the width for storing positions
 pub struct Square {
     width: u8,
 }
 
 impl Dimensions for Square {
-    fn width(&self) -> u8 {
+    fn actual_width(&self) -> u8 {
+        self.width
+    }
+
+    fn stored_width(&self) -> u8 {
         self.width
     }
 
@@ -45,10 +55,15 @@ impl Dimensions for Square {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 /// A fixed size board
+/// We use the actual width of the board as the width for storing positions
 pub struct Fixed<const W: u8, const H: u8>;
 
 impl<const W: u8, const H: u8> Dimensions for Fixed<W, H> {
-    fn width(&self) -> u8 {
+    fn actual_width(&self) -> u8 {
+        W
+    }
+
+    fn stored_width(&self) -> u8 {
         W
     }
 
@@ -71,13 +86,18 @@ pub type ArcadeMaze = Fixed<19, 21>;
 /// A fully custom dimension
 ///
 /// Stores the height and width seperately
+/// We use the actual width of the board as the width for storing positions
 pub struct Custom {
     width: u8,
     height: u8,
 }
 
 impl Dimensions for Custom {
-    fn width(&self) -> u8 {
+    fn actual_width(&self) -> u8 {
+        self.width
+    }
+
+    fn stored_width(&self) -> u8 {
         self.width
     }
 
@@ -87,5 +107,33 @@ impl Dimensions for Custom {
 
     fn from_dimensions(width: u8, height: u8) -> Self {
         Self { width, height }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+/// A fixed size board
+/// We use the actual width of the board as the width for storing positions
+pub struct FixedWithStoredWidth<const W: u8, const H: u8, const STORED_W: u8>;
+
+impl<const W: u8, const H: u8, const STORED_W: u8> Dimensions
+    for FixedWithStoredWidth<W, H, STORED_W>
+{
+    fn actual_width(&self) -> u8 {
+        W
+    }
+
+    fn stored_width(&self) -> u8 {
+        STORED_W
+    }
+
+    fn height(&self) -> u8 {
+        H
+    }
+
+    fn from_dimensions(width: u8, height: u8) -> Self {
+        debug_assert_eq!(width, W);
+        debug_assert_eq!(height, H);
+
+        Self
     }
 }

@@ -13,7 +13,7 @@ impl<T: CellNum, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize
         snake_id: &Self::SnakeIDType,
     ) -> crate::wire_representation::Position {
         let idx = self.heads[snake_id.0.as_usize()];
-        let width = self.get_actual_width();
+        let width = self.get_stored_width();
         idx.into_position(width)
     }
 

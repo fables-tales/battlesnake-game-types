@@ -209,14 +209,18 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
             } else {
                 panic!("We should never get here");
             }
-            CellIndex::<T>::new(new_head_position, Self::width())
+            CellIndex::<T>::new(new_head_position, self.get_stored_width())
         } else {
-            CellIndex::<T>::new(new_head_position, Self::width())
+            CellIndex::<T>::new(new_head_position, self.get_stored_width())
         }
     }
 
     pub fn get_actual_width(&self) -> u8 {
-        self.dimensions.width()
+        self.dimensions.actual_width()
+    }
+
+    pub fn get_stored_width(&self) -> u8 {
+        self.dimensions.stored_width()
     }
 
     pub fn get_actual_height(&self) -> u8 {
@@ -443,11 +447,6 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
         } else {
             false
         }
-    }
-
-    /// determin the width of the CellBoard
-    pub fn width() -> u8 {
-        (BOARD_SIZE as f32).sqrt() as u8
     }
 }
 

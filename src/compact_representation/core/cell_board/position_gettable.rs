@@ -21,13 +21,13 @@ impl<T: CellNum, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize
     }
 
     fn position_from_native(&self, pos: Self::NativePositionType) -> Position {
-        let width = self.get_actual_width();
+        let width = self.get_stored_width();
 
         pos.into_position(width)
     }
 
     fn native_from_position(&self, pos: Position) -> Self::NativePositionType {
-        Self::NativePositionType::new(pos, self.get_actual_width())
+        Self::NativePositionType::new(pos, self.get_stored_width())
     }
 
     fn off_board(&self, pos: Position) -> bool {

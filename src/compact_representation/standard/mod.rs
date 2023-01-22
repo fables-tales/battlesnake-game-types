@@ -97,7 +97,7 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize> Rea
     fn reasonable_moves_for_each_snake(
         &self,
     ) -> Box<dyn std::iter::Iterator<Item = (SnakeId, Vec<Move>)> + '_> {
-        let width = self.embedded.get_actual_width();
+        let width = self.embedded.get_stored_width();
         Box::new(
             self.embedded
                 .iter_healths()
@@ -165,7 +165,7 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
         &'a self,
         pos: &Self::NativePositionType,
     ) -> Box<(dyn std::iter::Iterator<Item = (Move, CellIndex<T>)> + 'a)> {
-        let width = self.embedded.get_actual_width();
+        let width = self.embedded.get_stored_width();
         let head_pos = pos.into_position(width);
 
         Box::new(
@@ -185,7 +185,7 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
         &'a self,
         pos: &Self::NativePositionType,
     ) -> Box<(dyn Iterator<Item = CellIndex<T>> + 'a)> {
-        let width = self.embedded.get_actual_width();
+        let width = self.embedded.get_stored_width();
         let head_pos = pos.into_position(width);
 
         Box::new(

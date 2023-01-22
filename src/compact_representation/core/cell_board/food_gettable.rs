@@ -16,7 +16,7 @@ impl<T: CellNum, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize
             .iter()
             .enumerate()
             .filter(|(_, c)| c.is_food())
-            .map(|(i, _)| CellIndex(T::from_usize(i)).into_position(self.get_actual_width()))
+            .map(|(i, _)| CellIndex(T::from_usize(i)).into_position(self.get_stored_width()))
             .collect()
     }
 
