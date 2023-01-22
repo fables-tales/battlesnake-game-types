@@ -7,7 +7,9 @@ use battlesnake_game_types::{
         VictorDeterminableGame,
     },
 };
+use num_format::{Locale, ToFormattedString};
 use rand::{rngs::SmallRng, Rng, SeedableRng};
+use std::fs::File;
 use tracing_flame::FlameLayer;
 use tracing_subscriber::{fmt::Layer, prelude::*, Registry};
 
@@ -58,12 +60,28 @@ fn main() {
     let id_map = battlesnake_game_types::types::build_snake_id_map(&wire);
     let initial_game = battlesnake_game_types::compact_representation::StandardCellBoard4Snakes11x11::convert_from_game(wire, &id_map).unwrap();
 
-    if std::env::var("TRACING").is_ok() {
+    let _flame_layer_guard: Option<_> = if std::env::var("TRACING").is_ok() {
         let fmt_layer = Layer::default();
-        let fl = FlameLayer::with_file("./tracing.folded").unwrap();
+        let fl = FlameLayer::with_file("./target/tracing.folded").unwrap();
         let subscriber = Registry::default().with(fmt_layer).with(fl.0);
 
         tracing::subscriber::set_global_default(subscriber).expect("Could not set global default");
+
+        Some(fl.1)
+    } else {
+        None
+    };
+
+    let pprof_guard = if std::env::var("PPROF").is_ok() {
+        Some(
+            pprof::ProfilerGuardBuilder::default()
+                .frequency(70_000)
+                .blocklist(&["libc", "libgcc", "pthread", "vdso"])
+                .build()
+                .unwrap(),
+        )
+    } else {
+        None
     };
 
     let mut rng = SmallRng::from_entropy();
@@ -86,13 +104,25 @@ fn main() {
 
     let average_game_length = game_lengths.iter().sum::<u64>() as f64 / game_lengths.len() as f64;
 
-    println!("Total iterations: {}", total_iterations);
-    println!("Total time: {:?}", total_time);
-    println!("Iterations per second: {}", iterations_per_second);
-    println!("Average game length: {}", average_game_length);
+    let average_iteration_duration = total_time / total_iterations as u32;
 
-    // if let Ok(report) = guard.report().build() {
-    //     let file = File::create("target/flamegraph.svg").unwrap();
-    //     report.flamegraph(file).unwrap();
-    // };
+    let locale = Locale::en;
+    println!(
+        "Total iterations: {}",
+        total_iterations.to_formatted_string(&locale)
+    );
+    println!("Total time: {:?}", total_time);
+    println!(
+        "Iterations per second (rounded down): {}",
+        (iterations_per_second.trunc() as u64).to_formatted_string(&locale)
+    );
+    println!("Time per Iteration: {:?}", average_iteration_duration);
+    println!("Average game length: {:.3}", average_game_length);
+
+    if let Some(guard) = pprof_guard {
+        if let Ok(report) = guard.report().build() {
+            let file = File::create("target/flamegraph.svg").unwrap();
+            report.flamegraph(file).unwrap();
+        };
+    };
 }
