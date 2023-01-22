@@ -3,21 +3,27 @@
 
 use std::error::Error;
 
-use crate::{wire_representation::{Game, Position}, types::Move};
+use crate::{
+    types::Move,
+    wire_representation::{Game, Position},
+};
 
 /// Represents a hazard algorithms that can only be wound forward (interface permits one turn at a time)
 pub trait ForwardOnlyHazardAlgorithm<T>: Clone + std::fmt::Debug {
     /// use this to initialize the hazard algorithm. See implementation
     /// specific notes for how to use for each hazard algorithm. The returned
     /// iterator is the list of positions observed on the first creation of hazards
-    fn observe(&mut self, game: &Game) -> Result<Box <dyn Iterator<Item=Position>>, Box<dyn Error>>;
+    fn observe(
+        &mut self,
+        game: &Game,
+    ) -> Result<Box<dyn Iterator<Item = Position>>, Box<dyn Error>>;
 
     /// determines if this forward only hazard algorithm is ready for inc calls
     fn is_ready_for_inc(&self) -> bool;
 
     /// Wind the turn forward by one. Returned iterator represents the new hazards
     /// that were created on the wound turn.
-    fn inc_turn(&mut self) -> Box<dyn Iterator<Item=T>>;
+    fn inc_turn(&mut self) -> Box<dyn Iterator<Item = T>>;
 
     /// get the current turn of this hazard algorithm
     fn current_turn(&self) -> usize;
@@ -28,7 +34,10 @@ pub trait ForwardOnlyHazardAlgorithm<T>: Clone + std::fmt::Debug {
 pub struct NoopHazard();
 
 impl ForwardOnlyHazardAlgorithm<Position> for NoopHazard {
-    fn observe(&mut self, _game: &Game) -> Result<Box <dyn Iterator<Item=Position>>, Box<dyn Error>> {
+    fn observe(
+        &mut self,
+        _game: &Game,
+    ) -> Result<Box<dyn Iterator<Item = Position>>, Box<dyn Error>> {
         Ok(Box::new(std::iter::empty()))
     }
 
@@ -36,7 +45,7 @@ impl ForwardOnlyHazardAlgorithm<Position> for NoopHazard {
         false
     }
 
-    fn inc_turn(&mut self) -> Box<dyn Iterator<Item=Position>> {
+    fn inc_turn(&mut self) -> Box<dyn Iterator<Item = Position>> {
         Box::new(std::iter::empty())
     }
 
@@ -44,7 +53,6 @@ impl ForwardOnlyHazardAlgorithm<Position> for NoopHazard {
         0
     }
 }
-
 
 /// Spiral hazard algorithm
 #[derive(Debug, Copy, Clone)]
@@ -84,7 +92,7 @@ impl Default for SpiralHazard {
 // x x x
 // x x x
 // but crucially not:
-// x x 
+// x x
 // x x
 fn next_perfect_odd_square(n: u16) -> u16 {
     // 1 -> 1
@@ -118,7 +126,10 @@ impl ForwardOnlyHazardAlgorithm<Position> for SpiralHazard {
     /// which will usually be on turn 3, once you've seen the seed cell
     /// you should stop calling observe, and start calling inc_turn to
     /// calculate forward hazard squares
-    fn observe(&mut self, game: &Game) -> Result<Box <dyn Iterator<Item=Position>>, Box<dyn Error>> {
+    fn observe(
+        &mut self,
+        game: &Game,
+    ) -> Result<Box<dyn Iterator<Item = Position>>, Box<dyn Error>> {
         if self.is_ready_for_inc() {
             return Err("already ready for inc".into());
         }
@@ -137,7 +148,7 @@ impl ForwardOnlyHazardAlgorithm<Position> for SpiralHazard {
 
                 self.next_hazard_cell = self.seed_cell.add_vec(Move::Up.to_vector());
                 self.direction = Move::Right;
-                return Ok(Box::new(Some(self.seed_cell).into_iter()))
+                return Ok(Box::new(Some(self.seed_cell).into_iter()));
             }
         }
         Ok(Box::new(None.into_iter()))
@@ -151,25 +162,37 @@ impl ForwardOnlyHazardAlgorithm<Position> for SpiralHazard {
         self.current_turn as usize
     }
 
-    fn inc_turn(&mut self) -> Box<dyn Iterator<Item=Position>> {
+    fn inc_turn(&mut self) -> Box<dyn Iterator<Item = Position>> {
         self.current_turn += 1;
         if self.current_turn % self.hazard_every_turns as u16 == 0 {
             let turns_elapsed = self.current_turn - self.first_turn_seen;
             // plus 1 because the seed cell
             let spawns_elapsed = (turns_elapsed / self.hazard_every_turns as u16) + 1;
             let next_square = next_perfect_odd_square(spawns_elapsed);
-            let radius = ((next_square as f32).sqrt()/2.0).floor() as u16;
+            let radius = ((next_square as f32).sqrt() / 2.0).floor() as u16;
             let result = self.next_hazard_cell;
             self.next_hazard_cell = self.next_hazard_cell.add_vec(self.direction.to_vector());
 
-            if self.next_hazard_cell.x - self.seed_cell.x == radius as i32 && self.next_hazard_cell.y - self.seed_cell.y == radius as i32 {
+            if self.next_hazard_cell.x - self.seed_cell.x == radius as i32
+                && self.next_hazard_cell.y - self.seed_cell.y == radius as i32
+            {
                 self.direction = Move::Down;
-            } else if self.next_hazard_cell.x - self.seed_cell.x == radius as i32 && self.next_hazard_cell.y - self.seed_cell.y == -(radius as i32) {
+            } else if self.next_hazard_cell.x - self.seed_cell.x == radius as i32
+                && self.next_hazard_cell.y - self.seed_cell.y == -(radius as i32)
+            {
                 self.direction = Move::Left;
-            } else if self.next_hazard_cell.x - self.seed_cell.x == -(radius as i32) && self.next_hazard_cell.y - self.seed_cell.y == -(radius as i32) {
+            } else if self.next_hazard_cell.x - self.seed_cell.x == -(radius as i32)
+                && self.next_hazard_cell.y - self.seed_cell.y == -(radius as i32)
+            {
                 self.direction = Move::Up;
-            } else if self.next_hazard_cell.x - self.seed_cell.x == -(radius as i32) && self.next_hazard_cell.y - self.seed_cell.y == radius as i32 {
-                debug_assert!(is_perfect_odd_square(spawns_elapsed+1), "spawns_elapsed: {}", spawns_elapsed);
+            } else if self.next_hazard_cell.x - self.seed_cell.x == -(radius as i32)
+                && self.next_hazard_cell.y - self.seed_cell.y == radius as i32
+            {
+                debug_assert!(
+                    is_perfect_odd_square(spawns_elapsed + 1),
+                    "spawns_elapsed: {}",
+                    spawns_elapsed
+                );
                 self.direction = Move::Up;
             }
             if is_perfect_odd_square(spawns_elapsed) {
@@ -185,11 +208,14 @@ impl ForwardOnlyHazardAlgorithm<Position> for SpiralHazard {
 
 #[cfg(test)]
 mod tests {
-    use std::{fs, collections::HashSet, iter::FromIterator, path};
+    use std::{collections::HashSet, fs, iter::FromIterator, path};
 
-    use crate::{wire_representation::{Position, Game}, types::Move};
+    use crate::{
+        types::Move,
+        wire_representation::{Game, Position},
+    };
 
-    use super::{SpiralHazard, ForwardOnlyHazardAlgorithm};
+    use super::{ForwardOnlyHazardAlgorithm, SpiralHazard};
 
     #[test]
     fn test_next_perfect_square() {
@@ -317,7 +343,6 @@ mod tests {
                 let hazards_set = HashSet::from_iter(game.board.hazards.into_iter());
                 assert!(hazard_alg.current_turn == game.turn as u16);
                 assert!(hazards_set == maintained_hazards);
-
             }
         }
     }

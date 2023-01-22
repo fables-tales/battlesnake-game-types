@@ -1,8 +1,8 @@
 #![deny(
-  warnings,
-  missing_copy_implementations,
-  missing_debug_implementations,
-  missing_docs
+    warnings,
+    missing_copy_implementations,
+    missing_debug_implementations,
+    missing_docs
 )]
 //! Types for working with [battlesnake](https://docs.battlesnake.com/).
 //! The goal is to provide simulation tooling and fast representations that
@@ -32,9 +32,9 @@
 use wire_representation::Game;
 
 pub mod compact_representation;
+pub mod hazard_algorithms;
 pub mod types;
 pub mod wire_representation;
-pub mod hazard_algorithms;
 
 /// Loads a fixture from a given string
 pub fn game_fixture(game_fixture: &str) -> Game {
