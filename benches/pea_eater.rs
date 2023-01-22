@@ -60,9 +60,15 @@ fn main() {
 
     let fmt_layer = Layer::default();
 
-    let (flame_layer, _guard) = FlameLayer::with_file("./tracing.folded").unwrap();
-
-    let subscriber = Registry::default().with(fmt_layer).with(flame_layer);
+    let flame_layer: Option<_> = if std::env::var("TRACING_FOLDED").is_ok() {
+        let fl = FlameLayer::with_file("./tracing.folded").unwrap();
+        Some(fl)
+    } else {
+        None
+    };
+    let subscriber = Registry::default()
+        .with(fmt_layer)
+        .with(flame_layer.map(|x| x.0));
 
     tracing::subscriber::set_global_default(subscriber).expect("Could not set global default");
 
