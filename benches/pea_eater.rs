@@ -58,19 +58,13 @@ fn main() {
     let id_map = battlesnake_game_types::types::build_snake_id_map(&wire);
     let initial_game = battlesnake_game_types::compact_representation::StandardCellBoard4Snakes11x11::convert_from_game(wire, &id_map).unwrap();
 
-    let fmt_layer = Layer::default();
-
-    let flame_layer: Option<_> = if std::env::var("TRACING_FOLDED").is_ok() {
+    if std::env::var("TRACING").is_ok() {
+        let fmt_layer = Layer::default();
         let fl = FlameLayer::with_file("./tracing.folded").unwrap();
-        Some(fl)
-    } else {
-        None
-    };
-    let subscriber = Registry::default()
-        .with(fmt_layer)
-        .with(flame_layer.map(|x| x.0));
+        let subscriber = Registry::default().with(fmt_layer).with(fl.0);
 
-    tracing::subscriber::set_global_default(subscriber).expect("Could not set global default");
+        tracing::subscriber::set_global_default(subscriber).expect("Could not set global default");
+    };
 
     let mut rng = SmallRng::from_entropy();
     let mut total_iterations = 0;
