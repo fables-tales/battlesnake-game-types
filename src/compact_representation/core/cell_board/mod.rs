@@ -4,7 +4,6 @@ use std::slice::Iter;
 
 use itertools::Itertools;
 
-use crate::types::HazardQueryableGame;
 use crate::types::HeadGettableGame;
 use crate::types::SnakeIDMap;
 use crate::types::SnakeId;
@@ -43,7 +42,7 @@ pub struct CellBoard<
     const BOARD_SIZE: usize,
     const MAX_SNAKES: usize,
 > {
-    hazard_damage: i8,
+    hazard_damage: u8,
     cells: [Cell<T>; BOARD_SIZE],
     healths: [u8; MAX_SNAKES],
     heads: [CellIndex<T>; MAX_SNAKES],
@@ -132,7 +131,7 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
 
     /// unpacks a packed hash repr back in to a CellBoard
     pub fn from_packed_hash(hash: &HashMap<String, Vec<u32>>) -> Self {
-        let hazard_damage = hash.get("hazard_damage").unwrap()[0] as i8;
+        let hazard_damage = hash.get("hazard_damage").unwrap()[0] as u8;
         let actual_width = hash.get("actual_width").unwrap()[0] as u8;
         let actual_height = hash
             .get("actual_height")
@@ -158,7 +157,7 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
         }
 
         let mut cells = [Cell::<T>::empty(); BOARD_SIZE];
-        let cells_iter = hash.get("cells").unwrap().iter().map(|x| *x as u32);
+        let cells_iter = hash.get("cells").unwrap().iter().cloned();
         for (idx, cell) in cells_iter.enumerate() {
             cells[idx] = Cell::<T>::from_u32(cell);
         }
@@ -316,7 +315,9 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
                 };
                 let cell_idx: CellIndex<T> = CellIndex::new(position, width);
 
-                cells[cell_idx.0.as_usize()].set_hazard_count(game.get_hazard_count(&position));
+                if game.board.hazards.contains(&position) {
+                    cells[cell_idx.0.as_usize()].set_hazard();
+                }
 
                 if game.board.food.contains(&position) {
                     cells[cell_idx.0.as_usize()].set_food();
@@ -338,7 +339,7 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
                 .settings
                 .as_ref()
                 .map(|s| s.hazard_damage_per_turn)
-                .unwrap_or(15) as i8,
+                .unwrap_or(15) as u8,
         })
     }
     fn get_cell(&self, cell_index: CellIndex<T>) -> Cell<T> {

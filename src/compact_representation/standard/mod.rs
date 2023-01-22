@@ -419,26 +419,6 @@ mod test {
     }
 
     #[test]
-    fn test_hazard_queryable() {
-        let game_fixture = include_str!("../../../fixtures/late_stage.json");
-        let g: Result<DEGame, _> = serde_json::from_slice(game_fixture.as_bytes());
-        let g = g.expect("the json literal is valid");
-        let snake_id_mapping = build_snake_id_map(&g);
-        let compact: CellBoard4Snakes11x11 = g.as_cell_board(&snake_id_mapping).unwrap();
-
-        assert!(!compact.is_hazard(&CellIndex(6 * 11 + 4)));
-
-        assert!(compact.is_hazard(&CellIndex(0)));
-        assert_eq!(compact.get_hazard_count(&CellIndex(0)), 2);
-
-        assert!(compact.is_hazard(&CellIndex(11)));
-        assert_eq!(compact.get_hazard_count(&CellIndex(11)), 1);
-
-        assert!(compact.is_hazard(&CellIndex(11 + 11)));
-        assert_eq!(compact.get_hazard_count(&CellIndex(11 + 11)), 1);
-    }
-
-    #[test]
     fn test_food_queryable() {
         let game_fixture = include_str!("../../../fixtures/late_stage.json");
         let g: Result<DEGame, _> = serde_json::from_slice(game_fixture.as_bytes());
@@ -451,26 +431,6 @@ mod test {
         assert!(compact.is_food(&CellIndex(2 * 11)));
         assert!(compact.is_food(&CellIndex(9 * 11)));
         assert!(compact.is_food(&CellIndex(3 * 11 + 4)));
-    }
-
-    #[test]
-    fn test_negative_hazards() {
-        let game_fixture = include_str!("../../../fixtures/negative_hazard.json");
-        let g: Result<DEGame, _> = serde_json::from_slice(game_fixture.as_bytes());
-        let g = g.expect("the json literal is valid");
-        let snake_id_mapping = build_snake_id_map(&g);
-        let compact: CellBoard4Snakes11x11 = g.as_cell_board(&snake_id_mapping).unwrap();
-
-        let moves = vec![(SnakeId(0), [Move::Down])];
-        let res = compact
-            .simulate_with_moves(&Instruments, moves)
-            .collect_vec()
-            .first()
-            .unwrap()
-            .1;
-
-        let new_health = res.get_health(&SnakeId(0));
-        assert_eq!(new_health, 99);
     }
 
     #[test]

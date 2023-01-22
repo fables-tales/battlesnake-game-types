@@ -348,14 +348,15 @@ mod test {
 
         // the input state isn't safe to move down in, but it is if we move one to the right
         let move_map = snake_ids
-            .clone()
-            .into_iter()
-            .map(|(_, sid)| (sid, [Move::Right].as_slice()))
+            .values()
+            .cloned()
+            .map(|sid| (sid, [Move::Right].as_slice()))
             .collect_vec();
+
         let instruments = Instruments {};
         let wrapped_for_down = orig_wrapped_cell
             .clone()
-            .simulate_with_moves(&instruments, move_map.into_iter())
+            .simulate_with_moves(&instruments, move_map)
             .next()
             .unwrap()
             .1;
@@ -416,10 +417,7 @@ mod test {
         let mut wrapped_cell = orig_wrapped_cell;
         let instruments = Instruments {};
         let start_health = wrapped_cell.get_health(&SnakeId(0));
-        let move_map = snake_ids
-            .into_iter()
-            .map(|(_, sid)| (sid, [mv]))
-            .collect_vec();
+        let move_map = snake_ids.into_values().map(|sid| (sid, [mv])).collect_vec();
         let start_y = wrapped_cell.get_head_as_position(&SnakeId(0)).y;
         let start_x = wrapped_cell.get_head_as_position(&SnakeId(0)).x;
         for _ in 0..rollout {
@@ -440,8 +438,8 @@ mod test {
             wrapped_cell.get_health(&SnakeId(0)) as i32,
             start_health as i32 - rollout
         );
-        assert_eq!(((start_y + (rollout * inc_y)).rem_euclid(11)) as i32, end_y);
-        assert_eq!(((start_x + (rollout * inc_x)).rem_euclid(11)) as i32, end_x);
+        assert_eq!(((start_y + (rollout * inc_y)).rem_euclid(11)), end_y);
+        assert_eq!(((start_x + (rollout * inc_x)).rem_euclid(11)), end_x);
     }
 
     #[test]
@@ -452,7 +450,7 @@ mod test {
         // we essentially "break" the snake in the cell representation when we kill it.
         let orig_crash_game = game_fixture(include_str!("../../../fixtures/wrapped_panic.json"));
         let snake_ids = build_snake_id_map(&orig_crash_game);
-        let compact_ids: Vec<SnakeId> = snake_ids.iter().map(|(_, v)| *v).collect();
+        let compact_ids: Vec<SnakeId> = snake_ids.values().cloned().collect();
 
         let instruments = Instruments {};
         {

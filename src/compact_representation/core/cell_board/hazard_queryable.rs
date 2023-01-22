@@ -12,11 +12,7 @@ impl<T: CellNum, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize
         self.cell_is_hazard(*pos)
     }
 
-    fn get_hazard_count(&self, pos: &Self::NativePositionType) -> u8 {
-        self.get_cell(*pos).hazard_count
-    }
-
-    fn get_hazard_damage(&self) -> i8 {
+    fn get_hazard_damage(&self) -> u8 {
         self.hazard_damage
     }
 }

@@ -508,23 +508,13 @@ impl HazardQueryableGame for Game {
         self.board.hazards.contains(pos)
     }
 
-    fn get_hazard_damage(&self) -> i8 {
+    fn get_hazard_damage(&self) -> u8 {
         self.game
             .ruleset
             .settings
             .as_ref()
             .map(|settings| settings.hazard_damage_per_turn)
-            .unwrap_or(15) as i8
-    }
-
-    fn get_hazard_count(&self, pos: &Self::NativePositionType) -> u8 {
-        self.board
-            .hazards
-            .iter()
-            .filter(|p| *p == pos)
-            .count()
-            .try_into()
-            .unwrap()
+            .unwrap_or(15) as u8
     }
 }
 
@@ -535,20 +525,6 @@ impl HazardSettableGame for Game {
 
     fn clear_hazard(&mut self, pos: Self::NativePositionType) {
         self.board.hazards.retain(|p| p != &pos);
-    }
-
-    fn set_hazard_count(&mut self, pos: Self::NativePositionType, count: u8) {
-        let mut new_hazards: Vec<Position> = self
-            .board
-            .hazards
-            .iter()
-            .filter(|p| *p != &pos)
-            .cloned()
-            .collect();
-        for _ in 0..count {
-            new_hazards.push(pos);
-        }
-        self.board.hazards = new_hazards;
     }
 }
 
