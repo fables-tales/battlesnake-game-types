@@ -12,6 +12,7 @@ use rand::Rng;
 use std::borrow::Borrow;
 use std::error::Error;
 use std::fmt::Display;
+use tracing::instrument;
 
 use crate::{
     types::{Move, SimulableGame, SimulatorInstruments},
@@ -68,6 +69,11 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
             || new_head.x >= self.embedded.get_actual_width() as i32
             || new_head.y < 0
             || new_head.y >= self.embedded.get_actual_height() as i32
+    }
+
+    /// Return an iterator over all the empty cells on the board
+    pub fn get_all_empty(&self) -> impl Iterator<Item = CellIndex<T>> + '_ {
+        self.embedded.get_empty_cells()
     }
 }
 
@@ -128,6 +134,7 @@ impl<
     > SimulableGame<T, MAX_SNAKES> for CellBoard<N, D, BOARD_SIZE, MAX_SNAKES>
 {
     #[allow(clippy::type_complexity)]
+    #[instrument(skip_all)]
     fn simulate_with_moves<S>(
         &self,
         instruments: &T,

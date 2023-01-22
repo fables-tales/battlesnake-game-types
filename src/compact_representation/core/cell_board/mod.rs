@@ -3,10 +3,12 @@ use std::error::Error;
 use std::slice::Iter;
 
 use itertools::Itertools;
+use rand::seq::IteratorRandom;
 
-use crate::types::HeadGettableGame;
+use crate::types::EmptyCellGettableGame;
 use crate::types::SnakeIDMap;
 use crate::types::SnakeId;
+use crate::types::StandardFoodPlaceableGame;
 use crate::wire_representation::Game;
 use crate::wire_representation::Position;
 
@@ -425,16 +427,19 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
         self.get_cell(cell_idx).is_body()
     }
 
-    /// determins if this cell is a single stacked snake tail
-    pub(crate) fn cell_is_single_tail(&self, cell_idx: CellIndex<T>) -> bool {
+    pub fn cell_is_single_tail(&self, cell_idx: CellIndex<T>) -> bool {
         let cell = self.get_cell(cell_idx);
-        let snake_id = cell.get_snake_id();
+        if !cell.is_snake_body_piece()
+            || cell.is_double_stacked_piece()
+            || cell.is_triple_stacked_piece()
+        {
+            return false;
+        }
 
-        if let Some(sid) = snake_id {
-            let head_idx = self.get_head_as_native_position(&sid);
-            let tail = self.get_cell(head_idx).get_tail_position(head_idx);
+        if let Some(sid) = cell.get_snake_id() {
+            let head = self.heads[sid.0 as usize];
 
-            Some(cell_idx) == tail
+            self.get_cell(head).get_tail_position(head) == Some(cell_idx)
         } else {
             false
         }
@@ -443,6 +448,48 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
     /// determin the width of the CellBoard
     pub fn width() -> u8 {
         (BOARD_SIZE as f32).sqrt() as u8
+    }
+}
+
+impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize> EmptyCellGettableGame
+    for CellBoard<T, D, BOARD_SIZE, MAX_SNAKES>
+{
+    fn get_empty_cells(&self) -> Box<dyn Iterator<Item = Self::NativePositionType> + '_> {
+        Box::new(
+            self.cells
+                .iter()
+                .enumerate()
+                .filter(|(_, cell)| cell.is_empty())
+                .map(|(idx, _)| CellIndex::from_usize(idx)),
+        )
+    }
+}
+
+impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
+    StandardFoodPlaceableGame for CellBoard<T, D, BOARD_SIZE, MAX_SNAKES>
+{
+    fn place_food(&mut self, rng: &mut impl rand::Rng) {
+        // TODO: Get these constants from the game
+        let min_food = 1;
+        let food_spawn_chance = 0.15;
+
+        // This is an optimization when min_food is 1. We know we don't need to spawn food if there if any of the board
+        // so we can short circuit on the first food we find
+        let food_to_add = if !self.cells.iter().any(|c| c.is_food()) {
+            min_food
+        } else {
+            usize::from(rng.gen_bool(food_spawn_chance))
+        };
+
+        if food_to_add == 0 {
+            return;
+        }
+
+        let empty = self.get_empty_cells();
+        let random = empty.choose_multiple(rng, food_to_add);
+        for pos in random {
+            self.cells[pos.0.as_usize()].set_food();
+        }
     }
 }
 

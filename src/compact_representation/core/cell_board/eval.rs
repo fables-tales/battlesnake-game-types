@@ -1,6 +1,7 @@
 use std::borrow::Borrow;
 
 use itertools::Itertools;
+use tracing::instrument;
 
 use crate::{
     compact_representation::{core::dimensions::Dimensions, CellNum},
@@ -171,6 +172,7 @@ impl<T: CellNum, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize
         new_heads
     }
 
+    #[instrument(skip_all)]
     pub fn evaluate_moves_with_state<'a>(
         &self,
         moves: impl Iterator<Item = &'a (SnakeId, crate::types::Move)>,
