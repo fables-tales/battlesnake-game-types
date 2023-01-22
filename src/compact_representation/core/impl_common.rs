@@ -209,5 +209,10 @@ macro_rules! impl_common_board_traits {
                 $type::convert_from_game(game, &id_map)
             }
         }
+
+        impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
+            MaxSnakes<MAX_SNAKES> for $type<T, D, BOARD_SIZE, MAX_SNAKES>
+        {
+        }
     };
 }

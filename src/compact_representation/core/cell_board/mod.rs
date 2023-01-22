@@ -4,6 +4,7 @@ use std::slice::Iter;
 
 use itertools::Itertools;
 
+use crate::types::HeadGettableGame;
 use crate::types::SnakeIDMap;
 use crate::types::SnakeId;
 use crate::wire_representation::Game;
@@ -34,7 +35,7 @@ pub use eval::EvaluateMode;
 
 /// A compact board representation that is significantly faster for simulation than
 /// `battlesnake_game_types::wire_representation::Game`.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct CellBoard<
     T: CN,
     DimensionsType: Dimensions,
@@ -156,7 +157,7 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
         }
 
         let mut cells = [Cell::<T>::empty(); BOARD_SIZE];
-        let cells_iter = hash.get("cells").unwrap().iter().map(|x| *x as u32);
+        let cells_iter = hash.get("cells").unwrap().iter().cloned();
         for (idx, cell) in cells_iter.enumerate() {
             cells[idx] = Cell::<T>::from_u32(cell);
         }
@@ -313,9 +314,11 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
                     y: y as i32,
                 };
                 let cell_idx: CellIndex<T> = CellIndex::new(position, width);
+
                 if game.board.hazards.contains(&position) {
                     cells[cell_idx.0.as_usize()].set_hazard();
                 }
+
                 if game.board.food.contains(&position) {
                     cells[cell_idx.0.as_usize()].set_food();
                 }
@@ -420,6 +423,21 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
     /// determines if this cell is a snake body piece (including double stacked)
     pub fn cell_is_body(&self, cell_idx: CellIndex<T>) -> bool {
         self.get_cell(cell_idx).is_body()
+    }
+
+    /// determins if this cell is a single stacked snake tail
+    pub(crate) fn cell_is_single_tail(&self, cell_idx: CellIndex<T>) -> bool {
+        let cell = self.get_cell(cell_idx);
+        let snake_id = cell.get_snake_id();
+
+        if let Some(sid) = snake_id {
+            let head_idx = self.get_head_as_native_position(&sid);
+            let tail = self.get_cell(head_idx).get_tail_position(head_idx);
+
+            Some(cell_idx) == tail
+        } else {
+            false
+        }
     }
 
     /// determin the width of the CellBoard

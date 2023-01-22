@@ -5,9 +5,10 @@
 //! matches. We also have [Fixed] which is a fixed sized board at compile time.
 
 use core::fmt::Debug;
+use std::hash::Hash;
 
 /// Trait that all different Dimensions must implement
-pub trait Dimensions: Debug + Copy {
+pub trait Dimensions: Debug + Copy + Hash {
     /// Convert from a width and a height to this dimension
     fn from_dimensions(width: u8, height: u8) -> Self;
 
@@ -18,7 +19,7 @@ pub trait Dimensions: Debug + Copy {
     fn height(&self) -> u8;
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 /// A square board
 ///
 /// We only store the width of the game and assume the height matches
@@ -42,7 +43,7 @@ impl Dimensions for Square {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 /// A fixed size board
 pub struct Fixed<const W: u8, const H: u8>;
 
@@ -66,7 +67,7 @@ impl<const W: u8, const H: u8> Dimensions for Fixed<W, H> {
 /// Alias for a [Fixed] board at the height and width for the ArcadeMaze map
 pub type ArcadeMaze = Fixed<19, 21>;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 /// A fully custom dimension
 ///
 /// Stores the height and width seperately

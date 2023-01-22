@@ -1,17 +1,13 @@
 //! A compact board representation that is efficient for simulation
 use crate::impl_common_board_traits;
-use crate::types::{
-    build_snake_id_map, FoodGettableGame, FoodQueryableGame, HazardQueryableGame,
-    HazardSettableGame, HeadGettableGame, HealthGettableGame, LengthGettableGame,
-    NeckQueryableGame, PositionGettableGame, RandomReasonableMovesGame, SizeDeterminableGame,
-    SnakeIDGettableGame, SnakeIDMap, SnakeId, VictorDeterminableGame, YouDeterminableGame,
-};
+use crate::types::*;
 
 /// you almost certainly want to use the `convert_from_game` method to
 /// cast from a json represention to a `CellBoard`
 use crate::types::{NeighborDeterminableGame, SnakeBodyGettableGame};
 use crate::wire_representation::Game;
-use rand::prelude::IteratorRandom;
+use itertools::Itertools;
+use rand::seq::SliceRandom;
 use rand::Rng;
 use std::borrow::Borrow;
 use std::collections::HashMap;
@@ -25,12 +21,12 @@ use crate::{
 
 use super::core::{simulate_with_moves, EvaluateMode};
 use super::core::{CellBoard as CCB, CellIndex};
-use super::dimensions::{ArcadeMaze, Dimensions, Fixed, Square};
+use super::dimensions::{ArcadeMaze, Custom, Dimensions, Fixed, Square};
 use super::CellNum as CN;
 
 /// A compact board representation that is significantly faster for simulation than
 /// `battlesnake_game_types::wire_representation::Game`.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct CellBoard<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize> {
     embedded: CCB<T, D, BOARD_SIZE, MAX_SNAKES>,
 }
@@ -78,10 +74,10 @@ pub type CellBoard4SnakesSquare11x11 = CellBoard<u8, Square, { 11 * 11 }, 4>;
 pub type CellBoard8SnakesSquare15x15 = CellBoard<u8, Square, { 15 * 15 }, 8>;
 
 /// Used to represent the largest UI Selectable board with 8 snakes.
-pub type CellBoard8SnakesSquare25x25 = CellBoard<u16, Square, { 25 * 25 }, 8>;
+pub type CellBoard8SnakesSquare25x25 = CellBoard<u16, Custom, { 25 * 25 }, 8>;
 
 /// Used to represent an absolutely silly game board
-pub type CellBoard16SnakesSquare50x50 = CellBoard<u16, Square, { 50 * 50 }, 16>;
+pub type CellBoard16SnakesSquare50x50 = CellBoard<u16, Custom, { 50 * 50 }, 16>;
 
 /// Enum that holds a Cell Board sized right for the given game
 #[derive(Debug)]
@@ -100,6 +96,8 @@ pub enum BestCellBoard {
     LargeExact(Box<CellBoard<u16, Fixed<19, 19>, { 19 * 19 }, 4>>),
     /// A board that fits the Arcade Maze map
     ArcadeMaze(Box<CellBoard<u16, ArcadeMaze, { 19 * 21 }, 4>>),
+    /// A board that fits the Arcade Maze map
+    ArcadeMaze8Snake(Box<CellBoard<u16, ArcadeMaze, { 19 * 21 }, 8>>),
     /// A game that can have a max height and width of 25x25 and 8 snakes
     Large(Box<CellBoard8SnakesSquare25x25>),
     /// A game that can have a max height and width of 50x50 and 16 snakes
@@ -136,6 +134,8 @@ impl ToBestCellBoard for Game {
             BestCellBoard::LargeExact(Box::new(CellBoard::convert_from_game(self, &id_map)?))
         } else if width == 19 && height == 21 && num_snakes <= 4 {
             BestCellBoard::ArcadeMaze(Box::new(CellBoard::convert_from_game(self, &id_map)?))
+        } else if width == 19 && height == 21 && num_snakes <= 8 {
+            BestCellBoard::ArcadeMaze8Snake(Box::new(CellBoard::convert_from_game(self, &id_map)?))
         } else if width <= 25 && height < 25 && num_snakes <= 8 {
             BestCellBoard::Large(Box::new(CellBoard::convert_from_game(self, &id_map)?))
         } else if width <= 50 && height <= 50 && num_snakes <= 16 {
@@ -147,6 +147,7 @@ impl ToBestCellBoard for Game {
         Ok(best_board)
     }
 }
+
 impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
     RandomReasonableMovesGame for CellBoard<T, D, BOARD_SIZE, MAX_SNAKES>
 {
@@ -154,6 +155,19 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
         &'a self,
         rng: &'a mut impl Rng,
     ) -> Box<dyn std::iter::Iterator<Item = (SnakeId, Move)> + 'a> {
+        Box::new(
+            self.reasonable_moves_for_each_snake()
+                .map(move |(sid, mvs)| (sid, *mvs.choose(rng).unwrap())),
+        )
+    }
+}
+
+impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize> ReasonableMovesGame
+    for CellBoard<T, D, BOARD_SIZE, MAX_SNAKES>
+{
+    fn reasonable_moves_for_each_snake(
+        &self,
+    ) -> Box<dyn std::iter::Iterator<Item = (SnakeId, Vec<Move>)> + '_> {
         let width = self.embedded.get_actual_width();
         Box::new(
             self.embedded
@@ -161,21 +175,34 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
                 .enumerate()
                 .filter(|(_, health)| **health > 0)
                 .map(move |(idx, _)| {
-                    let head = self.get_head_as_native_position(&SnakeId(idx as u8));
-                    let head_pos = head.into_position(width);
+                    let head_pos = self.get_head_as_position(&SnakeId(idx as u8));
 
-                    let mv = Move::all()
-                        .iter()
+                    let mvs = IntoIterator::into_iter(Move::all())
                         .filter(|mv| {
-                            let new_head = head_pos.add_vec(mv.to_vector());
-                            let ci = self.embedded.as_wrapped_cell_index(new_head);
+                            let mut new_head = head_pos.add_vec(mv.to_vector());
+                            let wrapped_x = new_head.x.rem_euclid(self.get_width() as i32);
+                            let wrapped_y = new_head.y.rem_euclid(self.get_height() as i32);
 
-                            !self.embedded.cell_is_body(ci) && !self.embedded.cell_is_snake_head(ci)
+                            new_head = Position {
+                                x: wrapped_x,
+                                y: wrapped_y,
+                            };
+
+                            let ci = CellIndex::new(new_head, width);
+
+                            if self.off_board(new_head) {
+                                return false;
+                            };
+
+                            !self.off_board(new_head)
+                                && ((!self.embedded.cell_is_body(ci)
+                                    && !self.embedded.cell_is_snake_head(ci))
+                                    || self.embedded.cell_is_single_tail(ci))
                         })
-                        .choose(rng)
-                        .copied()
-                        .unwrap_or(Move::Up);
-                    (SnakeId(idx as u8), mv)
+                        .collect_vec();
+                    let mvs = if mvs.is_empty() { vec![Move::Up] } else { mvs };
+
+                    (SnakeId(idx as u8), mvs)
                 }),
         )
     }
@@ -257,8 +284,8 @@ mod test {
         game_fixture,
         types::{
             build_snake_id_map, HeadGettableGame, HealthGettableGame, Move,
-            NeighborDeterminableGame, RandomReasonableMovesGame, SimulableGame,
-            SimulatorInstruments, SnakeId,
+            NeighborDeterminableGame, RandomReasonableMovesGame, ReasonableMovesGame,
+            SimulableGame, SimulatorInstruments, SnakeId,
         },
         wire_representation::Position,
     };
@@ -321,14 +348,15 @@ mod test {
 
         // the input state isn't safe to move down in, but it is if we move one to the right
         let move_map = snake_ids
-            .clone()
-            .into_iter()
-            .map(|(_, sid)| (sid, [Move::Right].as_slice()))
+            .values()
+            .cloned()
+            .map(|sid| (sid, [Move::Right].as_slice()))
             .collect_vec();
+
         let instruments = Instruments {};
         let wrapped_for_down = orig_wrapped_cell
             .clone()
-            .simulate_with_moves(&instruments, move_map.into_iter())
+            .simulate_with_moves(&instruments, move_map)
             .next()
             .unwrap()
             .1;
@@ -389,10 +417,7 @@ mod test {
         let mut wrapped_cell = orig_wrapped_cell;
         let instruments = Instruments {};
         let start_health = wrapped_cell.get_health(&SnakeId(0));
-        let move_map = snake_ids
-            .into_iter()
-            .map(|(_, sid)| (sid, [mv]))
-            .collect_vec();
+        let move_map = snake_ids.into_values().map(|sid| (sid, [mv])).collect_vec();
         let start_y = wrapped_cell.get_head_as_position(&SnakeId(0)).y;
         let start_x = wrapped_cell.get_head_as_position(&SnakeId(0)).x;
         for _ in 0..rollout {
@@ -413,8 +438,8 @@ mod test {
             wrapped_cell.get_health(&SnakeId(0)) as i32,
             start_health as i32 - rollout
         );
-        assert_eq!(((start_y + (rollout * inc_y)).rem_euclid(11)) as i32, end_y);
-        assert_eq!(((start_x + (rollout * inc_x)).rem_euclid(11)) as i32, end_x);
+        assert_eq!(((start_y + (rollout * inc_y)).rem_euclid(11)), end_y);
+        assert_eq!(((start_x + (rollout * inc_x)).rem_euclid(11)), end_x);
     }
 
     #[test]
@@ -425,7 +450,7 @@ mod test {
         // we essentially "break" the snake in the cell representation when we kill it.
         let orig_crash_game = game_fixture(include_str!("../../../fixtures/wrapped_panic.json"));
         let snake_ids = build_snake_id_map(&orig_crash_game);
-        let compact_ids: Vec<SnakeId> = snake_ids.iter().map(|(_, v)| *v).collect();
+        let compact_ids: Vec<SnakeId> = snake_ids.values().cloned().collect();
 
         let instruments = Instruments {};
         {
@@ -528,6 +553,24 @@ mod test {
                 .into_iter()
                 .map(|(_, pos)| pos)
                 .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn reasonable_moves_for_each_snake_mojave_12_18_12_34() {
+        let g = game_fixture(include_str!("../../../fixtures/mojave_12_18_12_34.json"));
+        let snake_id_mapping = build_snake_id_map(&g);
+        let compact: CellBoard4SnakesSquare11x11 =
+            g.as_wrapped_cell_board(&snake_id_mapping).unwrap();
+
+        let moves = compact.reasonable_moves_for_each_snake().collect_vec();
+
+        assert_eq!(
+            moves,
+            vec![
+                (SnakeId(0), vec![Move::Up, Move::Down]),
+                (SnakeId(1), vec![Move::Down, Move::Left, Move::Right]),
+            ]
         );
     }
 }

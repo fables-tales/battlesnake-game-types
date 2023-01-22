@@ -207,7 +207,8 @@ pub trait VictorDeterminableGame: std::fmt::Debug + SnakeIDGettableGame {
     /// How many snakes are alive
     fn alive_snake_count(&self) -> usize;
 }
-#[derive(Debug, Copy, Clone)]
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[repr(transparent)]
 /// Represents moves taken for a given simulation
 pub struct Action<const N_SNAKES: usize> {
@@ -244,6 +245,11 @@ impl<const N_SNAKES: usize> Action<N_SNAKES> {
         let mut new_moves = self.moves;
         new_moves[0] = None;
         OtherAction { moves: new_moves }
+    }
+
+    /// Get the inner array back
+    pub fn into_inner(self) -> [Option<Move>; N_SNAKES] {
+        self.moves
     }
 }
 
@@ -391,6 +397,14 @@ pub trait RandomReasonableMovesGame: SnakeIDGettableGame {
     ) -> Box<dyn Iterator<Item = (Self::SnakeIDType, Move)> + 'a>;
 }
 
+/// a game for which reasonable moves for a given snake can be determined. e.g. do not collide with yourself
+pub trait ReasonableMovesGame: SnakeIDGettableGame {
+    #[allow(missing_docs)]
+    fn reasonable_moves_for_each_snake(
+        &self,
+    ) -> Box<dyn Iterator<Item = (Self::SnakeIDType, Vec<Move>)> + '_>;
+}
+
 /// a game for which the neighbors of a given Position can be determined
 pub trait NeighborDeterminableGame: PositionGettableGame {
     /// returns the neighboring positions
@@ -440,6 +454,9 @@ pub trait SnakeBodyGettableGame: PositionGettableGame + SnakeIDGettableGame {
         snake_id: &Self::SnakeIDType,
     ) -> Box<dyn Iterator<Item = Self::NativePositionType> + '_>;
 }
+
+/// A marker trait that can be used to specify the number of snakes this board can support
+pub trait MaxSnakes<const MAX_SNAKES: usize> {}
 
 #[cfg(test)]
 mod test {

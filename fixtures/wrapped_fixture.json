@@ -1,1 +1,92 @@
-{"game":{"id":"a35f5304-1f19-471d-864e-3e620462d425","ruleset":{"name":"wrapped","version":"v1.0.25","settings":{"foodSpawnChance":15,"minimumFood":1,"hazardDamagePerTurn":0,"royale":{"shrinkEveryNTurns":0},"squad":{"allowBodyCollisions":false,"sharedElimination":false,"sharedHealth":false,"sharedLength":false}}},"timeout":500,"source":"custom"},"turn":13,"board":{"height":11,"width":11,"snakes":[{"id":"gs_FqG8KfBdDvWMtHphGJFbD4WH","name":"Demifemme (She or They pronouns)","latency":"408","health":87,"body":[{"x":4,"y":7},{"x":4,"y":6},{"x":5,"y":6}],"head":{"x":4,"y":7},"length":3,"shout":"","squad":"","customizations":{"color":"#ffaec9","head":"trans-rights-scarf","tail":"rocket"}},{"id":"gs_9vgc6W4xBDKBkdhk46fPJhkQ","name":"Devious Devin (Beta)","latency":"12","health":87,"body":[{"x":1,"y":0},{"x":1,"y":10},{"x":1,"y":9}],"head":{"x":1,"y":0},"length":3,"shout":"","squad":"","customizations":{"color":"#99cc00","head":"snail","tail":"rbc-necktie"}}],"food":[],"hazards":[]},"you":{"id":"gs_FqG8KfBdDvWMtHphGJFbD4WH","name":"Demifemme (She or They pronouns)","latency":"408","health":87,"body":[{"x":4,"y":7},{"x":4,"y":6},{"x":5,"y":6}],"head":{"x":4,"y":7},"length":3,"shout":"","squad":"","customizations":{"color":"#ffaec9","head":"trans-rights-scarf","tail":"rocket"}}}
+{
+  "game": {
+    "id": "a35f5304-1f19-471d-864e-3e620462d425",
+    "ruleset": {
+      "name": "wrapped",
+      "version": "v1.0.25",
+      "settings": {
+        "foodSpawnChance": 15,
+        "minimumFood": 1,
+        "hazardDamagePerTurn": 0,
+        "royale": { "shrinkEveryNTurns": 0 },
+        "squad": {
+          "allowBodyCollisions": false,
+          "sharedElimination": false,
+          "sharedHealth": false,
+          "sharedLength": false
+        }
+      }
+    },
+    "timeout": 500,
+    "source": "custom"
+  },
+  "turn": 13,
+  "board": {
+    "height": 11,
+    "width": 11,
+    "snakes": [
+      {
+        "id": "gs_FqG8KfBdDvWMtHphGJFbD4WH",
+        "name": "Demifemme (She or They pronouns)",
+        "latency": "408",
+        "health": 87,
+        "body": [
+          { "x": 4, "y": 7 },
+          { "x": 4, "y": 6 },
+          { "x": 5, "y": 6 }
+        ],
+        "head": { "x": 4, "y": 7 },
+        "length": 3,
+        "shout": "",
+        "squad": "",
+        "customizations": {
+          "color": "#ffaec9",
+          "head": "trans-rights-scarf",
+          "tail": "rocket"
+        }
+      },
+      {
+        "id": "gs_9vgc6W4xBDKBkdhk46fPJhkQ",
+        "name": "Devious Devin (Beta)",
+        "latency": "12",
+        "health": 87,
+        "body": [
+          { "x": 1, "y": 0 },
+          { "x": 1, "y": 10 },
+          { "x": 1, "y": 9 }
+        ],
+        "head": { "x": 1, "y": 0 },
+        "length": 3,
+        "shout": "",
+        "squad": "",
+        "customizations": {
+          "color": "#99cc00",
+          "head": "snail",
+          "tail": "rbc-necktie"
+        }
+      }
+    ],
+    "food": [],
+    "hazards": []
+  },
+  "you": {
+    "id": "gs_FqG8KfBdDvWMtHphGJFbD4WH",
+    "name": "Demifemme (She or They pronouns)",
+    "latency": "408",
+    "health": 87,
+    "body": [
+      { "x": 4, "y": 7 },
+      { "x": 4, "y": 6 },
+      { "x": 5, "y": 6 }
+    ],
+    "head": { "x": 4, "y": 7 },
+    "length": 3,
+    "shout": "",
+    "squad": "",
+    "customizations": {
+      "color": "#ffaec9",
+      "head": "trans-rights-scarf",
+      "tail": "rocket"
+    }
+  }
+}

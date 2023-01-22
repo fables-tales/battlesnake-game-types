@@ -45,8 +45,8 @@ impl<T: CellNum> CellIndex<T> {
 
     /// converts a cellindex to a position
     pub fn into_position(self, width: u8) -> Position {
-        let y = (self.0.as_usize() as i32 / width as i32) as i32;
-        let x = (self.0.as_usize() as i32 % width as i32) as i32;
+        let y = self.0.as_usize() as i32 / width as i32;
+        let x = self.0.as_usize() as i32 % width as i32;
         Position { x, y }
     }
 
@@ -71,7 +71,7 @@ pub const DOUBLE_STACK: usize = 2;
 
 use super::dimensions;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Cell<T: CellNum> {
     flags: u8,
     id: SnakeId,
@@ -212,7 +212,9 @@ impl<T: CellNum> Cell<T> {
     }
 
     pub fn is_body(&self) -> bool {
-        self.flags & KIND_MASK == SNAKE_BODY_PIECE || self.flags & KIND_MASK == DOUBLE_STACKED_PIECE
+        self.is_snake_body_piece()
+            || self.is_double_stacked_piece()
+            || self.is_triple_stacked_piece()
     }
 
     pub fn set_food(&mut self) {
