@@ -494,4 +494,21 @@ mod test {
                 .collect::<Vec<_>>()
         );
     }
+
+    #[test]
+    fn test_tail_chase() {
+        let game_fixture = include_str!("../../../fixtures/tail_chase.json");
+        let g: Result<DEGame, _> = serde_json::from_slice(game_fixture.as_bytes());
+        let g = g.expect("the json literal is valid");
+        let snake_id_mapping = build_snake_id_map(&g);
+        let compact: CellBoard4Snakes11x11 = g.as_cell_board(&snake_id_mapping).unwrap();
+
+        let head = compact.get_head_as_native_position(&SnakeId(0));
+        assert_eq!(head, CellIndex(0));
+
+        let mut reasonable_moves = compact.reasonable_moves_for_each_snake();
+        let reasonable_moves_for_me = reasonable_moves.next().unwrap().1;
+
+        assert_eq!(reasonable_moves_for_me, vec![Move::Up]);
+    }
 }
