@@ -172,7 +172,7 @@ impl<T: CellNum, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize
         new_heads
     }
 
-    #[instrument(skip_all)]
+    #[instrument(level = "trace", skip_all)]
     pub fn evaluate_moves_with_state<'a>(
         &self,
         moves: impl Iterator<Item = &'a (SnakeId, crate::types::Move)>,

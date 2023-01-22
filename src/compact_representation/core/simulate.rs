@@ -7,7 +7,7 @@ use crate::types::{Action, Move, SimulatorInstruments, SnakeId, N_MOVES};
 
 use super::{cell_board::EvaluateMode, dimensions::Dimensions, CellBoard, CellNum};
 
-#[instrument(skip_all)]
+#[instrument(level = "trace", skip_all)]
 pub fn simulate_with_moves<
     'a,
     S,
