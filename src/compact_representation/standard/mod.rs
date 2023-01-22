@@ -112,9 +112,9 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize> Rea
                             let ci = CellIndex::new(new_head, width);
 
                             !self.off_board(new_head)
-                                && ((!self.embedded.cell_is_body(ci)
-                                    && !self.embedded.cell_is_snake_head(ci))
+                                && (!self.embedded.cell_is_body(ci)
                                     || self.embedded.cell_is_single_tail(ci))
+                                && !self.embedded.cell_is_snake_head(ci)
                         })
                         .collect_vec();
                     let mvs = if mvs.is_empty() { vec![Move::Up] } else { mvs };
@@ -134,7 +134,7 @@ impl<
     > SimulableGame<T, MAX_SNAKES> for CellBoard<N, D, BOARD_SIZE, MAX_SNAKES>
 {
     #[allow(clippy::type_complexity)]
-    #[instrument(skip_all)]
+    #[instrument(level = "trace", skip_all)]
     fn simulate_with_moves<S>(
         &self,
         instruments: &T,

@@ -72,12 +72,6 @@ fn main() {
 
     tracing::subscriber::set_global_default(subscriber).expect("Could not set global default");
 
-    // let guard = pprof::ProfilerGuardBuilder::default()
-    //     .frequency(70_000)
-    //     .blocklist(&["libc", "libgcc", "pthread", "vdso"])
-    //     .build()
-    //     .unwrap();
-
     let mut rng = SmallRng::from_entropy();
     let mut total_iterations = 0;
     let mut game_lengths = Vec::new();
