@@ -1,10 +1,7 @@
 use std::time::{Duration, Instant};
 
 use battlesnake_game_types::{
-    compact_representation::{
-        dimensions::{Fixed, FixedWithStoredWidth, Square},
-        StandardCellBoard4Snakes11x11,
-    },
+    compact_representation::{dimensions::FixedWithStoredWidth, StandardCellBoard4Snakes11x11},
     types::{
         RandomReasonableMovesGame, SimulableGame, SimulatorInstruments, StandardFoodPlaceableGame,
         VictorDeterminableGame,
@@ -16,7 +13,7 @@ use std::fs::File;
 use tracing_flame::FlameLayer;
 use tracing_subscriber::{fmt::Layer, prelude::*, Registry};
 
-type CellBoard = battlesnake_game_types::compact_representation::StandardCellBoard<
+type OptimizedCellBoard = battlesnake_game_types::compact_representation::StandardCellBoard<
     u8,
     FixedWithStoredWidth<11, 11, 16>,
     { 16 * 11 },
@@ -32,7 +29,7 @@ impl SimulatorInstruments for Instruments {
 fn run_from_fixture_till_end(
     rng: &mut impl Rng,
     instrument: Instruments,
-    initial_game: CellBoard,
+    initial_game: OptimizedCellBoard,
 ) -> u64 {
     let mut iterations = 0;
 
@@ -43,14 +40,14 @@ fn run_from_fixture_till_end(
             .random_reasonable_move_for_each_snake(rng)
             .map(|(id, m)| (id, [m]));
 
-        let new_game = game
+        let mut new_game = game
             .simulate_with_moves(&instrument, next_move)
             .next()
             .unwrap()
             .1;
-        game = new_game;
+        new_game.place_food(rng);
 
-        game.place_food(rng);
+        game = new_game;
 
         iterations += 1;
     }
@@ -67,7 +64,7 @@ fn main() {
             .unwrap();
 
     let id_map = battlesnake_game_types::types::build_snake_id_map(&wire);
-    let initial_game = CellBoard::convert_from_game(wire, &id_map).unwrap();
+    let initial_game = OptimizedCellBoard::convert_from_game(wire, &id_map).unwrap();
 
     let _flame_layer_guard: Option<_> = if std::env::var("TRACING").is_ok() {
         let fmt_layer = Layer::default();
@@ -106,6 +103,7 @@ fn main() {
         total_iterations += length;
         game_lengths.push(length);
     }
+
     let total_time = start.elapsed();
 
     let seconds = total_time.as_secs_f64();

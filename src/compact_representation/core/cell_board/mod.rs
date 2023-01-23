@@ -269,6 +269,9 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
         let width = game.board.width as u8;
         let height = game.board.height as u8;
 
+        let dimensions = D::from_dimensions(width, height);
+        let stored_width = dimensions.stored_width();
+
         let mut cells = [Cell::empty(); BOARD_SIZE];
         let mut healths: [u8; MAX_SNAKES] = [0; MAX_SNAKES];
         let mut heads: [CellIndex<T>; MAX_SNAKES] = [CellIndex::from_i32(0); MAX_SNAKES];
@@ -288,10 +291,10 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
 
             let counts = &snake.body.iter().counts();
 
-            let head_idx = CellIndex::new(snake.head, width);
+            let head_idx = CellIndex::new(snake.head, stored_width);
             let mut next_index = head_idx;
             for (idx, pos) in snake.body.iter().unique().enumerate() {
-                let cell_idx = CellIndex::new(*pos, width);
+                let cell_idx = CellIndex::new(*pos, stored_width);
                 let count = counts.get(pos).unwrap();
                 if idx == 0 {
                     assert!(cell_idx == head_idx);
@@ -303,7 +306,7 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
                     // head can never be doubled, so let's assert it here, the cost of
                     // one comparison is worth the saftey imo
                     assert!(*count != DOUBLE_STACK);
-                    let tail_index = CellIndex::new(*snake.body.back().unwrap(), width);
+                    let tail_index = CellIndex::new(*snake.body.back().unwrap(), stored_width);
                     Cell::make_snake_head(snake_id, tail_index)
                 } else if *count == DOUBLE_STACK {
                     Cell::make_double_stacked_piece(snake_id, next_index)
@@ -319,7 +322,7 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
                     x: x as i32,
                     y: y as i32,
                 };
-                let cell_idx: CellIndex<T> = CellIndex::new(position, width);
+                let cell_idx: CellIndex<T> = CellIndex::new(position, stored_width);
 
                 if game.board.hazards.contains(&position) {
                     cells[cell_idx.0.as_usize()].set_hazard();
@@ -330,8 +333,6 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
                 }
             }
         }
-
-        let dimensions = D::from_dimensions(width, height);
 
         Ok(CellBoard {
             cells,

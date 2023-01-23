@@ -28,6 +28,7 @@ impl<T: CellNum, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize
     for CellBoard<T, D, BOARD_SIZE, MAX_SNAKES>
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let store_width = self.get_stored_width();
         let width = self.get_actual_width();
         let height = self.get_actual_height();
         writeln!(f)?;
@@ -38,7 +39,7 @@ impl<T: CellNum, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize
                     x: x as i32,
                     y: y as i32,
                 };
-                let cell_idx = CellIndex::new(position, width);
+                let cell_idx = CellIndex::new(position, store_width);
                 if self.cell_is_snake_head(cell_idx) {
                     let id = self.get_snake_id_at(cell_idx);
                     write!(f, "{}", id.unwrap().as_usize())?;
