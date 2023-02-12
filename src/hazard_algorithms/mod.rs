@@ -190,8 +190,7 @@ impl ForwardOnlyHazardAlgorithm<Position> for SpiralHazard {
             {
                 debug_assert!(
                     is_perfect_odd_square(spawns_elapsed + 1),
-                    "spawns_elapsed: {}",
-                    spawns_elapsed
+                    "spawns_elapsed: {spawns_elapsed}"
                 );
                 self.direction = Move::Up;
             }

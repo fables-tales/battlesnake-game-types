@@ -86,10 +86,10 @@ fn main() {
 
     let average_game_length = game_lengths.iter().sum::<u64>() as f64 / game_lengths.len() as f64;
 
-    println!("Total iterations: {}", total_iterations);
-    println!("Total time: {:?}", total_time);
-    println!("Iterations per second: {}", iterations_per_second);
-    println!("Average game length: {}", average_game_length);
+    println!("Total iterations: {total_iterations}");
+    println!("Total time: {total_time:?}");
+    println!("Iterations per second: {iterations_per_second}");
+    println!("Average game length: {average_game_length}");
 
     // if let Ok(report) = guard.report().build() {
     //     let file = File::create("target/flamegraph.svg").unwrap();
