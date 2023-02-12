@@ -482,17 +482,14 @@ mod test {
             let hm = serde_json::from_str(json_hash).unwrap();
             let game = super::CellBoard4SnakesSquare11x11::from_packed_hash(&hm);
             game.assert_consistency();
-            eprintln!(
-                "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!1\n{}",
-                game
-            );
+            eprintln!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!1\n{game}");
             let mut results = game
                 .simulate_with_moves(&instruments, snakes_and_moves)
                 .collect_vec();
             assert!(results.len() == 1);
             let (mvs, g) = results.pop().unwrap();
             dbg!(mvs);
-            eprintln!("{}", g);
+            eprintln!("{g}");
             g.assert_consistency();
             g.simulate(&instruments, compact_ids.clone()).for_each(drop);
         }
@@ -506,17 +503,14 @@ mod test {
             let hm = serde_json::from_str(json_hash).unwrap();
             let game = super::CellBoard4SnakesSquare11x11::from_packed_hash(&hm);
             game.assert_consistency();
-            eprintln!(
-                "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!1\n{}",
-                game
-            );
+            eprintln!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!1\n{game}");
             let mut results = game
                 .simulate_with_moves(&instruments, snakes_and_moves)
                 .collect_vec();
             assert!(results.len() == 1);
             let (mvs, g) = results.pop().unwrap();
             dbg!(mvs);
-            eprintln!("{}", g);
+            eprintln!("{g}");
             // head to head collision of 0 and 1 here
             assert_eq!(g.get_health(&SnakeId(0)), 0);
             assert_eq!(g.get_health(&SnakeId(1)), 0);

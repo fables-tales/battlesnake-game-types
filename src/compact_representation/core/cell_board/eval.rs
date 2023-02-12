@@ -117,7 +117,7 @@ impl<T: CellNum, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize
                     while curr != old_head {
                         prev = curr;
                         curr = self.get_cell(curr).get_next_index().unwrap_or_else(|| {
-                            eprintln!("{}", self);
+                            eprintln!("{self}");
                             panic!("snake is inconsistent")
                         });
                     }

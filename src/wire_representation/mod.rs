@@ -504,10 +504,6 @@ impl SnakeBodyGettableGame for Game {
 }
 
 impl HazardQueryableGame for Game {
-    fn is_hazard(&self, pos: &Self::NativePositionType) -> bool {
-        self.board.hazards.contains(pos)
-    }
-
     fn get_hazard_damage(&self) -> u8 {
         self.game
             .ruleset
@@ -515,6 +511,10 @@ impl HazardQueryableGame for Game {
             .as_ref()
             .map(|settings| settings.hazard_damage_per_turn)
             .unwrap_or(15) as u8
+    }
+
+    fn get_hazard_count(&self, pos: &Self::NativePositionType) -> u8 {
+        self.board.hazards.iter().filter(|p| p == &pos).count() as u8
     }
 }
 

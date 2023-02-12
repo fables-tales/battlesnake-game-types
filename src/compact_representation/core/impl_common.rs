@@ -104,12 +104,12 @@ macro_rules! impl_common_board_traits {
         impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
             HazardQueryableGame for $type<T, D, BOARD_SIZE, MAX_SNAKES>
         {
-            fn is_hazard(&self, pos: &Self::NativePositionType) -> bool {
-                self.embedded.is_hazard(pos)
-            }
-
             fn get_hazard_damage(&self) -> u8 {
                 self.embedded.get_hazard_damage()
+            }
+
+            fn get_hazard_count(&self, pos: &Self::NativePositionType) -> u8 {
+                self.embedded.get_hazard_count(pos)
             }
         }
 

@@ -352,13 +352,13 @@ mod test {
             Move::Down,
         ];
         let instruments = Instruments;
-        eprintln!("{}", compact);
+        eprintln!("{compact}");
         for mv in moves {
             let res = compact
                 .simulate_with_moves(&instruments, vec![(SnakeId(0), [mv].as_slice())])
                 .collect_vec();
             compact = res[0].1;
-            eprintln!("{}", compact);
+            eprintln!("{compact}");
         }
         assert!(compact.get_health(&SnakeId(0)) > 0);
     }

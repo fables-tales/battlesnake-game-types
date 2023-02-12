@@ -76,6 +76,7 @@ pub struct Cell<T: CellNum> {
     flags: u8,
     id: SnakeId,
     idx: CellIndex<T>,
+    hazard_count: u8,
 }
 
 impl<T: CellNum> Cell<T> {
@@ -106,7 +107,12 @@ impl<T: CellNum> Cell<T> {
         let flags = (value & 0xff) as u8;
         let id = SnakeId(((value >> 8) & 0xff) as u8);
         let idx = CellIndex::from_u32((value >> 16) & 0xffff);
-        Self { flags, id, idx }
+        Self {
+            flags,
+            id,
+            idx,
+            hazard_count: 0,
+        }
     }
 
     pub fn is_empty(&self) -> bool {
@@ -126,11 +132,19 @@ impl<T: CellNum> Cell<T> {
     }
 
     pub fn set_hazard(&mut self) {
-        self.flags |= IS_HAZARD
+        self.flags |= IS_HAZARD;
+        self.hazard_count = 1;
+    }
+
+    #[allow(dead_code)]
+    pub fn set_hazard_count(&mut self, count: u8) {
+        self.flags |= IS_HAZARD;
+        self.hazard_count = count;
     }
 
     pub fn clear_hazard(&mut self) {
-        self.flags &= !IS_HAZARD
+        self.flags &= !IS_HAZARD;
+        self.hazard_count = 0;
     }
 
     pub fn is_hazard(&self) -> bool {
@@ -164,6 +178,7 @@ impl<T: CellNum> Cell<T> {
             flags: EMPTY,
             id: SnakeId(0),
             idx: CellIndex(T::from_i32(0)),
+            hazard_count: 0,
         }
     }
 
@@ -172,6 +187,7 @@ impl<T: CellNum> Cell<T> {
             flags: SNAKE_HEAD,
             id: sid,
             idx: tail_index,
+            hazard_count: 0,
         }
     }
 
@@ -180,6 +196,7 @@ impl<T: CellNum> Cell<T> {
             flags: SNAKE_BODY_PIECE,
             id: sid,
             idx: next_index,
+            hazard_count: 0,
         }
     }
 
@@ -188,6 +205,7 @@ impl<T: CellNum> Cell<T> {
             flags: DOUBLE_STACKED_PIECE,
             id: sid,
             idx: next_index,
+            hazard_count: 0,
         }
     }
 
@@ -196,6 +214,7 @@ impl<T: CellNum> Cell<T> {
             flags: TRIPLE_STACKED_PIECE,
             id: sid,
             idx: CellIndex(T::from_i32(0)),
+            hazard_count: 0,
         }
     }
 
@@ -215,6 +234,10 @@ impl<T: CellNum> Cell<T> {
         self.is_snake_body_piece()
             || self.is_double_stacked_piece()
             || self.is_triple_stacked_piece()
+    }
+
+    fn hazard_count(&self) -> u8 {
+        self.hazard_count
     }
 
     pub fn set_food(&mut self) {

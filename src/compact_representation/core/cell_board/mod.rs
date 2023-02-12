@@ -412,6 +412,10 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
         self.get_cell(cell_idx).is_hazard()
     }
 
+    fn cell_hazard_count(&self, cell_idx: CellIndex<T>) -> u8 {
+        self.get_cell(cell_idx).hazard_count()
+    }
+
     /// determines if this cell is a snake head (including triple stacked)
     pub fn cell_is_snake_head(&self, cell_idx: CellIndex<T>) -> bool {
         self.get_cell(cell_idx).is_head()
