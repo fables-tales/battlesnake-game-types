@@ -138,8 +138,12 @@ impl<T: CellNum> Cell<T> {
 
     #[allow(dead_code)]
     pub fn set_hazard_count(&mut self, count: u8) {
-        self.flags |= IS_HAZARD;
-        self.hazard_count = count;
+        if count == 0 {
+            self.clear_hazard();
+        } else {
+            self.flags |= IS_HAZARD;
+            self.hazard_count = count;
+        }
     }
 
     pub fn clear_hazard(&mut self) {

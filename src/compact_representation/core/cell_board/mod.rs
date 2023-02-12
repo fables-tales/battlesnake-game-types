@@ -317,9 +317,13 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
                 };
                 let cell_idx: CellIndex<T> = CellIndex::new(position, width);
 
-                if game.board.hazards.contains(&position) {
-                    cells[cell_idx.0.as_usize()].set_hazard();
-                }
+                let hazard_count = game
+                    .board
+                    .hazards
+                    .iter()
+                    .filter(|p| **p == position)
+                    .count();
+                cells[cell_idx.0.as_usize()].set_hazard_count(hazard_count as u8);
 
                 if game.board.food.contains(&position) {
                     cells[cell_idx.0.as_usize()].set_food();
@@ -499,7 +503,11 @@ impl<T: CN, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize>
 
 #[cfg(test)]
 mod tests {
-    use crate::compact_representation::dimensions::Square;
+    use crate::{
+        compact_representation::{dimensions::Square, CellIndex, StandardCellBoard4Snakes11x11},
+        types::{build_snake_id_map, HazardQueryableGame},
+        wire_representation::Game,
+    };
 
     use super::CellBoard;
     #[test]
@@ -508,5 +516,16 @@ mod tests {
         let hm = serde_json::from_str(inconsistent_fixture).unwrap();
         let game = CellBoard::<u8, Square, { 11 * 11 }, 4>::from_packed_hash(&hm);
         assert!(!game.assert_consistency());
+    }
+
+    #[test]
+    fn test_stacked_hazards_conversion() {
+        let fixture = include_str!("../../../../fixtures/stacked_hazards.json");
+        let wire: Game = serde_json::from_str(fixture).unwrap();
+
+        let id_map = build_snake_id_map(&wire);
+        let compact = StandardCellBoard4Snakes11x11::convert_from_game(wire, &id_map).unwrap();
+
+        assert_eq!(compact.get_hazard_count(&CellIndex::from_usize(0)), 2);
     }
 }
