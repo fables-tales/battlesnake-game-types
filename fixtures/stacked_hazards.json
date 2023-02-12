@@ -16,7 +16,7 @@
         "id": "gs_vbvwfwk6jBc4jmCrKCbdJh3G",
         "name": "does this work lol (unstable)",
         "latency": "204",
-        "health": 99,
+        "health": 100,
         "body": [
           {
             "x": 5,
@@ -48,6 +48,14 @@
       {
         "x": 0,
         "y": 0
+      },
+      {
+        "x": 5,
+        "y": 7
+      },
+      {
+        "x": 5,
+        "y": 7
       }
     ]
   },

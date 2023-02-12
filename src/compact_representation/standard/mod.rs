@@ -518,4 +518,42 @@ mod test {
 
         assert_eq!(reasonable_moves_for_me, vec![Move::Up]);
     }
+
+    #[test]
+    fn test_simulate_stacked_hazards() {
+        let game_fixture = include_str!("../../../fixtures/stacked_hazards.json");
+        let g: Result<DEGame, _> = serde_json::from_slice(game_fixture.as_bytes());
+        let g = g.expect("the json literal is valid");
+        let snake_id_mapping = build_snake_id_map(&g);
+        let compact: CellBoard4Snakes11x11 = g.as_cell_board(&snake_id_mapping).unwrap();
+
+        let moves = vec![(SnakeId(0), vec![Move::Down])];
+
+        let result = compact
+            .simulate_with_moves(&Instruments {}, moves)
+            .next()
+            .unwrap()
+            .1;
+
+        assert_eq!(result.get_health(&SnakeId(0)), 69);
+    }
+
+    #[test]
+    fn test_simulate_stacked_hazards_no_hazard_on_sqaure() {
+        let game_fixture = include_str!("../../../fixtures/stacked_hazards.json");
+        let g: Result<DEGame, _> = serde_json::from_slice(game_fixture.as_bytes());
+        let g = g.expect("the json literal is valid");
+        let snake_id_mapping = build_snake_id_map(&g);
+        let compact: CellBoard4Snakes11x11 = g.as_cell_board(&snake_id_mapping).unwrap();
+
+        let moves = vec![(SnakeId(0), vec![Move::Right])];
+
+        let result = compact
+            .simulate_with_moves(&Instruments {}, moves)
+            .next()
+            .unwrap()
+            .1;
+
+        assert_eq!(result.get_health(&SnakeId(0)), 99);
+    }
 }
