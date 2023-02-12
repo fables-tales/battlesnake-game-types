@@ -15,4 +15,8 @@ impl<T: CellNum, D: Dimensions, const BOARD_SIZE: usize, const MAX_SNAKES: usize
     fn get_hazard_damage(&self) -> u8 {
         self.hazard_damage
     }
+
+    fn get_hazard_count(&self, pos: &Self::NativePositionType) -> u8 {
+        self.cell_hazard_count(*pos)
+    }
 }

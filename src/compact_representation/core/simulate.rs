@@ -68,10 +68,7 @@ where
 
         let game = board.evaluate_moves_with_state(m.iter(), &states);
         if !game.assert_consistency() {
-            panic!(
-                "caught an inconsistent simulate, moves: {:?} orig: {}, new: {}",
-                m, board, game
-            );
+            panic!("caught an inconsistent simulate, moves: {m:?} orig: {board}, new: {game}");
         }
         (action, game)
     });

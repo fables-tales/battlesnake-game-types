@@ -286,10 +286,24 @@ pub trait SimulableGame<T: SimulatorInstruments, const N_SNAKES: usize>:
 /// A game where positions can be checked for hazards
 pub trait HazardQueryableGame: PositionGettableGame {
     /// Is this position a hazard?
-    fn is_hazard(&self, pos: &Self::NativePositionType) -> bool;
+    fn is_hazard(&self, pos: &Self::NativePositionType) -> bool {
+        self.get_hazard_count(pos) > 0
+    }
 
     /// how much damage do hazards do?
     fn get_hazard_damage(&self) -> u8;
+
+    /// Get the total damage at a given position
+    fn get_hazard_damage_at(&self, pos: &Self::NativePositionType) -> u8 {
+        if self.is_hazard(pos) {
+            self.get_hazard_damage() * self.get_hazard_count(pos)
+        } else {
+            0
+        }
+    }
+
+    /// Get the count of hazards stacked on a given position
+    fn get_hazard_count(&self, pos: &Self::NativePositionType) -> u8;
 }
 
 /// A game where positions can be checked for food

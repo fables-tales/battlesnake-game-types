@@ -190,8 +190,7 @@ impl ForwardOnlyHazardAlgorithm<Position> for SpiralHazard {
             {
                 debug_assert!(
                     is_perfect_odd_square(spawns_elapsed + 1),
-                    "spawns_elapsed: {}",
-                    spawns_elapsed
+                    "spawns_elapsed: {spawns_elapsed}"
                 );
                 self.direction = Move::Up;
             }
@@ -328,9 +327,9 @@ mod tests {
         let mut maintained_hazards = HashSet::new();
         let mut hazard_alg = SpiralHazard::new();
         let self_file = path::Path::new(env!("CARGO_MANIFEST_DIR"));
-        eprintln!("{:?}", self_file);
+        eprintln!("{self_file:?}");
         for i in 1..=193 {
-            let file_name = self_file.join(format!("fixtures/debug_wrapped/debug_game_{}.json", i));
+            let file_name = self_file.join(format!("fixtures/debug_wrapped/debug_game_{i}.json"));
             let file_bytes = fs::read(file_name).unwrap();
             let game: Game = serde_json::from_slice(&file_bytes).unwrap();
 
